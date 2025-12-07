@@ -1,0 +1,125 @@
+(ns audio-platform.state
+  (:require
+   ["package:shared_preferences/shared_preferences.dart" :as prefs]))
+   
+(declare save-tokens 
+         clear-tokens)
+
+(defonce auth-state (atom {:token nil
+                           :refresh-token nil
+                           :user nil
+                           :is-authenticated false}))
+
+(defonce app-state (atom {:current-episode nil
+                         :is-playing false
+                         :play-position 0
+                         :albums []
+                         :episodes []
+                         :playlists []
+                         :notifications []
+                         :search-results []}))
+
+(defn get-token []
+  (:token @auth-state))
+
+(defn set-token [token refresh-token]
+  (swap! auth-state assoc :token token
+                          :refresh-token refresh-token
+                          :is-authenticated true)
+  (save-tokens token refresh-token))
+
+(defn clear-auth []
+  (reset! auth-state {:token nil
+                      :refresh-token nil
+                      :user nil
+                      :is-authenticated false})
+  (clear-tokens))
+
+(defn set-user [user]
+  (swap! auth-state assoc :user user))
+
+(defn get-user []
+  (:user @auth-state))
+
+(defn is-authenticated? []
+  (:is-authenticated @auth-state))
+
+;; Token persistence
+(def token-key "auth_token")
+(def refresh-token-key "refresh_token")
+
+(defn save-tokens [token refresh-token]
+  (let [prefs (prefs/SharedPreferences.getInstance)]
+    (.then prefs
+           (fn [instance]
+             (.setString instance token-key token)
+             (.setString instance refresh-token-key refresh-token)))))
+
+(defn load-tokens []
+  (let [prefs (prefs/SharedPreferences.getInstance)]
+    (.then prefs
+           (fn [instance]
+             (let [token (.getString instance token-key)
+                   refresh-token (.getString instance refresh-token-key)]
+               (when (and token refresh-token)
+                 (swap! auth-state assoc :token token
+                                        :refresh-token refresh-token
+                                        :is-authenticated true))
+               {:token token :refresh-token refresh-token})))))
+
+(defn clear-tokens []
+  (let [prefs (prefs/SharedPreferences.getInstance)]
+    (.then prefs
+           (fn [instance]
+             (.remove instance token-key)
+             (.remove instance refresh-token-key)))))
+
+;; App state helpers
+(defn set-current-episode [episode]
+  (swap! app-state assoc :current-episode episode))
+
+(defn get-current-episode []
+  (:current-episode @app-state))
+
+(defn set-playing [playing]
+  (swap! app-state assoc :is-playing playing))
+
+(defn is-playing? []
+  (:is-playing @app-state))
+
+(defn set-play-position [position]
+  (swap! app-state assoc :play-position position))
+
+(defn get-play-position []
+  (:play-position @app-state))
+
+(defn set-albums [albums]
+  (swap! app-state assoc :albums albums))
+
+(defn get-albums []
+  (:albums @app-state))
+
+(defn set-episodes [episodes]
+  (swap! app-state assoc :episodes episodes))
+
+(defn get-episodes []
+  (:episodes @app-state))
+
+(defn set-playlists [playlists]
+  (swap! app-state assoc :playlists playlists))
+
+(defn get-playlists []
+  (:playlists @app-state))
+
+(defn set-notifications [notifications]
+  (swap! app-state assoc :notifications notifications))
+
+(defn get-notifications []
+  (:notifications @app-state))
+
+(defn set-search-results [results]
+  (swap! app-state assoc :search-results results))
+
+(defn get-search-results []
+  (:search-results @app-state))
+

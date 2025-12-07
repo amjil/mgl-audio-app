@@ -1,0 +1,780 @@
+(ns audio-platform.services.api
+  (:require
+   ["package:http/http.dart" :as http]
+   ["dart:convert" :as convert]
+   [clojure.string :as str]))
+
+(def base-url "http://localhost:8080/api/v1")
+
+(defn get-auth-header [token]
+  {"Authorization" (str "Bearer " token)})
+
+(defn handle-response [response]
+  (-> response
+      (.then (fn [resp]
+               (if (>= (.-statusCode resp) 200)
+                 (if (< (.-statusCode resp) 300)
+                   (if (empty? (.-body resp))
+                     {}
+                     (convert/jsonDecode (.-body resp)))
+                   (throw (dart:core/Exception (str "API Error: " (.-statusCode resp) " - " (.-body resp)))))
+                 (throw (dart:core/Exception (str "Network Error: " (.-statusCode resp)))))))))
+
+;; Authentication APIs
+(defn register [username email password]
+  (let [url (str base-url "/auth/register")
+        body (convert/jsonEncode {"username" username
+                                  "email" email
+                                  "password" password})
+        response (http/post (dart:core/Uri.parse url)
+                            .headers {"Content-Type" "application/json"}
+                            .body body)]
+    (handle-response response)))
+
+(defn login [username password]
+  (let [url (str base-url "/auth/login")
+        body (convert/jsonEncode {"username" username
+                                  "password" password})
+        response (http/post (dart:core/Uri.parse url)
+                            .headers {"Content-Type" "application/json"}
+                            .body body)]
+    (handle-response response)))
+
+(defn refresh-token [refresh-token]
+  (let [url (str base-url "/auth/refresh")
+        body (convert/jsonEncode {"refresh_token" refresh-token})
+        response (http/post (dart:core/Uri.parse url)
+                            .headers {"Content-Type" "application/json"}
+                            .body body)]
+    (handle-response response)))
+
+(defn forgot-password [email]
+  (let [url (str base-url "/auth/forgot-password")
+        body (convert/jsonEncode {"email" email})
+        response (http/post (dart:core/Uri.parse url)
+                            .headers {"Content-Type" "application/json"}
+                            .body body)]
+    (handle-response response)))
+
+(defn reset-password [token new-password]
+  (let [url (str base-url "/auth/reset-password")
+        body (convert/jsonEncode {"token" token
+                                  "new_password" new-password})
+        response (http/post (dart:core/Uri.parse url)
+                            .headers {"Content-Type" "application/json"}
+                            .body body)]
+    (handle-response response)))
+
+;; User APIs
+(defn get-current-user [token]
+  (let [url (str base-url "/users/me")
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn update-user [token user-data]
+  (let [url (str base-url "/users/me")
+        body (convert/jsonEncode user-data)
+        response (http/put (dart:core/Uri.parse url)
+                          .headers (merge (get-auth-header token)
+                                         {"Content-Type" "application/json"})
+                          .body body)]
+    (handle-response response)))
+
+(defn update-password [token old-password new-password]
+  (let [url (str base-url "/users/me/password")
+        body (convert/jsonEncode {"old_password" old-password
+                                  "new_password" new-password})
+        response (http/put (dart:core/Uri.parse url)
+                          .headers (merge (get-auth-header token)
+                                         {"Content-Type" "application/json"})
+                          .body body)]
+    (handle-response response)))
+
+(defn get-user-by-id [user-id]
+  (let [url (str base-url "/users/" user-id)
+        response (http/get (dart:core/Uri.parse url))]
+    (handle-response response)))
+
+;; Home Feed
+(defn get-home-feed [token]
+  (let [url (str base-url "/homefeed")
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Albums
+(defn get-albums [token & {:keys [page per-page category-id]}]
+  (let [params (cond-> {}
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page))
+                category-id (assoc "category_id" category-id))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/albums" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn get-album [token album-id]
+  (let [url (str base-url "/albums/" album-id)
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn create-album [token album-data]
+  (let [url (str base-url "/albums")
+        body (convert/jsonEncode album-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn update-album [token album-id album-data]
+  (let [url (str base-url "/albums/" album-id)
+        body (convert/jsonEncode album-data)
+        response (http/put (dart:core/Uri.parse url)
+                          .headers (merge (get-auth-header token)
+                                         {"Content-Type" "application/json"})
+                          .body body)]
+    (handle-response response)))
+
+(defn delete-album [token album-id]
+  (let [url (str base-url "/albums/" album-id)
+        response (http/delete (dart:core/Uri.parse url)
+                             .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Episodes
+(defn get-episodes [token & {:keys [album-id page per-page]}]
+  (let [params (cond-> {}
+                album-id (assoc "album_id" album-id)
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page)))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/episodes" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn get-episode [token episode-id]
+  (let [url (str base-url "/episodes/" episode-id)
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn record-play-event [token episode-id event-data]
+  (let [url (str base-url "/episodes/" episode-id "/play")
+        body (convert/jsonEncode event-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn create-episode [token album-id episode-data]
+  (let [url (str base-url "/albums/" album-id "/episodes")
+        body (convert/jsonEncode episode-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn delete-episode [token episode-id]
+  (let [url (str base-url "/episodes/" episode-id)
+        response (http/delete (dart:core/Uri.parse url)
+                             .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Search
+(defn search [token query & {:keys [page limit tag sort]}]
+  (let [params (cond-> {"q" query}
+                page (assoc "page" (str page))
+                limit (assoc "limit" (str limit))
+                tag (assoc "tag" tag)
+                sort (assoc "sort" sort))
+        query-string (str "?" (str/join "&" 
+                                        (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params)))
+        url (str base-url "/search" query-string)
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn search-episodes [token query & {:keys [page limit tag sort]}]
+  (let [params (cond-> {"q" query}
+                page (assoc "page" (str page))
+                limit (assoc "limit" (str limit))
+                tag (assoc "tag" tag)
+                sort (assoc "sort" sort))
+        query-string (str "?" (str/join "&" 
+                                        (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params)))
+        url (str base-url "/search/episodes" query-string)
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn search-albums [token query & {:keys [page limit]}]
+  (let [params (cond-> {"q" query}
+                page (assoc "page" (str page))
+                limit (assoc "limit" (str limit)))
+        query-string (str "?" (str/join "&" 
+                                        (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params)))
+        url (str base-url "/search/albums" query-string)
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn search-creators [token query & {:keys [page limit]}]
+  (let [params (cond-> {"q" query}
+                page (assoc "page" (str page))
+                limit (assoc "limit" (str limit)))
+        query-string (str "?" (str/join "&" 
+                                        (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params)))
+        url (str base-url "/search/creators" query-string)
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Comments
+(defn get-comments [token episode-id & {:keys [page per-page sort parent-id]}]
+  (let [params (cond-> {"episode_id" episode-id}
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page))
+                sort (assoc "sort" sort)
+                parent-id (assoc "parent_id" parent-id))
+        query-string (str "?" (str/join "&" 
+                                        (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params)))
+        url (str base-url "/comments" query-string)
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn create-comment [token comment-data]
+  (let [url (str base-url "/comments")
+        body (convert/jsonEncode comment-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn like-comment [token comment-id]
+  (let [url (str base-url "/comments/" comment-id "/like")
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn unlike-comment [token comment-id]
+  (let [url (str base-url "/comments/" comment-id "/like")
+        response (http/delete (dart:core/Uri.parse url)
+                             .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn get-comment [token comment-id]
+  (let [url (str base-url "/comments/" comment-id)
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn delete-comment [token comment-id]
+  (let [url (str base-url "/comments/" comment-id)
+        response (http/delete (dart:core/Uri.parse url)
+                             .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Playlists
+(defn get-playlists [token]
+  (let [url (str base-url "/playlists")
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn get-playlist [token playlist-id]
+  (let [url (str base-url "/playlists/" playlist-id)
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn create-playlist [token playlist-data]
+  (let [url (str base-url "/playlists")
+        body (convert/jsonEncode playlist-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+;; Favorites
+(defn get-favorites [token]
+  (let [url (str base-url "/users/me/favorites")
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; History
+(defn get-history [token & {:keys [page per-page]}]
+  (let [params (cond-> {}
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page)))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/users/me/history" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Notifications
+(defn get-notifications [token & {:keys [page per-page unread-only]}]
+  (let [params (cond-> {}
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page))
+                unread-only (assoc "unread_only" (str unread-only)))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/notifications" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn mark-notification-read [token notification-id]
+  (let [url (str base-url "/notifications/" notification-id "/read")
+        response (http/put (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Upload & Media
+(defn create-upload-session [token filename & {:keys [file-size title]}]
+  (let [url (str base-url "/upload")
+        body-data (cond-> {"filename" filename}
+                    file-size (assoc "file_size" file-size)
+                    title (assoc "title" title))
+        body (convert/jsonEncode body-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn mark-upload-complete [token media-id & {:keys [file-size]}]
+  (let [url (str base-url "/upload/complete")
+        body-data (cond-> {"media_id" media-id}
+                    file-size (assoc "file_size" file-size))
+        body (convert/jsonEncode body-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+;; Purchases
+(defn create-purchase [token purchase-data]
+  (let [url (str base-url "/purchases")
+        body (convert/jsonEncode purchase-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn get-purchases [token & {:keys [page per-page]}]
+  (let [params (cond-> {}
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page)))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/purchases" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Downloads
+(defn request-download [token episode-id]
+  (let [url (str base-url "/downloads/" episode-id)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Creators Dashboard
+(defn get-creator-dashboard [token creator-id]
+  (let [url (str base-url "/creators/" creator-id "/dashboard")
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Tags
+(defn list-tags [& {:keys [page per-page search sort-by order]}]
+  (let [params (cond-> {}
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page))
+                search (assoc "search" search)
+                sort-by (assoc "sort_by" sort-by)
+                order (assoc "order" order))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/tags" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url))]
+    (handle-response response)))
+
+(defn get-top-tags [& {:keys [limit]}]
+  (let [params (cond-> {}
+                limit (assoc "limit" (str limit)))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/tags/top" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url))]
+    (handle-response response)))
+
+(defn create-tag [token name]
+  (let [url (str base-url "/tags")
+        body (convert/jsonEncode {"name" name})
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn update-tag [token tag-id name]
+  (let [url (str base-url "/tags/" tag-id)
+        body (convert/jsonEncode {"name" name})
+        response (http/put (dart:core/Uri.parse url)
+                          .headers (merge (get-auth-header token)
+                                         {"Content-Type" "application/json"})
+                          .body body)]
+    (handle-response response)))
+
+(defn delete-tag [token tag-id]
+  (let [url (str base-url "/tags/" tag-id)
+        response (http/delete (dart:core/Uri.parse url)
+                             .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Subscriptions
+(defn list-subscriptions [token]
+  (let [url (str base-url "/subscriptions")
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn create-subscription [token subscription-data]
+  (let [url (str base-url "/subscriptions")
+        body (convert/jsonEncode subscription-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn cancel-subscription [token subscription-id]
+  (let [url (str base-url "/subscriptions/" subscription-id)
+        response (http/delete (dart:core/Uri.parse url)
+                             .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Playlists (additional operations)
+(defn update-playlist [token playlist-id playlist-data]
+  (let [url (str base-url "/playlists/" playlist-id)
+        body (convert/jsonEncode playlist-data)
+        response (http/put (dart:core/Uri.parse url)
+                          .headers (merge (get-auth-header token)
+                                         {"Content-Type" "application/json"})
+                          .body body)]
+    (handle-response response)))
+
+(defn delete-playlist [token playlist-id]
+  (let [url (str base-url "/playlists/" playlist-id)
+        response (http/delete (dart:core/Uri.parse url)
+                             .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn add-episode-to-playlist [token playlist-id episode-id & {:keys [sequence]}]
+  (let [url (str base-url "/playlists/" playlist-id "/items")
+        body-data (cond-> {"episode_id" episode-id}
+                    sequence (assoc "sequence" sequence))
+        body (convert/jsonEncode body-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn remove-episode-from-playlist [token playlist-id item-id]
+  (let [url (str base-url "/playlists/" playlist-id "/items/" item-id)
+        response (http/delete (dart:core/Uri.parse url)
+                             .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn reorder-playlist-items [token playlist-id items]
+  (let [url (str base-url "/playlists/" playlist-id "/items/reorder")
+        body (convert/jsonEncode {"items" items})
+        response (http/put (dart:core/Uri.parse url)
+                          .headers (merge (get-auth-header token)
+                                         {"Content-Type" "application/json"})
+                          .body body)]
+    (handle-response response)))
+
+;; Follows
+(defn follow-user [token user-id]
+  (let [url (str base-url "/follows/" user-id)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn unfollow-user [token user-id]
+  (let [url (str base-url "/follows/" user-id)
+        response (http/delete (dart:core/Uri.parse url)
+                             .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn list-follows [token & {:keys [user-id type page per-page]}]
+  (let [params (cond-> {}
+                user-id (assoc "user_id" user-id)
+                type (assoc "type" type)
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page)))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/follows" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Shares
+(defn create-share [token content-type content-id]
+  (let [url (str base-url "/shares")
+        body (convert/jsonEncode {"content_type" content-type
+                                  "content_id" content-id})
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn get-share-stats [& {:keys [content-type content-id]}]
+  (let [params (cond-> {}
+                content-type (assoc "content_type" content-type)
+                content-id (assoc "content_id" content-id))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/shares/stats" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url))]
+    (handle-response response)))
+
+(defn get-share-by-token [token]
+  (let [url (str base-url "/share/" token)
+        response (http/get (dart:core/Uri.parse url))]
+    (handle-response response)))
+
+;; Categories
+(defn list-categories [& {:keys [page per-page search parent-id sort-by order]}]
+  (let [params (cond-> {}
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page))
+                search (assoc "search" search)
+                parent-id (assoc "parent_id" parent-id)
+                sort-by (assoc "sort_by" sort-by)
+                order (assoc "order" order))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/categories" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url))]
+    (handle-response response)))
+
+(defn get-category [category-id]
+  (let [url (str base-url "/categories/" category-id)
+        response (http/get (dart:core/Uri.parse url))]
+    (handle-response response)))
+
+(defn get-category-tree []
+  (let [url (str base-url "/categories/tree")
+        response (http/get (dart:core/Uri.parse url))]
+    (handle-response response)))
+
+(defn create-category [token category-data]
+  (let [url (str base-url "/categories")
+        body (convert/jsonEncode category-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn update-category [token category-id category-data]
+  (let [url (str base-url "/categories/" category-id)
+        body (convert/jsonEncode category-data)
+        response (http/put (dart:core/Uri.parse url)
+                          .headers (merge (get-auth-header token)
+                                         {"Content-Type" "application/json"})
+                          .body body)]
+    (handle-response response)))
+
+(defn delete-category [token category-id]
+  (let [url (str base-url "/categories/" category-id)
+        response (http/delete (dart:core/Uri.parse url)
+                             .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Tips
+(defn create-tip [token tip-data]
+  (let [url (str base-url "/tips")
+        body (convert/jsonEncode tip-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn list-tips [& {:keys [page per-page target-type target-id]}]
+  (let [params (cond-> {}
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page))
+                target-type (assoc "target_type" target-type)
+                target-id (assoc "target_id" target-id))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/tips" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url))]
+    (handle-response response)))
+
+(defn get-tip-stats [user-id]
+  (let [url (str base-url "/tips/stats/" user-id)
+        response (http/get (dart:core/Uri.parse url))]
+    (handle-response response)))
+
+(defn list-received-tips [token & {:keys [page per-page]}]
+  (let [params (cond-> {}
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page)))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/tips/received" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn list-given-tips [token & {:keys [page per-page]}]
+  (let [params (cond-> {}
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page)))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/tips/given" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+;; Reports
+(defn create-report [token report-data]
+  (let [url (str base-url "/reports")
+        body (convert/jsonEncode report-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+;; Moderation
+(defn get-reports [token & {:keys [status page per-page]}]
+  (let [params (cond-> {}
+                status (assoc "status" status)
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page)))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/moderation/reports" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn get-report [token report-id]
+  (let [url (str base-url "/moderation/reports/" report-id)
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn update-report-status [token report-id status]
+  (let [url (str base-url "/moderation/reports/" report-id "/status")
+        body (convert/jsonEncode {"status" status})
+        response (http/put (dart:core/Uri.parse url)
+                          .headers (merge (get-auth-header token)
+                                         {"Content-Type" "application/json"})
+                          .body body)]
+    (handle-response response)))
+
+(defn create-moderation-action [token action-data]
+  (let [url (str base-url "/moderation/actions")
+        body (convert/jsonEncode action-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn get-moderation-actions [token & {:keys [target-type target-id page per-page]}]
+  (let [params (cond-> {}
+                target-type (assoc "target_type" target-type)
+                target-id (assoc "target_id" target-id)
+                page (assoc "page" (str page))
+                per-page (assoc "per_page" (str per-page)))
+        query-string (when (seq params)
+                       (str "?" (str/join "&" 
+                                          (map (fn [[k v]] (str k "=" (dart:core/Uri.encodeComponent v))) params))))
+        url (str base-url "/moderation/actions" (or query-string ""))
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn hide-content [token target-type target-id & {:keys [reason]}]
+  (let [url (str base-url "/moderation/content/" target-type "/" target-id "/hide")
+        body-data (cond-> {}
+                    reason (assoc "reason" reason))
+        body (convert/jsonEncode body-data)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (merge (get-auth-header token)
+                                          {"Content-Type" "application/json"})
+                           .body body)]
+    (handle-response response)))
+
+(defn unhide-content [token target-type target-id]
+  (let [url (str base-url "/moderation/content/" target-type "/" target-id "/unhide")
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn check-content-hidden [token target-type target-id]
+  (let [url (str base-url "/moderation/content/" target-type "/" target-id "/hidden")
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn get-user-role [token user-id]
+  (let [url (str base-url "/moderation/users/" user-id "/role")
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn update-user-role [token user-id role]
+  (let [url (str base-url "/moderation/users/" user-id "/role")
+        body (convert/jsonEncode {"role" role})
+        response (http/put (dart:core/Uri.parse url)
+                          .headers (merge (get-auth-header token)
+                                         {"Content-Type" "application/json"})
+                          .body body)]
+    (handle-response response)))
+

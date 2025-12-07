@@ -1,0 +1,110 @@
+(ns audio-platform.screens.login
+  (:require
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [cljd.flutter :as f]
+   [audio-platform.services.api :as api]
+   [audio-platform.state :as state]
+   [audio-platform.states.font :as font-state]
+   [audio-platform.utils.navigator :as nav]))
+
+(defn ^m/Widget login-page [_context]
+  (let [loading (atom false)
+        error-msg (atom nil)]
+    (f/widget
+     :watch [_font-state font-state/font-state]
+     :let [font-family (font-state/get-app-font-family)]
+     :get [m/Navigator]
+     :managed [username-controller (m/TextEditingController.)
+               password-controller (m/TextEditingController.)]
+     (m/Scaffold)
+     .body
+     (m/SafeArea)
+     (m/Padding
+      .padding (m.EdgeInsets/all 16))
+     (m/SingleChildScrollView
+      .scrollDirection m.Axis/horizontal)
+     (m/Row
+      .mainAxisAlignment m.MainAxisAlignment/center
+      .crossAxisAlignment m.CrossAxisAlignment/stretch
+      .children
+      [(if @error-msg
+         (m/Container
+          .padding (m.EdgeInsets/all 12)
+          .margin (m.EdgeInsets/only .bottom 16)
+          .decoration (m/BoxDecoration
+                       .color m/Colors.red.shade100
+                       .borderRadius (m.BorderRadius/circular 8))
+          .child (mgl/MongolText
+                  @error-msg
+                  .style (m/TextStyle
+                          .fontFamily font-family
+                          .color m/Colors.red.shade700)))
+         (m/SizedBox))
+       (mgl/MongolTextField
+        .controller username-controller
+        .decoration (m/InputDecoration
+                     .labelText "Username"
+                     .border (m/OutlineInputBorder))
+        .enabled (not @loading)
+        .style (m/TextStyle
+                .fontFamily font-family))
+       (m/SizedBox .width 16)
+       (mgl/MongolTextField
+        .controller password-controller
+        .decoration (m/InputDecoration
+                     .labelText "Password"
+                     .border (m/OutlineInputBorder))
+        .obscureText true
+        .enabled (not @loading)
+        .style (m/TextStyle
+                .fontFamily font-family))
+       (m/SizedBox .width 24)
+       (m/ElevatedButton
+        .onPressed (when (not @loading)
+                     (fn []
+                       (reset! loading true)
+                       (reset! error-msg nil)
+                       (let [username (.-text username-controller)
+                             password (.-text password-controller)]
+                         (dart:core/print (str "Username: " username " Password: " password))
+                         (-> (api/login username password)
+                             (.then (fn [response]
+                                      (dart:core/print (str "Response: " response))
+                                      (let [token (get response "access_token")
+                                            refresh-token (get response "refresh_token")]
+                                        (state/set-token token refresh-token)
+                                        (-> (api/get-current-user token)
+                                            (.then (fn [user]
+                                                     (state/set-user user)
+                                                     (reset! loading false)
+                                                     (nav/push-replacement-route navigator :home)))
+                                            (.catchError (fn [err]
+                                                           (reset! loading false)
+                                                           (reset! error-msg (str "Failed to get user info: " err))))))))
+                             (.catchError (fn [err]
+                                            (dart:core/print (str "Error: " err))
+                                            (reset! loading false)
+                                            (reset! error-msg (str "Login failed: " err))))))))
+        .child (if @loading
+                 (m/Padding
+                  .padding (m.EdgeInsets/all 8)
+                  .child (m/SizedBox
+                          .width 20
+                          .height 20
+                          .child (m/CircularProgressIndicator
+                                  .strokeWidth 2
+                                  .color m.Colors/white)))
+                 (m/Padding
+                  .padding (m.EdgeInsets/symmetric .horizontal 0 .vertical 8)
+                  .child (mgl/MongolText "Login"
+                                         .style (m/TextStyle
+                                                 .fontFamily font-family)))))
+       (m/SizedBox .width 16)
+       (m/TextButton
+        .onPressed (fn []
+                     (nav/push-route navigator :register))
+        .child (mgl/MongolText "Don't have an account? Register now"
+                               .style (m/TextStyle
+                                       .fontFamily font-family)))]))))  
+

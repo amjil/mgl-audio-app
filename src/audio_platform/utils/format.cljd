@@ -1,0 +1,11 @@
+(ns audio-platform.utils.format)
+
+(defn format-duration [seconds]
+  "Format seconds to time string (HH:MM:SS or MM:SS)"
+  (let [hours (int (/ seconds 3600))
+        minutes (int (/ (mod seconds 3600) 60))
+        secs (mod seconds 60)
+        format-num (fn [n] (if (< n 10) (str "0" n) (str n)))]
+    (if (> hours 0)
+      (str hours ":" (format-num minutes) ":" (format-num secs))
+      (str minutes ":" (format-num secs)))))

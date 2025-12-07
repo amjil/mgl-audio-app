@@ -1,0 +1,86 @@
+(ns audio-platform.states.font
+  (:require
+   ["package:shared_preferences/shared_preferences.dart" :as prefs]))
+
+;; App font preference keys
+(def app-font-family-preference-key "app_font_family")
+(def app-font-size-preference-key "app_font_size")
+
+;; Default values
+(def default-font-family "OyunQaganTig")
+(def default-font-size 18)
+
+;; Available font families
+(def available-font-families
+  ["OnonSoninSans" "OyunQaganTig"])
+
+;; Available font sizes
+(def available-font-sizes
+  [12 14 16 18 20 22 24 26 28 30])
+
+;; App font state atom (for UI elements)
+(def app-font-state
+  (atom {:family default-font-family
+         :size default-font-size}))
+
+;; Initialize app font settings from preferences
+(defn init-app-font-settings! []
+  (let [prefs-instance (await (prefs/SharedPreferences.getInstance))
+        saved-family (.getString prefs-instance app-font-family-preference-key)
+        saved-size (.getInt prefs-instance app-font-size-preference-key)
+        family (or saved-family default-font-family)
+        size (or saved-size default-font-size)]
+    (swap! app-font-state assoc :family family :size size)
+    {:family family :size size}))
+
+;; Get current app font family
+(defn get-app-font-family []
+  (:family @app-font-state))
+
+;; Get current app font size
+(defn get-app-font-size []
+  (:size @app-font-state))
+
+;; Set app font family and save to preferences
+(defn set-app-font-family! [family]
+  (swap! app-font-state assoc :family family)
+  (let [prefs-instance (await (prefs/SharedPreferences.getInstance))]
+    (.setString prefs-instance app-font-family-preference-key family)))
+
+;; Set app font size and save to preferences
+(defn set-app-font-size! [size]
+  (swap! app-font-state assoc :size size)
+  (let [prefs-instance (await (prefs/SharedPreferences.getInstance))]
+    (.setInt prefs-instance app-font-size-preference-key size)))
+
+;; Get app font subtitle for display
+(defn get-app-font-subtitle []
+  (let [family (get-app-font-family)
+        size (get-app-font-size)]
+    (str family " - " size "pt")))
+
+;; ===== Legacy Functions (for backward compatibility) =====
+
+;; Get current font family (app font, for backward compatibility)
+(defn get-font-family []
+  (get-app-font-family))
+
+;; Get current font size (app font, for backward compatibility)
+(defn get-font-size []
+  (get-app-font-size))
+
+;; Set font family (app font, for backward compatibility)
+(defn set-font-family! [family]
+  (set-app-font-family! family))
+
+;; Set font size (app font, for backward compatibility)
+(defn set-font-size! [size]
+  (set-app-font-size! size))
+
+;; Get font subtitle (app font, for backward compatibility)
+(defn get-font-subtitle []
+  (get-app-font-subtitle))
+
+;; Combined font state for watching (for backward compatibility)
+(def font-state app-font-state)
+

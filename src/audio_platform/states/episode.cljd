@@ -1,0 +1,15 @@
+(ns audio-platform.states.episode)
+
+
+(def episode-state (atom {:episodes nil
+                          :loading false
+                          :error nil}))
+
+(defn get-episode []
+  (:episode @episode-state))
+
+(defn get-loading []
+  (:loading @episode-state))
+
+(defn get-error []
+  (:error @episode-state))

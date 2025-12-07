@@ -1,0 +1,94 @@
+(ns audio-platform.services.album
+  (:require
+   [audio-platform.services.api :as api]
+   [audio-platform.state :as state]
+   [audio-platform.states.album :as album-state]
+   [audio-platform.states.episode :as episode-state]
+   [audio-platform.states.category :as category-state]
+   [audio-platform.utils.navigator :as nav]))
+   
+(defn get-album [album-id]
+  (swap! album-state/album-state assoc :loading true :error nil)
+  (-> (api/get-album (state/get-token) album-id)
+      (.catchError (fn [err]
+                     (swap! album-state/album-state assoc :error (str "Failed to load album: " err))
+                     (swap! album-state/album-state assoc :loading false)))
+      (.then (fn [album-data]
+               (swap! album-state/album-state assoc :album album-data)
+               (swap! episode-state/episode-state assoc :loading true :error nil)
+               (-> (api/get-episodes (state/get-token) :album-id album-id)
+                   (.then (fn [episodes-data]
+                            (swap! episode-state/episode-state assoc :episodes (get episodes-data "items" []))
+                            (swap! episode-state/episode-state assoc :loading false)))
+                   (.catchError (fn [err]
+                                  (swap! episode-state/episode-state assoc :error (str "Failed to load episodes: " err))
+                                  (swap! episode-state/episode-state assoc :loading false))))))))
+                                  
+
+(defn create-album [navigator album-data]
+  (swap! album-state/album-state assoc :loading true :error nil)
+  (-> (api/create-album (state/get-token) album-data)
+      (.catchError (fn [err]
+                     (swap! album-state/album-state assoc :error (str "Failed to create album: " err))
+                     (swap! album-state/album-state assoc :loading false)))
+      (.then (fn [album-data]
+               (dart:core/print "Album created successfully")
+               (nav/navigator-pop navigator)
+               (swap! album-state/album-state assoc :album album-data)
+               (swap! album-state/album-state assoc :loading false)))))
+               
+(defn get-list [& {:keys [page per-page category-id]}]
+  (swap! album-state/album-state assoc :loading true :error nil)
+  (-> (api/get-albums (state/get-token) :page page :per-page per-page :category-id category-id)
+      (.catchError (fn [err]
+                     (swap! album-state/album-state assoc :error (str "Failed to load albums: " err))
+                     (swap! album-state/album-state assoc :loading false)))
+      (.then (fn [albums-data]
+               (swap! album-state/album-state assoc :albums albums-data)
+               (swap! album-state/album-state assoc :loading false)))))
+
+(defn get-categories []
+  (swap! category-state/category-state assoc :loading true :error nil)
+  (-> (api/get-category-tree)
+      (.catchError (fn [err]
+                     (swap! category-state/category-state assoc :error (str "Failed to load categories: " err))
+                     (swap! category-state/category-state assoc :loading false)))
+      (.then (fn [categories-data]
+               (swap! category-state/category-state assoc :categories categories-data)
+               (swap! category-state/category-state assoc :loading false)))))
+
+(defn create-category [category-data]
+  (swap! category-state/category-state assoc :loading true :error nil)
+  (-> (api/create-category (state/get-token) category-data)
+      (.catchError (fn [err]
+                     (swap! category-state/category-state assoc :error (str "Failed to create category: " err))
+                     (swap! category-state/category-state assoc :loading false)))
+      (.then (fn [_]
+               (dart:core/print "Category created successfully")
+               (get-categories)
+               (swap! category-state/category-state assoc :loading false)))))
+               
+
+(defn update-album [navigator album-id album-data]
+  (swap! album-state/album-state assoc :loading true :error nil)
+  (-> (api/update-album (state/get-token) album-id album-data)
+      (.catchError (fn [err]
+                     (swap! album-state/album-state assoc :error (str "Failed to update album: " err))
+                     (swap! album-state/album-state assoc :loading false)))
+      (.then (fn [album-data]
+               (dart:core/print "Album updated successfully")
+               (nav/navigator-pop navigator)
+               (swap! album-state/album-state assoc :album album-data)
+               (swap! album-state/album-state assoc :loading false)))))
+               
+               
+(defn delete-album [navigator album-id]
+  (swap! album-state/album-state assoc :loading true :error nil)
+  (-> (api/delete-album (state/get-token) album-id)
+      (.catchError (fn [err]
+                     (swap! album-state/album-state assoc :error (str "Failed to delete album: " err))
+                     (swap! album-state/album-state assoc :loading false)))
+      (.then (fn [_]
+               (dart:core/print "Album deleted successfully")
+               (nav/navigator-pop navigator)
+               (swap! album-state/album-state assoc :loading false)))))

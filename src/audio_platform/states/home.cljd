@@ -1,0 +1,76 @@
+(ns audio-platform.states.home
+  (:require
+   [audio-platform.services.api :as api]
+   [audio-platform.state :as state]))
+
+;; Home feed state atom
+(def home-feed-state
+  (atom {:loading true
+         :items []
+         :error nil}))
+
+;; Albums state atom
+(def albums-state
+  (atom {:loading true
+         :items []
+         :error nil}))
+
+;; Load home feed
+(defn load-home-feed! []
+  (let [token (state/get-token)]
+    (when token
+      (swap! home-feed-state assoc :loading true :error nil)
+      (-> (api/get-home-feed token)
+          (.then (fn [response]
+                   (swap! home-feed-state assoc
+                          :loading false
+                          :items (get response "items" []))))
+          (.catchError (fn [err]
+                        (dart:core/print (str "Failed to load feed:" err))
+                        (swap! home-feed-state assoc
+                               :loading false
+                               :error (str err))))))))
+
+;; Load albums
+(defn load-albums! []
+  (let [token (state/get-token)]
+    (when token
+      (swap! albums-state assoc :loading true :error nil)
+      (-> (api/get-albums token :page 1 :per-page 10)
+          (.then (fn [response]
+                   (let [items (get response "items" [])]
+                     (swap! albums-state assoc
+                            :loading false
+                            :items items)
+                     (state/set-albums items))))
+          (.catchError (fn [err]
+                        (dart:core/print (str "Failed to load albums:" err))
+                        (swap! albums-state assoc
+                               :loading false
+                               :error (str err))))))))
+
+;; Initialize home data
+(defn init-home-data! []
+  (load-home-feed!)
+  (load-albums!))
+
+;; Refresh home feed
+(defn refresh-home-feed! []
+  (load-home-feed!))
+
+;; Refresh albums
+(defn refresh-albums! []
+  (load-albums!))
+
+;; Get home feed items
+(defn get-home-feed-items []
+  (:items @home-feed-state))
+
+;; Get albums
+(defn get-albums []
+  (:items @albums-state))
+
+;; Get loading state
+(defn is-loading? []
+  (or (:loading @home-feed-state)
+      (:loading @albums-state)))

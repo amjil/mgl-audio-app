@@ -1,0 +1,11 @@
+(ns audio-platform.widgets.app-bar
+ (:require 
+  ["package:flutter/material.dart" :as m]
+  ["package:mongol/mongol.dart" :as mgl]
+  [cljd.flutter :as f]
+  [audio-platform.state :as state]))
+  
+
+(defn app-bar []
+  (m/AppBar
+   .title (m/Text "App Bar")))

@@ -1,0 +1,119 @@
+(ns audio-platform.utils.navigator)
+
+(defn push-named
+  "Navigate to the specified route"
+  [navigator route-name]
+  (.pushNamed navigator route-name))
+
+(defn push-named-with-arguments
+  "Navigate to the specified route with arguments"
+  [navigator route-name arguments]
+  (.pushNamed navigator route-name arguments))
+
+(defn push-replacement-named
+  "Replace current route and navigate to the specified route"
+  [navigator route-name]
+  (.pushReplacementNamed navigator route-name))
+
+(defn push-replacement-named-with-arguments
+  "Replace current route and navigate to the specified route with arguments"
+  [navigator route-name arguments]
+  (.pushReplacementNamed navigator route-name arguments))
+
+(defn push-named-and-remove-until
+  "Navigate to the specified route and remove all routes that satisfy the predicate"
+  [navigator route-name predicate]
+  (.pushNamedAndRemoveUntil navigator route-name predicate))
+
+(defn push-named-and-remove-until-with-arguments
+  "Navigate to the specified route and remove all routes that satisfy the predicate, with arguments"
+  [navigator route-name predicate arguments]
+  (.pushNamedAndRemoveUntil navigator route-name predicate arguments))
+
+(defn navigator-pop
+  "Pop the current route"
+  [navigator]
+  (.pop navigator))
+
+(defn pop-with-result
+  "Pop the current route with a result"
+  [navigator result]
+  (.pop navigator result))
+
+(defn pop-until
+  "Pop routes until the predicate is satisfied"
+  [navigator predicate]
+  (.popUntil navigator predicate))
+
+(defn can-pop
+  "Check if it's possible to pop the current route"
+  [navigator]
+  (.canPop navigator))
+
+(defn maybe-pop
+  "Pop the current route if possible, otherwise do nothing"
+  [navigator]
+  (.maybePop navigator))
+
+(defn maybe-pop-with-result
+  "Pop the current route with a result if possible, otherwise do nothing"
+  [navigator result]
+  (.maybePop navigator result))
+
+(defn remove-route
+  "Remove the specified route"
+  [navigator route-name]
+  (.removeRoute navigator route-name))
+
+(defn remove-route-below
+  "Remove all routes below the specified route"
+  [navigator route-name]
+  (.removeRouteBelow navigator route-name))
+
+;; Route name constants
+(def routes
+  {:login "/login"
+   :register "/register"
+   :home "/home"
+   :search "/search"
+   :profile "/profile"
+   :player "/player"
+   :album-detail "/album-detail"
+   :album-form "/album-form"})
+
+;; Convenience function: get route name
+(defn get-route
+  "Get route name by route key"
+  [route-key]
+  (get routes route-key))
+
+;; Convenience function: navigate to route (using route key)
+(defn push-route
+  "Navigate to the specified route using route key"
+  [navigator route-key]
+  (push-named navigator (get-route route-key)))
+
+(defn push-route-with-arguments
+  "Navigate to the specified route using route key with arguments"
+  [navigator route-key arguments]
+  (push-named-with-arguments navigator (get-route route-key) arguments))
+
+(defn push-replacement-route
+  "Replace current route and navigate to the specified route using route key"
+  [navigator route-key]
+  (push-replacement-named navigator (get-route route-key)))
+
+(defn push-replacement-route-with-arguments
+  "Replace current route and navigate to the specified route using route key with arguments"
+  [navigator route-key arguments]
+  (push-replacement-named-with-arguments navigator (get-route route-key) arguments))
+
+(defn push-route-and-remove-until
+  "Navigate to the specified route using route key and remove all routes that satisfy the predicate"
+  [navigator route-key predicate]
+  (push-named-and-remove-until navigator (get-route route-key) predicate))
+
+(defn push-route-and-remove-until-with-arguments
+  "Navigate to the specified route using route key and remove all routes that satisfy the predicate, with arguments"
+  [navigator route-key predicate arguments]
+  (push-named-and-remove-until-with-arguments navigator (get-route route-key) predicate arguments))

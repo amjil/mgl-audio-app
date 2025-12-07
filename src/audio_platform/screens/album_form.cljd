@@ -1,0 +1,160 @@
+(ns audio-platform.screens.album-form
+  (:require
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [cljd.flutter :as f]
+   [audio-platform.services.album :as album-service]
+   [audio-platform.widgets.category-tree :as category-tree]
+   [audio-platform.states.font :as font-state]
+   [audio-platform.states.category :as category-state]
+   [audio-platform.states.album :as album-state]
+   [audio-platform.utils.navigator :as nav]))
+
+(defn ^m/Widget album-form-page [_context]
+  (let [album (album-state/get-album)
+        is-edit (some? album)
+        categories (category-state/get-categories)
+        loading (category-state/get-loading)
+        error-msg (category-state/get-error)]
+    (f/widget
+     :watch [_font-state font-state/font-state
+             category-name (f/$ (f/<! category-state/category-state :selected-category-name))]
+     :context ctx
+     :get [m/Navigator]
+     :let [font-family (font-state/get-app-font-family)]
+     :managed [title-controller (m/TextEditingController .text (if (some? album) (get album "title") ""))
+               description-controller (m/TextEditingController .text (if (some? album) (get album "description") ""))
+               cover-url-controller (m/TextEditingController .text (if (some? album) (get album "cover_url") ""))
+               selected-category-id (atom (if (some? album) (get album "category_id") nil))]
+     (m/Scaffold)
+     .body
+     (m/SafeArea)
+     (m/SingleChildScrollView
+      .scrollDirection m.Axis/horizontal)
+     (m/Padding
+      .padding (m.EdgeInsets/all 16))
+     (m/Row
+      .crossAxisAlignment m.CrossAxisAlignment/start
+      .children
+      [(if error-msg
+         (m/Container
+          .padding (m.EdgeInsets/all 12)
+          .margin (m.EdgeInsets/only .bottom 16)
+          .decoration (m/BoxDecoration
+                       .color m/Colors.red.shade50
+                       .borderRadius (m.BorderRadius/circular 8))
+          .child (m/Column
+                  .children
+                  [(m/Icon m.Icons/error_outline
+                           .color m/Colors.red)
+                   (m/SizedBox .width 8)
+                   (m/Expanded
+                    .child (mgl/MongolText
+                            @error-msg
+                            .style (m/TextStyle
+                                    .fontFamily font-family
+                                    .color m/Colors.red)))]))
+         (m/SizedBox))
+       (mgl/MongolText
+        "Title *"
+        .style (m/TextStyle
+                .fontFamily font-family
+                .fontSize 14
+                .fontWeight m.FontWeight/bold))
+       (m/SizedBox .width 8)
+       (mgl/MongolTextField
+        .controller title-controller
+        .decoration (m/InputDecoration
+                     .hintText "Enter album title"
+                     .border (m/OutlineInputBorder))
+        .style (m/TextStyle
+                .fontFamily font-family))
+       (m/SizedBox .width 16)
+       (mgl/MongolText
+        "Description"
+        .style (m/TextStyle
+                .fontFamily font-family
+                .fontSize 14
+                .fontWeight m.FontWeight/bold))
+       (m/SizedBox .width 8)
+       (mgl/MongolTextField
+        .controller description-controller
+        .maxLines 5
+        .decoration (m/InputDecoration
+                     .hintText "Enter album description"
+                     .border (m/OutlineInputBorder)
+                     .alignLabelWithHint true)
+        .style (m/TextStyle
+                .fontFamily font-family))
+       (m/SizedBox .width 16)
+       (mgl/MongolText
+        "Cover URL"
+        .style (m/TextStyle
+                .fontFamily font-family
+                .fontSize 14
+                .fontWeight m.FontWeight/bold))
+       (m/SizedBox .width 8)
+       (mgl/MongolTextField
+        .controller cover-url-controller
+        .decoration (m/InputDecoration
+                     .hintText "Enter cover image URL"
+                     .border (m/OutlineInputBorder))
+        .style (m/TextStyle
+                .fontFamily font-family))
+       (m/SizedBox .width 16)
+       (mgl/MongolText
+        "Category"
+        .style (m/TextStyle
+                .fontFamily font-family
+                .fontSize 14
+                .fontWeight m.FontWeight/bold))
+       (m/SizedBox .width 8)
+       (m/InkWell
+         .onTap (fn []
+                  (category-tree/show-dialog ctx))
+         .child (m/Container
+                 .padding (m.EdgeInsets/all 12)
+                 .decoration (m/BoxDecoration
+                              .border (m/Border.all .color m/Colors.grey.shade400)
+                              .borderRadius (m.BorderRadius/circular 4))
+                 .child (mgl/MongolText
+                         (if category-name category-name "Select category")
+                         .style (m/TextStyle
+                                 .fontFamily font-family
+                                 .color (if category-name m/Colors.black m/Colors.grey.shade600)))))
+       (m/SizedBox .width 32)
+       (m/Row
+        .mainAxisAlignment m.MainAxisAlignment/end
+        .children
+        [(mgl/MongolTextButton
+          .child (mgl/MongolText "Cancel")
+          .onPressed (fn []
+                       (nav/navigator-pop navigator)))
+         (m/SizedBox .width 16)
+         (mgl/MongolElevatedButton
+          .child (if loading
+                   (m/SizedBox
+                    .width 20
+                    .height 20
+                    .child (m/CircularProgressIndicator
+                            .strokeWidth 2
+                            .valueColor (m/AlwaysStoppedAnimation m/Colors.white)))
+                   (mgl/MongolText (if is-edit "Save" "Create")))
+          .onPressed (fn []
+                       (when (not loading)
+                         (let [title (.-text title-controller)
+                               description (.-text description-controller)
+                               cover-url (.-text cover-url-controller)]
+                           (if (empty? title)
+                             (reset! error-msg "Title is required")
+                             (do
+                               (reset! loading true)
+                               (reset! error-msg nil)
+                               (let [album-data (cond-> {"title" title
+                                                         "description" description}
+                                                  (not (empty? cover-url)) (assoc "cover_url" cover-url)
+                                                  (some? @selected-category-id) (assoc "category_id" @selected-category-id))]
+                                 (if is-edit
+                                   (album-service/update-album navigator (get album "id") album-data)
+                                   (album-service/create-album navigator album-data)))))))))])]))))
+  

@@ -1,0 +1,22 @@
+(ns audio-platform.states.album)
+
+(def album-state (atom {:album nil
+                        :albums nil
+                        :episodes nil
+                        :loading false
+                        :error nil}))
+
+(defn get-album []
+  (:album @album-state))
+
+(defn get-albums []
+  (:albums @album-state))
+
+(defn get-episodes []
+  (:episodes @album-state))
+
+(defn get-loading []
+  (:loading @album-state))
+  
+(defn get-error []
+  (:error @album-state))

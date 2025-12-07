@@ -1,0 +1,114 @@
+(ns audio-platform.widgets.category-tree
+  (:require 
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [cljd.flutter :as f]
+   [audio-platform.states.category :as category-state]
+   [audio-platform.services.album :as album-service]
+   [audio-platform.utils.navigator :as nav]))
+
+(declare show-add-category-dialog)
+
+(defn category-selector []
+  (f/widget
+   :context ctx
+   :let [categories (category-state/get-categories)
+         parents (filter (fn [category] (nil? (get category "parent_id"))) categories)]
+   :watch [parent-category-id (f/$ (f/<! category-state/category-state :selected-category-parent))
+           category-id (f/$ (f/<! category-state/category-state :selected-category))]
+   (m/Column
+    .children
+    [(m/Flexible
+      .flex 1
+      .child
+      (m/Row 
+       .children 
+       [(m/IconButton
+         .icon (m/Icon m.Icons/add)
+         .onPressed (fn []
+                     (show-add-category-dialog ctx)))
+        (m/ListView.builder
+         .scrollDirection m.Axis/horizontal
+         .shrinkWrap true
+         .itemCount (count parents)
+         .itemBuilder (fn [_ index]
+                        (f/widget
+                         (m/GestureDetector
+                          .onTap (fn []
+                                   (swap! category-state/category-state assoc :selected-category-parent (-> parents (nth index) (get "id"))))
+                          .child (mgl/MongolText (-> parents (nth index) (get "name"))
+                                                 .style (m/TextStyle. .fontSize 16
+                                                                      .color (if (= (-> parents (nth index) (get "id")) parent-category-id) m/Colors.blue m/Colors.black)))))))]))
+       
+      
+     (m/Divider)
+     (m/Flexible
+      .flex 2
+      .child (m/ListView.builder
+              .scrollDirection m.Axis/horizontal
+              .shrinkWrap true
+              .itemCount (count parents)
+              .itemBuilder (fn [_ index]
+                             (let [item
+                                   (if (some? category-id)
+                                     (-> (filter (fn [category] (= (get category "id") category-id)) categories) (nth index))
+                                     (-> (filter (fn [category] (= (get category "id") parent-category-id)) categories) (nth index)))]
+                               (f/widget
+                                (m/GestureDetector
+                                 .onTap (fn []
+                                          (swap! category-state/category-state assoc :selected-category (get item "id"))
+                                          (swap! category-state/category-state assoc :selected-category-name (get item "name")))
+                                 .child (mgl/MongolText
+                                         (get item "name")
+                                         .style (m/TextStyle. .fontSize 16
+                                                              .color (if (= (get item "id") category-id) m/Colors.blue m/Colors.black)))))))))])))
+
+(defn show-add-category-dialog [context]
+   (f/widget
+    :get [m/Navigator]
+    :let [width (.-width (.-size (m/MediaQuery.of context)))]
+    :managed [name-controller (m/TextEditingController.)]
+    (m/showDialog
+     .context context
+     .builder (fn [_]
+                (f/widget
+                 :watch [loading (f/$ (f/<! category-state/category-state :loading))]
+                 (m/AlertDialog
+                  .content (m/Container
+                            .width (* width 0.8)
+                            .child (m/Column
+                                    .mainAxisSize (.-min m/MainAxisSize)
+                                    .children
+                                    [(mgl/MongolTextField
+                                      .controller name-controller
+                                      .autofocus true)]))
+                  .actions
+                  [(m/TextButton
+                    .onPressed (fn []
+                                 (nav/navigator-pop navigator))
+                    .child (mgl/MongolText "Cancel"))
+                   (m/TextButton
+                    .onPressed (fn []
+                                 (let [name (.-text name-controller)]
+                                   (when (not (empty? name))
+                                     (album-service/create-category {"name" name
+                                                                     "parent_id" nil})
+                                     (nav/navigator-pop navigator))))
+                    .child (if loading
+                             (m/SizedBox
+                              .width 20
+                              .height 20
+                              .child (m/CircularProgressIndicator
+                                      .strokeWidth 2))
+                             (m/Text "Create")))]))))))
+
+(defn show-dialog [context]
+  (m/showDialog
+   .context context
+   .builder (fn [_]
+              (let [width (.-width (.-size (m/MediaQuery.of context)))]
+                (m/AlertDialog
+                 .contentPadding (m/EdgeInsets.all 24)
+                 .content (m/Container
+                            .width (* width 0.8)
+                            .child (category-selector)))))))

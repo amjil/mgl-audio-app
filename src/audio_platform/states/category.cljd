@@ -1,0 +1,17 @@
+(ns audio-platform.states.category)
+
+(def category-state (atom {:categories nil
+                           :selected-category nil
+                           :selected-category-name nil
+                           :selected-category-parent nil
+                           :loading false
+                           :error nil}))
+
+(defn get-categories []
+  (:categories @category-state))
+
+(defn get-loading []
+  (:loading @category-state))
+
+(defn get-error []
+  (:error @category-state))

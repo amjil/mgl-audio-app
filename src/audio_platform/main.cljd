@@ -1,0 +1,61 @@
+(ns audio-platform.main
+  (:require
+   ["package:flutter/material.dart" :as m]
+   [cljd.flutter :as f]
+   [virtual-keyboard.zip-utils :as zip-utils]
+   [virtual-keyboard.fst-reader :as fst-reader]
+   [virtual-keyboard.keyboard-candidates :as kc]
+   [virtual-keyboard.options :as keyboard-options]
+   [audio-platform.state :as state]
+   [audio-platform.theme :as theme]
+   [audio-platform.states.font :as font-state]
+   [audio-platform.screens.navigation :as navigation]
+   [audio-platform.screens.login :as login]
+   [audio-platform.screens.profile :as profile]
+   [audio-platform.screens.search :as search]
+   [audio-platform.screens.register :as register]
+   [audio-platform.screens.album-detail :as album-detail]
+   [audio-platform.screens.album-form :as album-form]))
+
+(defn main []
+  ;; Ensure Flutter binding is initialized
+  (m.WidgetsFlutterBinding/ensureInitialized)
+
+  ;; Load saved tokens
+  (state/load-tokens)
+  
+  ;; Initialize font settings from preferences
+  (await (font-state/init-app-font-settings!))
+  
+  ;; load the data.zip & next.zip
+  (zip-utils/load-assets-parallel
+    [[kc/next "assets/next.zip"]])
+    
+  (fst-reader/ensure-loaded)
+
+  ;; Start Flutter application
+  (f/run
+   (f/widget
+    :let [info (merge keyboard-options/keyboard-option
+                      {:keyboard/key-cap-border-radius 6
+                       :keyboard/font-size 18
+                       :keyboard/key-container-color m/Colors.grey.shade500
+                       :keyboard/mongol-font-family "OnonSoninSans"})]
+    :bind {:info info}
+    (m/MaterialApp
+     .title "Mongol Audio Platform"
+     .debugShowCheckedModeBanner false
+     .theme (theme/get-light-theme)
+     .darkTheme (theme/get-dark-theme)
+     .themeMode m/ThemeMode.system
+     .initialRoute (if (state/is-authenticated?)
+                     "/home"
+                     "/login")
+     .routes {"/login" login/login-page
+              "/register" register/register-page
+              "/profile" profile/profile-page
+              "/search" search/search-page
+              "/home" navigation/main-navigation
+              "/album-detail" album-detail/album-detail-page
+              "/album-form" album-form/album-form-page}))))
+    
