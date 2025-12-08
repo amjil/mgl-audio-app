@@ -47,7 +47,7 @@
      .debugShowCheckedModeBanner false
      .theme (theme/get-light-theme)
      .darkTheme (theme/get-dark-theme)
-     .themeMode m/ThemeMode.system
+     .themeMode m/ThemeMode.dark
      .initialRoute (if (state/is-authenticated?)
                      "/home"
                      "/login")
