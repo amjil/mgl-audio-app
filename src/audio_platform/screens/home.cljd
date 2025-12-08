@@ -54,7 +54,7 @@
     .margin (m.EdgeInsets/all 8)
     .child (m/InkWell
             .onTap on-tap
-            .child (m/Column
+            .child (m/Row
                     .crossAxisAlignment m.CrossAxisAlignment/start
                     .children
                     [(m/AspectRatio
@@ -69,11 +69,11 @@
                                        (m/Image.network (get album "cover_url")
                                                         .fit m.BoxFit/cover)
                                        (m/Icon m.Icons/album
-                                               .size 64
+                                               .size 32
                                                .color m/Colors.grey.shade600))))
                      (m/Padding
                       .padding (m.EdgeInsets/all 12)
-                      .child (m/Column
+                      .child (m/Row
                               .crossAxisAlignment m.CrossAxisAlignment/start
                               .children
                               [(mgl/MongolText
@@ -120,9 +120,8 @@
               (m/IconButton
                .icon (m/Icon m.Icons/search)
                .onPressed (fn []
-                        ;;     (nav/push-route navigator :search)
-                            (search-service/search "test")
-                            ))
+                            ;;     (nav/push-route navigator :search)
+                            (search-service/search "test")))
               (m/IconButton
                .icon (m/Icon m.Icons/notifications)
                .onPressed (fn []
@@ -130,47 +129,49 @@
     .body (if loading
             (m/Center
              .child (m/CircularProgressIndicator))
-            (m/RefreshIndicator
-             .onRefresh (fn []
-                          (home-state/refresh-home-feed!)
-                          (home-state/refresh-albums!)
-                          (dart:core/Future.delayed (dart:core/Duration .seconds 1) (fn [])))
-             .child (m/SingleChildScrollView
-                     .child (m/Column
-                             .crossAxisAlignment m.CrossAxisAlignment/start
-                             .children
-                             [(m/Padding
-                               .padding (m.EdgeInsets/all 16)
-                               .child (mgl/MongolText
-                                       "Recommended Albums"
-                                       .style (m/TextStyle
-                                               .fontFamily font-family
-                                               .fontSize 20
-                                               .fontWeight m.FontWeight/bold)))
-                              (m/SizedBox
-                               .height 200
-                               .child (m/ListView
-                                       .scrollDirection m.Axis/horizontal
-                                       .children (map (fn [album]
-                                                        (album-card album
-                                                                    (fn []
-                                                                      (nav/push-route-with-arguments navigator
-                                                                                                     :album-detail
-                                                                                                     {"album_id" (get album "id")}))))
-                                                      albums)))
-                              (m/Padding
-                               .padding (m.EdgeInsets/all 16)
-                               .child (mgl/MongolText
-                                       "Recommended Content"
-                                       .style (m/TextStyle
-                                               .fontFamily font-family
-                                               .fontSize 20
-                                               .fontWeight m.FontWeight/bold)))
-                              (m/Column
-                               .children (map (fn [episode]
-                                                (episode-card episode
-                                                              (fn []
-                                                                (state/set-current-episode episode)
-                                                                (dart:core/print (str "Episode tapped:" (get episode "id"))))))
-                                              feed-items))])))))))
+           (m/Column
+            .crossAxisAlignment m.CrossAxisAlignment/start
+            .mainAxisAlignment m.MainAxisAlignment/spaceBetween
+            .children
+            [(m/Flexible
+              .child (m/Row
+                      .children [(m/Padding
+                                  .padding (m.EdgeInsets/all 16)
+                                  .child (mgl/MongolText
+                                          "Recommended Albums"
+                                          .style (m/TextStyle
+                                                  .fontFamily font-family
+                                                  .fontSize 20
+                                                  .fontWeight m.FontWeight/bold)))
+                                 (m/Expanded
+                                  .child (m/ListView.builder
+                                          .scrollDirection m.Axis/horizontal
+                                          .itemCount (count albums)
+                                          .itemBuilder (fn [_ index]
+                                                         (let [album (nth albums index)]
+                                                           (album-card album
+                                                                       (fn []
+                                                                         (nav/push-route-with-arguments navigator
+                                                                                                        :album-detail
+                                                                                                        {"album_id" (get album "id")})))))))]))
+             (m/Flexible
+              .child (m/Row
+                      .children [(m/Padding
+                                  .padding (m.EdgeInsets/all 16)
+                                  .child (mgl/MongolText
+                                          "Recommended Content"
+                                          .style (m/TextStyle
+                                                  .fontFamily font-family
+                                                  .fontSize 20
+                                                  .fontWeight m.FontWeight/bold)))
+                                 (m/Expanded
+                                  .child (m/ListView.builder
+                                          .scrollDirection m.Axis/horizontal
+                                          .itemCount (count feed-items)
+                                          .itemBuilder (fn [_ index]
+                                                         (let [episode (nth feed-items index)]
+                                                           (episode-card episode
+                                                                         (fn []
+                                                                           (state/set-current-episode episode)
+                                                                           (dart:core/print (str "Episode tapped:" (get episode "id")))))))))]))])))))
 
