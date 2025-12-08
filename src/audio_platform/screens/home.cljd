@@ -7,7 +7,8 @@
    [audio-platform.state :as state]
    [audio-platform.states.font :as font-state]
    [audio-platform.utils.navigator :as nav]
-   [audio-platform.utils.format :as format]))
+   [audio-platform.utils.format :as format]
+   [audio-platform.services.album :as album-service]))
 
 (defn episode-card [episode on-tap]
   (f/widget
@@ -109,6 +110,7 @@
                .icon (m/Icon m.Icons/add_circle_outline)
                .tooltip "Create Album"
                .onPressed (fn []
+                            (album-service/get-categories :page 1 :per-page 100)
                             (nav/push-route navigator :album-form)))
               (m/IconButton
                .icon (m/Icon m.Icons/search)

@@ -12,21 +12,19 @@
 (defn category-selector []
   (f/widget
    :context ctx
-   :let [categories (category-state/get-categories)
-         parents (filter (fn [category] (nil? (get category "parent_id"))) categories)]
-   :watch [parent-category-id (f/$ (f/<! category-state/category-state :selected-category-parent))
-           category-id (f/$ (f/<! category-state/category-state :selected-category))]
+   :let [parents (category-state/get-categories)]
+   :watch [{selected-category :selected-category
+            selected-category-parent :selected-category-parent
+            sub-categories :sub-categories
+            loading :loading} category-state/category-state            ]
    (m/Column
     .children
     [(m/Flexible
       .flex 1
       .child
-      (m/Row 
-       .children 
-       [(m/IconButton
-         .icon (m/Icon m.Icons/add)
-         .onPressed (fn []
-                     (show-add-category-dialog ctx)))
+      (if (true? loading)
+        (m/Center
+         .child (m/CircularProgressIndicator))
         (m/ListView.builder
          .scrollDirection m.Axis/horizontal
          .shrinkWrap true
@@ -35,33 +33,37 @@
                         (f/widget
                          (m/GestureDetector
                           .onTap (fn []
-                                   (swap! category-state/category-state assoc :selected-category-parent (-> parents (nth index) (get "id"))))
+                                   (swap! category-state/category-state assoc :selected-category-parent (-> parents (nth index) (get "id")))
+                                   (album-service/get-sub-categories (-> parents (nth index) (get "id"))))
                           .child (mgl/MongolText (-> parents (nth index) (get "name"))
                                                  .style (m/TextStyle. .fontSize 16
-                                                                      .color (if (= (-> parents (nth index) (get "id")) parent-category-id) m/Colors.blue m/Colors.black)))))))]))
-       
-      
+                                                                      .color (if (= (-> parents (nth index) (get "id")) selected-category-parent)
+                                                                               m/Colors.blue
+                                                                               m/Colors.black)))))))))
+
+
      (m/Divider)
      (m/Flexible
       .flex 2
-      .child (m/ListView.builder
-              .scrollDirection m.Axis/horizontal
-              .shrinkWrap true
-              .itemCount (count parents)
-              .itemBuilder (fn [_ index]
-                             (let [item
-                                   (if (some? category-id)
-                                     (-> (filter (fn [category] (= (get category "id") category-id)) categories) (nth index))
-                                     (-> (filter (fn [category] (= (get category "id") parent-category-id)) categories) (nth index)))]
-                               (f/widget
-                                (m/GestureDetector
-                                 .onTap (fn []
-                                          (swap! category-state/category-state assoc :selected-category (get item "id"))
-                                          (swap! category-state/category-state assoc :selected-category-name (get item "name")))
-                                 .child (mgl/MongolText
-                                         (get item "name")
-                                         .style (m/TextStyle. .fontSize 16
-                                                              .color (if (= (get item "id") category-id) m/Colors.blue m/Colors.black)))))))))])))
+      .child
+      (if (true? loading)
+          (m/Center
+           .child (m/CircularProgressIndicator))
+          (m/ListView.builder
+           .scrollDirection m.Axis/horizontal
+           .shrinkWrap true
+           .itemCount (count (or sub-categories []))
+           .itemBuilder (fn [_ index]
+                          (let [item (nth (or sub-categories []) index)]
+                            (f/widget
+                             (m/GestureDetector
+                              .onTap (fn []
+                                       (swap! category-state/category-state assoc :selected-category (get item "id"))
+                                       (swap! category-state/category-state assoc :selected-category-name (get item "name")))
+                              .child (mgl/MongolText
+                                      (get item "name")
+                                      .style (m/TextStyle. .fontSize 16
+                                                           .color (if (= (get item "id") selected-category) m/Colors.blue m/Colors.black))))))))))])))
 
 (defn show-add-category-dialog [context]
    (f/widget
