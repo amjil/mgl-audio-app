@@ -24,18 +24,19 @@
                                   (swap! episode-state/episode-state assoc :error (str "Failed to load episodes: " err))
                                   (swap! episode-state/episode-state assoc :loading false))))))))
                                   
-
 (defn create-album [navigator album-data]
   (swap! album-state/album-state assoc :loading true :error nil)
   (-> (api/create-album (state/get-token) album-data)
-      (.catchError (fn [err]
-                     (swap! album-state/album-state assoc :error (str "Failed to create album: " err))
-                     (swap! album-state/album-state assoc :loading false)))
       (.then (fn [album-data]
                (dart:core/print "Album created successfully")
+               (dart:core/print (str "Album data: " album-data))
                (nav/navigator-pop navigator)
                (swap! album-state/album-state assoc :album album-data)
-               (swap! album-state/album-state assoc :loading false)))))
+               (swap! album-state/album-state assoc :loading false)))
+      (.catchError (fn [err]
+                     (dart:core/print (str "Error creating album: " err))
+                     (swap! album-state/album-state assoc :error (str "Failed to create album: " err))
+                     (swap! album-state/album-state assoc :loading false)))))
                
 (defn get-list [& {:keys [page per-page category-id]}]
   (swap! album-state/album-state assoc :loading true :error nil)

@@ -153,6 +153,9 @@
                                                   (not (empty? cover-url)) (assoc "cover_url" cover-url)
                                                   (some? (category-state/get-selected-category))
                                                   (assoc "category_id" (category-state/get-selected-category)))]
+
+                                 (dart:core/print (str "Album data: " album-data))
+                                 (dart:core/print (str "Is edit: " is-edit))
                                  (if is-edit
                                    (album-service/update-album navigator (get album "id") album-data)
                                    (album-service/create-album navigator album-data)))))))))])]))))

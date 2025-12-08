@@ -22,6 +22,9 @@
 (defn get-token []
   (:token @auth-state))
 
+(defn get-refresh-token []
+  (:refresh-token @auth-state))
+
 (defn set-token [token refresh-token]
   (swap! auth-state assoc :token token
                           :refresh-token refresh-token
@@ -62,9 +65,10 @@
              (let [token (.getString instance token-key)
                    refresh-token (.getString instance refresh-token-key)]
                (when (and token refresh-token)
-                 (swap! auth-state assoc :token token
-                                        :refresh-token refresh-token
-                                        :is-authenticated true))
+                 (swap! auth-state assoc 
+                        :token token
+                        :refresh-token refresh-token
+                        :is-authenticated true))
                {:token token :refresh-token refresh-token})))))
 
 (defn clear-tokens []

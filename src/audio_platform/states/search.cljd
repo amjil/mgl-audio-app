@@ -1,0 +1,17 @@
+(ns audio-platform.states.search)
+
+(def search-state (atom {:results []
+                         :loading false
+                         :error ""}))
+
+(defn get-search-results []
+  (:results @search-state))
+
+(defn set-search-results [results]
+  (swap! search-state assoc :results results))
+
+(defn set-loading [loading]
+  (swap! search-state assoc :loading loading))
+
+(defn set-error [error]
+  (swap! search-state assoc :error error))

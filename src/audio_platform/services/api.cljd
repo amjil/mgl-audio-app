@@ -2,23 +2,107 @@
   (:require
    ["package:http/http.dart" :as http]
    ["dart:convert" :as convert]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [audio-platform.state :as state]))
 
 (def base-url "http://localhost:8080/api/v1")
 
+(declare refresh-token)
+
 (defn get-auth-header [token]
-  {"Authorization" (str "Bearer " token)})
+  (if (and (some? token) (not (empty? token)))
+    {"Authorization" (str "Bearer " token)}
+    (do
+      (dart:core/print (str "Warning: get-auth-header called with nil or empty token"))
+      {})))
 
 (defn handle-response [response]
   (-> response
       (.then (fn [resp]
-               (if (>= (.-statusCode resp) 200)
-                 (if (< (.-statusCode resp) 300)
-                   (if (empty? (.-body resp))
+               (dart:core/print (str "Response: " (.-statusCode resp) " body: " (.-body resp)))
+               (let [status-code (.-statusCode resp)
+                     body (.-body resp)]
+                 (cond
+                   ;; Success response (200-299)
+                   (and (>= status-code 200) (< status-code 300))
+                   (if (empty? body)
                      {}
-                     (convert/jsonDecode (.-body resp)))
-                   (throw (dart:core/Exception (str "API Error: " (.-statusCode resp) " - " (.-body resp)))))
-                 (throw (dart:core/Exception (str "Network Error: " (.-statusCode resp)))))))))
+                     (convert/jsonDecode body))
+
+                   ;; 401 Unauthorized
+                   (= status-code 401)
+                   (throw (dart:core/Exception (str "401 Unauthorized: " body)))
+
+                   ;; 403 Forbidden
+                   (= status-code 403)
+                   (throw (dart:core/Exception (str "403 Forbidden: " body)))
+
+                   ;; 404 Not Found
+                   (= status-code 404)
+                   (throw (dart:core/Exception (str "404 Not Found: " body)))
+
+                   ;; 400 Bad Request
+                   (= status-code 400)
+                   (throw (dart:core/Exception (str "400 Bad Request: " body)))
+
+                   ;; 422 Unprocessable Entity (Validation Error)
+                   (= status-code 422)
+                   (throw (dart:core/Exception (str "422 Validation Error: " body)))
+
+                   ;; 500 Internal Server Error
+                   (= status-code 500)
+                   (throw (dart:core/Exception (str "500 Internal Server Error: " body)))
+
+                   ;; 502 Bad Gateway
+                   (= status-code 502)
+                   (throw (dart:core/Exception (str "502 Bad Gateway: " body)))
+
+                   ;; 503 Service Unavailable
+                   (= status-code 503)
+                   (throw (dart:core/Exception (str "503 Service Unavailable: " body)))
+
+                   ;; Other client errors (400-499)
+                   (and (>= status-code 400) (< status-code 500))
+                   (throw (dart:core/Exception (str "Client Error " status-code ": " body)))
+
+                   ;; Other server errors (500-599)
+                   (and (>= status-code 500) (< status-code 600))
+                   (throw (dart:core/Exception (str "Server Error " status-code ": " body)))
+
+                   ;; Other errors
+                   :else
+                   (throw (dart:core/Exception (str "HTTP Error " status-code ": " body)))))))))
+
+;; Helper function to automatically refresh token on 401 and retry
+;; Takes an API function that accepts a token and returns a Promise
+(defn with-auto-refresh [api-fn & args]
+  (let [token (state/get-token)
+        api-call (apply api-fn token args)]
+    (-> api-call
+        (.catchError (fn [err]
+                       (let [err-str (str err)]
+                         (if (and (str/includes? err-str "401") (some? (state/get-refresh-token)))
+                           (do
+                             (dart:core/print "Token expired, attempting to refresh...")
+                             (-> (refresh-token (state/get-refresh-token))
+                                 (.then (fn [auth-response]
+                                          (let [new-token (get auth-response "access_token")
+                                                new-refresh-token (get auth-response "refresh_token")]
+                                            (if (and new-token new-refresh-token)
+                                              (do
+                                                (state/set-token new-token new-refresh-token)
+                                                (dart:core/print "Token refreshed successfully, retrying request...")
+                                                ;; Retry the original API call with new token
+                                                (apply api-fn new-token args))
+                                              (do
+                                                (dart:core/print "Invalid refresh token response")
+                                                (state/clear-auth)
+                                                (throw (dart:core/Exception "Session expired. Please login again.")))))))
+                                 (.catchError (fn [refresh-err]
+                                                (dart:core/print (str "Failed to refresh token: " refresh-err))
+                                                (state/clear-auth)
+                                                (throw (dart:core/Exception "Session expired. Please login again."))))))
+                           (throw err))))))))
 
 ;; Authentication APIs
 (defn register [username email password]

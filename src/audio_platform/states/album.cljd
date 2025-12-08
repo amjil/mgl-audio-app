@@ -9,6 +9,9 @@
 (defn get-album []
   (:album @album-state))
 
+(defn set-album [album]
+  (swap! album-state assoc :album album))
+
 (defn get-albums []
   (:albums @album-state))
 
@@ -20,3 +23,10 @@
   
 (defn get-error []
   (:error @album-state))
+
+(defn reset-state []
+  (reset! album-state {:album []
+                       :albums []
+                       :episodes []
+                       :loading false
+                       :error ""}))

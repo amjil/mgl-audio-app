@@ -1,0 +1,17 @@
+(ns audio-platform.services.search
+  (:require
+   [audio-platform.services.api :as api]
+   [audio-platform.state :as state]
+   [audio-platform.states.search :as search-state])
+  )
+
+(defn search [query & {:keys [page limit tag sort]}]
+  (let [token (state/get-token)]
+    (-> (api/search token query :page page :limit limit :tag tag :sort sort)
+        (.then (fn [response]
+                 (dart:core/print (str "Search response: " response))
+                 (swap! search-state/search-state assoc :results (get response "items" []))
+                 (swap! search-state/search-state assoc :loading false)))
+        (.catchError (fn [err]
+                       (swap! search-state/search-state assoc :error (str "Failed to search: " err))
+                       (swap! search-state/search-state assoc :loading false))))))

@@ -5,10 +5,13 @@
    [cljd.flutter :as f]
    [audio-platform.states.home :as home-state]
    [audio-platform.state :as state]
+   [audio-platform.states.album :as album-state]
    [audio-platform.states.font :as font-state]
    [audio-platform.utils.navigator :as nav]
    [audio-platform.utils.format :as format]
-   [audio-platform.services.album :as album-service]))
+   [audio-platform.services.album :as album-service]
+   [audio-platform.services.search :as search-service]))
+
 
 (defn episode-card [episode on-tap]
   (f/widget
@@ -110,12 +113,16 @@
                .icon (m/Icon m.Icons/add_circle_outline)
                .tooltip "Create Album"
                .onPressed (fn []
+                            (album-state/reset-state)
+                            (album-state/set-album nil)
                             (album-service/get-categories :page 1 :per-page 100)
                             (nav/push-route navigator :album-form)))
               (m/IconButton
                .icon (m/Icon m.Icons/search)
                .onPressed (fn []
-                            (nav/push-route navigator :search)))
+                        ;;     (nav/push-route navigator :search)
+                            (search-service/search "test")
+                            ))
               (m/IconButton
                .icon (m/Icon m.Icons/notifications)
                .onPressed (fn []
