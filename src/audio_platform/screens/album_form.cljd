@@ -12,19 +12,18 @@
 
 (defn ^m/Widget album-form-page [_context]
   (let [album (album-state/get-album)
-        is-edit (some? album)
-        loading (category-state/get-loading)
-        error-msg (category-state/get-error)]
+        is-edit (some? album)]
     (f/widget
      :watch [_font-state font-state/font-state
+             {error-msg :error
+              loading :loading} album-state/album-state
              {category-name :selected-category-name} category-state/category-state]
      :context ctx
      :get [m/Navigator]
      :let [font-family (font-state/get-app-font-family)]
      :managed [title-controller (m/TextEditingController .text (if (some? album) (get album "title") ""))
                description-controller (m/TextEditingController .text (if (some? album) (get album "description") ""))
-               cover-url-controller (m/TextEditingController .text (if (some? album) (get album "cover_url") ""))
-               selected-category-id (atom (if (some? album) (get album "category_id") nil))]
+               cover-url-controller (m/TextEditingController .text (if (some? album) (get album "cover_url") ""))]
      (m/Scaffold)
      .body
      (m/SafeArea)
@@ -35,7 +34,7 @@
      (m/Row
       .crossAxisAlignment m.CrossAxisAlignment/start
       .children
-      [(if error-msg
+      [(if (not (empty? error-msg))
          (m/Container
           .padding (m.EdgeInsets/all 12)
           .margin (m.EdgeInsets/only .bottom 16)
@@ -49,7 +48,7 @@
                    (m/SizedBox .width 8)
                    (m/Expanded
                     .child (mgl/MongolText
-                            @error-msg
+                            error-msg
                             .style (m/TextStyle
                                     .fontFamily font-family
                                     .color m/Colors.red)))]))
@@ -109,18 +108,18 @@
                 .fontWeight m.FontWeight/bold))
        (m/SizedBox .width 8)
        (m/InkWell
-         .onTap (fn []
-                  (category-tree/show-dialog ctx))
-         .child (m/Container
-                 .padding (m.EdgeInsets/all 12)
-                 .decoration (m/BoxDecoration
-                              .border (m/Border.all .color m/Colors.grey.shade400)
-                              .borderRadius (m.BorderRadius/circular 4))
-                 .child (mgl/MongolText
-                         (if (empty? category-name) "Select category" category-name)
-                         .style (m/TextStyle
-                                 .fontFamily font-family
-                                 .color (if category-name m/Colors.blue m/Colors.grey.shade600)))))
+        .onTap (fn []
+                 (category-tree/show-dialog ctx))
+        .child (m/Container
+                .padding (m.EdgeInsets/all 12)
+                .decoration (m/BoxDecoration
+                             .border (m/Border.all .color m/Colors.grey.shade400)
+                             .borderRadius (m.BorderRadius/circular 4))
+                .child (mgl/MongolText
+                        (if (empty? category-name) "Select category" category-name)
+                        .style (m/TextStyle
+                                .fontFamily font-family
+                                .color (if category-name m/Colors.blue m/Colors.grey.shade600)))))
        (m/SizedBox .width 32)
        (m/Row
         .mainAxisAlignment m.MainAxisAlignment/end
@@ -145,14 +144,15 @@
                                description (.-text description-controller)
                                cover-url (.-text cover-url-controller)]
                            (if (empty? title)
-                             (reset! error-msg "Title is required")
+                             (swap! album-state/album-state assoc :error "Title is required")
                              (do
-                               (reset! loading true)
-                               (reset! error-msg nil)
+                               (swap! album-state/album-state assoc :loading true)
+                               (swap! album-state/album-state assoc :error nil)
                                (let [album-data (cond-> {"title" title
                                                          "description" description}
                                                   (not (empty? cover-url)) (assoc "cover_url" cover-url)
-                                                  (some? @selected-category-id) (assoc "category_id" @selected-category-id))]
+                                                  (some? (category-state/get-selected-category))
+                                                  (assoc "category_id" (category-state/get-selected-category)))]
                                  (if is-edit
                                    (album-service/update-album navigator (get album "id") album-data)
                                    (album-service/create-album navigator album-data)))))))))])]))))

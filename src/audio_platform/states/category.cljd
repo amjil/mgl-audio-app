@@ -16,3 +16,6 @@
 
 (defn get-error []
   (:error @category-state))
+
+(defn get-selected-category []
+  (:selected-category @category-state))
