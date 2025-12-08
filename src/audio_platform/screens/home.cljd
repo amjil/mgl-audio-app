@@ -57,34 +57,40 @@
             .child (m/Row
                     .crossAxisAlignment m.CrossAxisAlignment/start
                     .children
-                    [(m/AspectRatio
-                      .aspectRatio 1.0
-                      .child (m/Container
-                              .decoration (m/BoxDecoration
-                                           .color m/Colors.grey.shade300
-                                           .borderRadius (m.BorderRadius/only
-                                                          .topLeft (m.Radius/circular 4)
-                                                          .topRight (m.Radius/circular 4)))
-                              .child (if (get album "cover_url")
-                                       (m/Image.network (get album "cover_url")
-                                                        .fit m.BoxFit/cover)
-                                       (m/Icon m.Icons/album
-                                               .size 32
-                                               .color m/Colors.grey.shade600))))
+                    [
                      (m/Padding
                       .padding (m.EdgeInsets/all 12)
                       .child (m/Row
                               .crossAxisAlignment m.CrossAxisAlignment/start
                               .children
-                              [(mgl/MongolText
-                                (get album "title" "Unknown Album")
-                                .style (m/TextStyle
-                                        .fontFamily font-family
-                                        .fontSize 16
-                                        .fontWeight m.FontWeight/bold)
-                                .maxLines 2
-                                .overflow m.TextOverflow/ellipsis)
-                               (m/SizedBox .height 4)
+                              [(m/Column
+                                .children
+                                [(m/SizedBox
+                                  .width 80
+                                  .child (m/AspectRatio
+                                          .aspectRatio 1.0
+                                          .child (m/Container
+                                                  .decoration (m/BoxDecoration
+                                                               .color m/Colors.grey.shade300
+                                                               .borderRadius (m.BorderRadius/only
+                                                                              .topLeft (m.Radius/circular 4)
+                                                                              .topRight (m.Radius/circular 4)))
+                                                  .child (if (get album "cover_url")
+                                                           (m/Image.network (get album "cover_url")
+                                                                            .fit m.BoxFit/cover)
+                                                           (m/Icon m.Icons/album
+                                                                   .size 32
+                                                                   .color m/Colors.grey.shade600)))))
+                                 (m/SizedBox .height 10)
+                                 (mgl/MongolText
+                                  (get album "title" "Unknown Album")
+                                  .style (m/TextStyle
+                                          .fontFamily font-family
+                                          .fontSize 16
+                                          .fontWeight m.FontWeight/bold)
+                                  .maxLines 2
+                                  .overflow m.TextOverflow/ellipsis)])
+                               (m/SizedBox .width 4)
                                (mgl/MongolText
                                 (get album "description" "")
                                 .style (m/TextStyle
