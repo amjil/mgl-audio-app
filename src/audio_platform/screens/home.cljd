@@ -1,104 +1,15 @@
 (ns audio-platform.screens.home
   (:require
    ["package:flutter/material.dart" :as m]
-   ["package:mongol/mongol.dart" :as mgl]
    [cljd.flutter :as f]
+   [audio-platform.widgets.cards :as cards]
    [audio-platform.states.home :as home-state]
    [audio-platform.state :as state]
    [audio-platform.states.album :as album-state]
-   [audio-platform.states.font :as font-state]
    [audio-platform.utils.navigator :as nav]
    [audio-platform.services.album :as album-service]
    [audio-platform.services.search :as search-service]))
 
-
-(defn feed-card [item on-tap]
-  (f/widget
-   :watch [_font-state font-state/font-state]
-   :let [font-family (font-state/get-app-font-family)]
-   (m/Card
-    .margin (m.EdgeInsets/symmetric .horizontal 12 .vertical 6)
-    .child
-    (m/InkWell
-     .onTap on-tap
-     .child
-     (m/Padding
-      .padding (m.EdgeInsets/all 12)
-      .child
-      (m/Column
-       .crossAxisAlignment m.CrossAxisAlignment/start
-       .children
-       [(m/Container
-         .width 72
-         .height 72
-         .clipBehavior m.Clip/antiAlias
-         .decoration (m/BoxDecoration
-                      .color m/Colors.grey.shade200
-                      .borderRadius (m.BorderRadius/circular 8))
-         .child (if-let [cover (get item "cover_url")]
-                  (m/Image.network cover .fit m.BoxFit/cover)
-                  (m/Icon (if (= (get item "type") "album")
-                            m.Icons/library_music
-                            m.Icons/headphones)
-                          .color m/Colors.grey.shade500)))
-        (m/SizedBox .height 24)
-        (m/Container
-         .padding (m.EdgeInsets/symmetric .horizontal 8 .vertical 2)
-         .decoration (m/BoxDecoration
-                      .color (if (= (get item "type") "album")
-                               (m/Colors.blue.shade50)
-                               (m/Colors.green.shade50))
-                      .borderRadius (m.BorderRadius/circular 4))
-         .child (mgl/MongolText
-                 (if (= (get item "type") "album") "Album" "Episode")
-                 .style (m/TextStyle
-                         .fontFamily font-family
-                         .fontSize 10
-                         .color (if (= (get item "type") "album")
-                                  m/Colors.blue
-                                  m/Colors.green))))
-        (m/SizedBox .height 12)
-        (m/Expanded
-         .child
-         (m/Row
-          .crossAxisAlignment m.CrossAxisAlignment/start
-          .children
-          [(mgl/MongolText
-            (get item "title" "Unknown")
-            .style (m/TextStyle
-                    .fontFamily font-family
-                    .fontSize 16
-                    .fontWeight m.FontWeight/bold)
-            .maxLines 2
-            .overflow m.TextOverflow/ellipsis)
-           (m/SizedBox .width 4)
-           (if-let [subtitle (get item "subtitle")]
-             (mgl/MongolText
-              subtitle
-              .style (m/TextStyle
-                      .fontFamily font-family
-                      .color m/Colors.grey.shade600
-                      .fontSize 12)
-              .maxLines 2
-              .overflow m.TextOverflow/ellipsis)
-             (m/SizedBox))
-           (m/SizedBox .width 4)
-           (if-let [score (get item "score")]
-             (m/Padding
-              .padding (m.EdgeInsets/only .top 6)
-              .child (m/Row
-                      .children
-                      [(m/Icon m.Icons/star
-                               .size 14
-                               .color m/Colors.amber)
-                       (m/SizedBox .width 4)
-                       (mgl/MongolText
-                        (str "Rating " score)
-                        .style (m/TextStyle
-                                .fontFamily font-family
-                                .fontSize 12
-                                .color m/Colors.grey.shade800))]))
-             (m/SizedBox))]))]))))))
 
 (defn home-page [_context]
   ;; Load data on mount
@@ -138,13 +49,13 @@
              .itemBuilder (fn [_ index]
                             (let [item (nth feed-items index)
                                   item-type (get item "type")]
-                              (feed-card item
-                                         (fn []
-                                           (case item-type
-                                             "album" (nav/push-route-with-arguments navigator
-                                                                                    :album-detail
-                                                                                    {"album_id" (get item "id")})
-                                             ;; For episode, store current data; playback/detail can be added later
-                                             "episode" (state/set-current-episode item)
-                                             (dart:core/print (str "Unknown type:" item-type))))))))))))
+                              (cards/feed-card item
+                                               (fn []
+                                                 (case item-type
+                                                   "album" (nav/push-route-with-arguments navigator
+                                                                                          :album-detail
+                                                                                          {"album_id" (get item "id")})
+                                                   ;; For episode, store current data; playback/detail can be added later
+                                                   "episode" (state/set-current-episode item)
+                                                   (dart:core/print (str "Unknown type:" item-type))))))))))))
 
