@@ -51,6 +51,7 @@
                                   item-type (get item "type")]
                               (cards/feed-card item
                                                (fn []
+                                                 (album-state/set-album item)
                                                  (case item-type
                                                    "album" (nav/push-route-with-arguments navigator
                                                                                           :album-detail

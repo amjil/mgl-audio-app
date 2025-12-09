@@ -8,7 +8,7 @@
 (defn push-named-with-arguments
   "Navigate to the specified route with arguments"
   [navigator route-name arguments]
-  (.pushNamed navigator route-name arguments))
+  (.pushNamed navigator route-name .arguments arguments))
 
 (defn push-replacement-named
   "Replace current route and navigate to the specified route"

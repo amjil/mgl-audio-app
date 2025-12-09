@@ -3,6 +3,7 @@
    ["package:flutter/material.dart" :as m]
    ["package:mongol/mongol.dart" :as mgl]
    [cljd.flutter :as f]
+   [audio-platform.widgets.app-bar :as app-bar]
    [audio-platform.state :as state]
    [audio-platform.services.album :as album-service]
    [audio-platform.states.album :as album-state]
@@ -30,128 +31,99 @@
               .onPressed on-tap)
    .onTap on-tap))
 
-(defn ^m/Widget album-detail-page [context]
+(defn ^m/Widget album-detail-page [_context]
   (let [album (album-state/get-album)
-        album-id (get album "id")
         episodes (album-state/get-episodes)
         current-user (state/get-user)]
+    (dart:core/print "Album detail page")
+    (dart:core/print (str "current-user " current-user))
     (f/widget
+     :context ctx
      :get [m/Navigator]
-     :let [font-family (font-state/get-app-font-family)
-           is-creator (and @album
-                          current-user
-                          (= (get @album "creator_id") (get current-user "id")))]
+     :let [font-family (font-state/get-app-font-family)]
      (m/Scaffold
-      .appBar (if is-creator
-                (m/AppBar
-                 .actions [(m/IconButton
-                            .icon (m/Icon m.Icons/edit)
-                            .onPressed (fn []
-                                         (nav/push-route-with-arguments navigator
-                                                                        :album-form
-                                                                        {"album" @album})))
-                           (m/IconButton
-                            .icon (m/Icon m.Icons/delete)
-                            .onPressed (fn []
-                                        ;;  (m/showDialog
-                                        ;;   .context context
-                                        ;;   .builder (fn [_ctx]
-                                        ;;              (m/AlertDialog
-                                        ;;               ;;       .title (m/Text "Delete Album")
-                                        ;;               .content (mgl/MongolText "Are you sure you want to delete this album? This action cannot be undone.")
-                                        ;;               .actions
-                                        ;;               [(m/TextButton
-                                        ;;                 .child (mgl/MongolText "Cancel")
-                                        ;;                 .onPressed (fn []
-                                        ;;                              (nav/navigator-pop navigator)))
-                                        ;;                (m/TextButton
-                                        ;;                 .child (mgl/MongolText "Delete")
-                                        ;;                 .style (m/TextButton.styleFrom
-                                        ;;                         .foregroundColor m/Colors.red)
-                                        ;;                 .onPressed (fn []
-                                        ;;                              (album-service/delete-album navigator album-id)))])))
-                                         (dart:core/print "Delete album button pressed")))])
-                                         
-                nil)
-      .body (if (album-state/get-loading)
-              (m/Center
-               .child (m/CircularProgressIndicator))
-              (if (album-state/get-error)
-                (m/Center
-                 .child (m/Column
-                         .mainAxisAlignment m.MainAxisAlignment/center
-                         .children
-                         [(m/Icon m.Icons/error_outline
-                                  .size 64
-                                  .color m/Colors.red)
-                          (m/SizedBox .height 16)
-                          (mgl/MongolText
-                           (album-state/get-error)
-                           .style (m/TextStyle
-                                   .fontFamily font-family
-                                   .color m/Colors.red))]))
-                (m/SingleChildScrollView
-                 .scrollDirection m.Axis/horizontal
-                 .child (m/Row
-                         .crossAxisAlignment m.CrossAxisAlignment/start
-                         .children
-                         [(m/Container
-                           .height 250
-                           .decoration (m/BoxDecoration
-                                        .color m/Colors.grey.shade300)
-                           .child (if (get album "cover_url")
-                                   (m/Image.network (get album "cover_url")
-                                                    .fit m.BoxFit/cover)
-                                   (m/Center
-                                    .child (m/Icon m.Icons/album
-                                                   .size 64
-                                                   .color m/Colors.grey.shade600))))
-                          (m/Padding
-                           .padding (m.EdgeInsets/all 16)
-                           .child (m/Row
-                                   .crossAxisAlignment m.CrossAxisAlignment/start
-                                   .children
-                                   [(mgl/MongolText
-                                     (get @album "title" "Unknown Album")
-                                     .style (m/TextStyle
-                                             .fontFamily font-family
-                                             .fontSize 24
-                                             .fontWeight m.FontWeight/bold))
-                                    (m/SizedBox .height 8)
-                                    (mgl/MongolText
-                                     (get @album "description" "")
-                                     .style (m/TextStyle
-                                             .fontFamily font-family
-                                             .fontSize 14
-                                             .color m/Colors.grey.shade700))
-                                    (m/SizedBox .height 16)
-                                    (m/Divider)
-                                    (m/SizedBox .height 8)
-                                    (mgl/MongolText
-                                     (str "Episodes (" (count @episodes) ")")
-                                     .style (m/TextStyle
-                                             .fontFamily font-family
-                                             .fontSize 18
-                                             .fontWeight m.FontWeight/bold))]))
-                          (if (empty? episodes)
-                            (m/Center
-                             .child (m/Column
-                                     .mainAxisAlignment m.MainAxisAlignment/center
-                                     .children
-                                     [(m/Icon m.Icons/queue_music
-                                              .size 64
-                                              .color m/Colors.grey.shade400)
-                                      (m/SizedBox .height 16)
-                                      (mgl/MongolText
-                                       "No episodes yet"
-                                       .style (m/TextStyle
-                                               .fontFamily font-family
-                                               .color m/Colors.grey.shade600))]))
-                            (m/Column
-                             .children (map (fn [episode]
-                                              (episode-item episode
-                                                            (fn []
-                                                              (state/set-current-episode episode)
-                                                              (dart:core/print (str "Episode tapped: " (get episode "id"))))
-                                                            font-family))
-                                            episodes)))]))))))))
+      .appBar (app-bar/album-detail ctx album navigator current-user))
+     .body
+     (m/SafeArea)
+     (if (album-state/get-loading)
+       (m/Center
+        .child (m/CircularProgressIndicator))
+       (if (album-state/get-error)
+         (m/Center
+          .child (m/Column
+                  .mainAxisAlignment m.MainAxisAlignment/center
+                  .children
+                  [(m/Icon m.Icons/error_outline
+                           .size 64
+                           .color m/Colors.red)
+                   (m/SizedBox .height 16)
+                   (mgl/MongolText
+                    (album-state/get-error)
+                    .style (m/TextStyle
+                            .fontFamily font-family
+                            .color m/Colors.red))]))
+         (m/SingleChildScrollView
+          .scrollDirection m.Axis/horizontal
+          .child (m/Row
+                  .crossAxisAlignment m.CrossAxisAlignment/start
+                  .children
+                  [(m/Container
+                    .height 250
+                    .decoration (m/BoxDecoration
+                                 .color m/Colors.grey.shade300)
+                    .child (if (get album "cover_url")
+                             (m/Image.network (get album "cover_url")
+                                              .fit m.BoxFit/cover)
+                             (m/Center
+                              .child (m/Icon m.Icons/album
+                                             .size 64
+                                             .color m/Colors.grey.shade600))))
+                   (m/Padding
+                    .padding (m.EdgeInsets/all 16)
+                    .child (m/Row
+                            .crossAxisAlignment m.CrossAxisAlignment/start
+                            .children
+                            [(mgl/MongolText
+                              (get album "title" "Unknown Album")
+                              .style (m/TextStyle
+                                      .fontFamily font-family
+                                      .fontSize 24
+                                      .fontWeight m.FontWeight/bold))
+                             (m/SizedBox .height 8)
+                             (mgl/MongolText
+                              (get album "description" "")
+                              .style (m/TextStyle
+                                      .fontFamily font-family
+                                      .fontSize 14
+                                      .color m/Colors.grey.shade700))
+                             (m/SizedBox .height 16)
+                             (m/Divider)
+                             (m/SizedBox .height 8)
+                             (mgl/MongolText
+                              (str "Episodes (" (count episodes) ")")
+                              .style (m/TextStyle
+                                      .fontFamily font-family
+                                      .fontSize 18
+                                      .fontWeight m.FontWeight/bold))]))
+                   (if (empty? episodes)
+                     (m/Center
+                      .child (m/Column
+                              .mainAxisAlignment m.MainAxisAlignment/center
+                              .children
+                              [(m/Icon m.Icons/queue_music
+                                       .size 64
+                                       .color m/Colors.grey.shade400)
+                               (m/SizedBox .height 16)
+                               (mgl/MongolText
+                                "No episodes yet"
+                                .style (m/TextStyle
+                                        .fontFamily font-family
+                                        .color m/Colors.grey.shade600))]))
+                     (m/Column
+                      .children (map (fn [episode]
+                                       (episode-item episode
+                                                     (fn []
+                                                       (state/set-current-episode episode)
+                                                       (dart:core/print (str "Episode tapped: " (get episode "id"))))
+                                                     font-family))
+                                     episodes)))])))))))

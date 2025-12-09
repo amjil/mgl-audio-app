@@ -2,10 +2,57 @@
  (:require 
   ["package:flutter/material.dart" :as m]
   ["package:mongol/mongol.dart" :as mgl]
-  [cljd.flutter :as f]
-  [audio-platform.state :as state]))
+  [audio-platform.utils.navigator :as nav]
+  [audio-platform.services.album :as album-service]))
   
 
 (defn app-bar []
   (m/AppBar
    .title (m/Text "App Bar")))
+   
+(defn album-detail [ctx album navigator current-user]
+  (m/AppBar
+   .title (m/Text (get album "title"))
+   .leading (m/IconButton
+               .icon (m/Icon m/Icons.arrow_back)
+               .onPressed (fn [] (nav/navigator-pop navigator)))
+   .actions [(if (= (get album "creator_id") (get current-user "id"))
+                (m/AppBar
+                 .actions [(m/IconButton
+                            .icon (m/Icon m.Icons/edit)
+                            .onPressed (fn []
+                                         (nav/push-route-with-arguments navigator
+                                                                        :album-form
+                                                                        {"album" album})))
+                           (m/IconButton
+                            .icon (m/Icon m.Icons/delete)
+                            .onPressed (fn []
+                                         (m/showDialog
+                                          .context ctx
+                                          .builder (fn [_ctx]
+                                                     (m/AlertDialog
+                                                      ;;       .title (m/Text "Delete Album")
+                                                      .content (mgl/MongolText "Are you sure you want to delete this album? This action cannot be undone.")
+                                                      .actions
+                                                      [(m/TextButton
+                                                        .child (mgl/MongolText "Cancel")
+                                                        .onPressed (fn []
+                                                                     (nav/navigator-pop navigator)))
+                                                       (m/TextButton
+                                                        .child (mgl/MongolText "Delete")
+                                                        .style (m/TextButton.styleFrom
+                                                                .foregroundColor m/Colors.red)
+                                                        .onPressed (fn []
+                                                                     (album-service/delete-album navigator (get album "id"))))])))
+                                         (dart:core/print "Delete album button pressed")))])
+
+               (m/SizedBox))
+             
+             (m/IconButton
+              .icon (m/Icon m.Icons/edit)
+              .onPressed (fn []
+                           (dart:core/print "Edit album")))
+             (m/IconButton
+              .icon (m/Icon m.Icons/delete)
+              .onPressed (fn []
+                           (dart:core/print "Delete album")))]))
