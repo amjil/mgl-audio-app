@@ -5,7 +5,7 @@
 
 ;; Home feed state atom
 (def home-feed-state
-  (atom {:loading true
+  (atom {:loading false
          :items []
          :error nil}))
 
