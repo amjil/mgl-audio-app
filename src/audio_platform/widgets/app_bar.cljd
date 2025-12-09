@@ -12,7 +12,6 @@
    
 (defn album-detail [ctx album navigator current-user]
   (m/AppBar
-   .title (m/Text (get album "title"))
    .leading (m/IconButton
                .icon (m/Icon m/Icons.arrow_back)
                .onPressed (fn [] (nav/navigator-pop navigator)))
