@@ -1,0 +1,17 @@
+(ns audio-platform.auth
+  (:require
+   [audio-platform.state :as state]
+   [audio-platform.services.api :as api]))
+
+(defn load-session! []
+  ;; Load tokens and try to fetch current user without blocking UI
+  (-> (state/load-tokens)
+      (.then (fn [{:keys [token refresh-token]}]
+               (when (and token refresh-token)
+                 (-> (api/get-current-user token)
+                     (.then (fn [user] (state/set-user user)))
+                     (.catchError (fn [_err]
+                                    ;; Silent failure; keep token so later calls can refresh or prompt login
+                                    nil))))))
+      ;; Swallow load errors; downstream logic will handle session state
+      (.catchError (fn [_err] nil))))
