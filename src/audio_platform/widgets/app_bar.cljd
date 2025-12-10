@@ -21,7 +21,6 @@
                 [(m/IconButton
                   .icon (m/Icon m.Icons/edit)
                   .onPressed (fn []
-                               ;; Keep form prefilled with latest album and category data
                                (nav/push-route navigator :album-form)))
                  (m/IconButton
                   .icon (m/Icon m.Icons/delete)

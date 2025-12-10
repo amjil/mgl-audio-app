@@ -24,7 +24,12 @@
      :managed [title-controller (m/TextEditingController .text (if (some? album) (get album "title") ""))
                description-controller (m/TextEditingController .text (if (some? album) (get album "description") ""))
                cover-url-controller (m/TextEditingController .text (if (some? album) (get album "cover_url") ""))]
-     (m/Scaffold)
+     (m/Scaffold
+      .appBar (m/AppBar
+               .leading (m/IconButton
+                         .icon (m/Icon m.Icons/arrow_back)
+                         .onPressed (fn []
+                                      (nav/navigator-pop navigator)))))
      .body
      (m/SafeArea)
      (m/SingleChildScrollView

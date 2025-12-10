@@ -84,30 +84,30 @@
       (.then (fn [album]
                (dart:core/print (str "Album: " album))
                (swap! album-state/album-state assoc :album album)
-               ;;  (let [category-id (get album "category_id")
-               ;;        album-category-name (or (get album "category_name")
-               ;;                                (get-in album ["category" "name"]))]
-               ;;    (if category-id
-               ;;      (do
-               ;;        ;; Optimistically set the selection so the UI can reflect it immediately
-               ;;        (swap! category-state/category-state assoc :selected-category category-id)
-               ;;        (when album-category-name
-               ;;          (swap! category-state/category-state assoc :selected-category-name album-category-name))
-               ;;        (-> (api/get-category category-id)
-               ;;            (.then (fn [category-data]
-               ;;                     (dart:core/print (str "Category data: " category-data))
-               ;;                     (let [parent-id (get category-data "parent_id")
-               ;;                           resolved-name (or (get category-data "name") album-category-name "")]
-               ;;                       (swap! category-state/category-state assoc
-               ;;                              :selected-category category-id
-               ;;                              :selected-category-name resolved-name
-               ;;                              :selected-category-parent parent-id)
-               ;;                       (get-categories :page 1 :per-page 100 :parent-id parent-id))))
-               ;;            (.catchError (fn [err]
-               ;;                           (dart:core/print (str "Failed to prefill category: " err))
-               ;;                           (get-categories :page 1 :per-page 100)))))
-               ;;      ;; No category on album, fall back to default category loading
-               ;;      (get-categories :page 1 :per-page 100)))
+               (let [category-id (get album "category_id")
+                     album-category-name (or (get album "category_name")
+                                             (get-in album ["category" "name"]))]
+                 (if category-id
+                   (do
+                     ;; Optimistically set the selection so the UI can reflect it immediately
+                     (swap! category-state/category-state assoc :selected-category category-id)
+                     (when album-category-name
+                       (swap! category-state/category-state assoc :selected-category-name album-category-name))
+                     (-> (api/get-category category-id)
+                         (.then (fn [category-data]
+                                  (dart:core/print (str "Category data: " category-data))
+                                  (let [parent-id (get category-data "parent_id")
+                                        resolved-name (or (get category-data "name") album-category-name "")]
+                                    (swap! category-state/category-state assoc
+                                           :selected-category category-id
+                                           :selected-category-name resolved-name
+                                           :selected-category-parent parent-id)
+                                    (get-categories :page 1 :per-page 100 :parent-id parent-id))))
+                         (.catchError (fn [err]
+                                        (dart:core/print (str "Failed to prefill category: " err))
+                                        (get-categories :page 1 :per-page 100)))))
+                   ;; No category on album, fall back to default category loading
+                   (get-categories :page 1 :per-page 100)))
                (swap! album-state/album-state assoc :loading false)))
       (.catchError (fn [err]
                      (dart:core/print (str "Failed to get album: " err))
@@ -151,5 +151,6 @@
                      (swap! album-state/album-state assoc :loading false)))
       (.then (fn [_]
                (dart:core/print "Album deleted successfully")
+               (nav/navigator-pop navigator)
                (nav/navigator-pop navigator)
                (swap! album-state/album-state assoc :loading false)))))

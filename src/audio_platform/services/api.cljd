@@ -19,7 +19,7 @@
 (defn handle-response [response]
   (-> response
       (.then (fn [resp]
-              ;;  (dart:core/print (str "Response: " (.-statusCode resp) " body: " (.-body resp)))
+               (dart:core/print (str "Response: " (.-statusCode resp) " body: " (.-body resp)))
                (let [status-code (.-statusCode resp)
                      body (.-body resp)]
                  (cond
