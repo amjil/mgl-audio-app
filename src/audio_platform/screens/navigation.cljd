@@ -3,42 +3,44 @@
    ["package:flutter/material.dart" :as m]
    [cljd.flutter :as f]
    [audio-platform.screens.home :as home]
-   [audio-platform.screens.search :as search]
    [audio-platform.screens.profile :as profile]
    [audio-platform.screens.player :as player]
+   [audio-platform.utils.navigator :as nav]
    [audio-platform.states.font :as font-state]))
 
 (defn ^m/Widget main-navigation [_context]
   (let [current-index (atom 0)]
     (f/widget
+     :get [m/Navigator]
      :watch [_font-state font-state/font-state
              _current-index current-index]
+     :let [active-page (case _current-index
+                         2 (profile/profile-page _context)
+                          (home/home-page _context))]
      (m/Scaffold
       .body (m/Stack
              .children
-             [(m/IndexedStack
-               .index _current-index
-               .children
-               [(home/home-page _context)
-                (search/search-page _context)
-                (profile/profile-page _context)])
+             [active-page
               (m/Positioned
                .left 0
                .right 0
                .bottom 56
                .child (player/player-widget))])
-      .bottomNavigationBar (m/BottomNavigationBar
-                            .currentIndex _current-index
-                            .onTap (fn [index]
-                                     (reset! current-index index))
-                            .items
-                            [(m/BottomNavigationBarItem
-                              .icon (m/Icon m.Icons/home)
-                              .label "Home")
-                             (m/BottomNavigationBarItem
-                              .icon (m/Icon m.Icons/search)
-                              .label "Search")
-                             (m/BottomNavigationBarItem
-                              .icon (m/Icon m.Icons/person)
-                              .label "Profile")])))))
+      .bottomNavigationBar
+      (m/BottomNavigationBar
+       .currentIndex _current-index
+       .onTap (fn [index]
+                (case index
+                  1 (nav/push-route navigator :search)
+                  (reset! current-index index)))
+       .items
+       [(m/BottomNavigationBarItem
+         .icon (m/Icon m.Icons/home)
+         .label "Home")
+        (m/BottomNavigationBarItem
+         .icon (m/Icon m.Icons/search)
+         .label "Search")
+        (m/BottomNavigationBarItem
+         .icon (m/Icon m.Icons/person)
+         .label "Profile")])))))
 

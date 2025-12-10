@@ -7,8 +7,7 @@
    [audio-platform.state :as state]
    [audio-platform.states.album :as album-state]
    [audio-platform.utils.navigator :as nav]
-   [audio-platform.services.album :as album-service]
-   [audio-platform.services.search :as search-service]))
+   [audio-platform.services.album :as album-service]))
 
 
 (defn home-page [_context]
@@ -32,8 +31,7 @@
               (m/IconButton
                .icon (m/Icon m.Icons/search)
                .onPressed (fn []
-                            ;;     (nav/push-route navigator :search)
-                            (search-service/search "test")))
+                            (nav/push-route navigator :search)))
               (m/IconButton
                .icon (m/Icon m.Icons/notifications)
                .onPressed (fn []

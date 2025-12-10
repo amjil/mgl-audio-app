@@ -6,6 +6,7 @@
    [virtual-keyboard.fst-reader :as fst-reader]
    [virtual-keyboard.keyboard-candidates :as kc]
    [virtual-keyboard.options :as keyboard-options]
+   [virtual-keyboard.input-control :as control]
    [audio-platform.state :as state]
    [audio-platform.theme :as theme]
    [audio-platform.states.font :as font-state]
@@ -26,11 +27,13 @@
   
   ;; Initialize font settings from preferences
   (await (font-state/init-app-font-settings!))
+
+  ;; Set up input control
+  (control/set-control)
   
   ;; load the data.zip & next.zip
   (zip-utils/load-assets-parallel
     [[kc/next "assets/next.zip"]])
-    
   (fst-reader/ensure-loaded)
 
   ;; Start Flutter application

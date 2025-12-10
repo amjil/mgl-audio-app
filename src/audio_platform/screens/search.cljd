@@ -4,15 +4,16 @@
    ["package:mongol/mongol.dart" :as mgl]
    [cljd.flutter :as f]
    [virtual-keyboard.keyboard :as keyboard]
-   [audio-platform.services.api :as api]
    [audio-platform.state :as state]
    [audio-platform.states.font :as font-state]
    [audio-platform.utils.format :as format]
    [audio-platform.services.search :as search-service]
-   [audio-platform.states.search :as search-state]))
+   [audio-platform.states.search :as search-state]
+   [audio-platform.utils.navigator :as nav]))
 
 (defn episode-card [episode on-tap]
   (f/widget
+   :context _context
    :watch [_font-state font-state/font-state]
    :let [font-family (font-state/get-app-font-family)]
    (m/Card
@@ -91,10 +92,17 @@
 
 (defn ^m/Widget search-page [_context]
   (f/widget
+   :get [m/Navigator]
    :watch [_font-state font-state/font-state]
    :let [font-family (font-state/get-app-font-family)]
    :managed [search-controller (m/TextEditingController.)]
-   (m/Scaffold)
+   (m/Scaffold
+    .backgroundColor (-> m/Theme (.of _context) .-colorScheme .-surface)
+    .appBar (m/AppBar
+             .backgroundColor m/Colors.transparent
+             .leading (m/IconButton
+                       .icon (m/Icon m.Icons/arrow_back)
+                       .onPressed (fn [] (nav/navigator-pop navigator)))))
    .body
    (m/SafeArea)
    (m/Column
@@ -119,10 +127,10 @@
                                        (search-service/search query))
                           .onTap (fn []
                                    (dart:core/print "onTap MongolTextField"))
-                          .style (m/TextStyle
-                                  .fontFamily font-family
-                                  .fontSize 20
-                                  .color (-> m/Theme (.of _context) .-colorScheme .-onSurface))
+                           .style (m/TextStyle
+                                   .fontFamily font-family
+                                   .fontSize 20
+                                   .color (-> m/Theme (.of _context) .-colorScheme .-onSurface))
                           .decoration nil))
                  (m/Expanded
                   .child (search-results-panel))])
