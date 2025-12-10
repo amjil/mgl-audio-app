@@ -5,14 +5,24 @@
    [audio-platform.states.search :as search-state]))
 
 (defn search [query & {:keys [page limit tag sort]}]
-  (swap! search-state/search-state assoc :loading true)
-  (swap! search-state/search-state assoc :query query)
-  (let [token (state/get-token)]
-    (-> (api/search token query :page page :limit limit :tag tag :sort sort)
-        (.then (fn [response]
-                 (dart:core/print (str "Search response: " response))
-                 (swap! search-state/search-state assoc :results (get response "items" []))
-                 (swap! search-state/search-state assoc :loading false)))
-        (.catchError (fn [err]
-                       (swap! search-state/search-state assoc :error (str "Failed to search: " err))
-                       (swap! search-state/search-state assoc :loading false))))))
+  ;; prevent duplicate submit: if loading, record pending query and return
+  (let [{:keys [loading]} @search-state/search-state]
+    (if loading
+      (swap! search-state/search-state assoc :pending-query query)
+      (do
+        (swap! search-state/search-state assoc :loading true :query query :pending-query nil)
+        (let [token (state/get-token)]
+          (-> (api/search token query :page page :limit limit :tag tag :sort sort)
+              (.then (fn [response]
+                       (dart:core/print (str "Search response: " response))
+                       (swap! search-state/search-state assoc :results (get response "items" []))
+                       (let [next-query (:pending-query @search-state/search-state)]
+                         (swap! search-state/search-state assoc :loading false :pending-query nil)
+                         (when (and next-query (not= next-query query))
+                           (search next-query)))))
+              (.catchError (fn [err]
+                             (swap! search-state/search-state assoc :error (str "Failed to search: " err))
+                             (let [next-query (:pending-query @search-state/search-state)]
+                               (swap! search-state/search-state assoc :loading false :pending-query nil)
+                               (when (and next-query (not= next-query query))
+                                 (search next-query)))))))))))

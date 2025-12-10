@@ -2,6 +2,7 @@
 
 (def search-state (atom {:results []
                          :query ""
+                         :pending-query nil
                          :loading false
                          :error ""}))
 
