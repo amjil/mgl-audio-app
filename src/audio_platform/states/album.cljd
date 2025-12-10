@@ -1,6 +1,6 @@
 (ns audio-platform.states.album)
 
-(def album-state (atom {:album nil
+(def album-state (atom {:album {}
                         :albums nil
                         :episodes nil
                         :loading false

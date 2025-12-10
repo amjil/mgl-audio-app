@@ -37,14 +37,16 @@
      :context ctx
      :get [m/Navigator]
      :let [font-family (font-state/get-app-font-family)]
+     :watch [{loading :loading
+              error :error} album-state/album-state]
      (m/Scaffold
-      .appBar (app-bar/album-detail ctx album navigator current-user))
+      .appBar (app-bar/album-detail ctx navigator current-user))
      .body
      (m/SafeArea)
-     (if (album-state/get-loading)
+     (if loading
        (m/Center
         .child (m/CircularProgressIndicator))
-       (if (album-state/get-error)
+       (if-not (empty? error)
          (m/Center
           .child (m/Column
                   .mainAxisAlignment m.MainAxisAlignment/center

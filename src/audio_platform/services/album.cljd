@@ -66,11 +66,56 @@
                      (swap! category-state/category-state assoc :error (str "Failed to load categories: " err))
                      (swap! category-state/category-state assoc :loading false)))
       (.then (fn [categories-data]
-               (when (nil? parent-id)
-                 (swap! category-state/category-state assoc :selected-category-parent (-> categories-data (get "items") (first) (get "id"))))
-               (get-sub-categories (-> @category-state/category-state :selected-category-parent))
-               (swap! category-state/category-state assoc :categories (get categories-data "items"))
-               (swap! category-state/category-state assoc :loading false)))))
+               ;; Resolve which parent should be selected: provided parent-id, existing state or fallback to first item
+               (let [current-parent (:selected-category-parent @category-state/category-state)
+                     resolved-parent (cond
+                                       parent-id parent-id
+                                       (or (nil? current-parent) (empty? current-parent))
+                                       (-> categories-data (get "items") (first) (get "id"))
+                                       :else current-parent)]
+                 (swap! category-state/category-state assoc :selected-category-parent resolved-parent)
+                 (get-sub-categories resolved-parent)
+                 (swap! category-state/category-state assoc :categories (get categories-data "items"))
+                 (swap! category-state/category-state assoc :loading false))))))
+
+(defn prefill-category-from-album-id [album-id]
+  (swap! album-state/album-state assoc :loading true :error nil)
+  (-> (api/get-album (state/get-token) album-id)
+      (.then (fn [album]
+               (dart:core/print (str "Album: " album))
+               (swap! album-state/album-state assoc :album album)
+               ;;  (let [category-id (get album "category_id")
+               ;;        album-category-name (or (get album "category_name")
+               ;;                                (get-in album ["category" "name"]))]
+               ;;    (if category-id
+               ;;      (do
+               ;;        ;; Optimistically set the selection so the UI can reflect it immediately
+               ;;        (swap! category-state/category-state assoc :selected-category category-id)
+               ;;        (when album-category-name
+               ;;          (swap! category-state/category-state assoc :selected-category-name album-category-name))
+               ;;        (-> (api/get-category category-id)
+               ;;            (.then (fn [category-data]
+               ;;                     (dart:core/print (str "Category data: " category-data))
+               ;;                     (let [parent-id (get category-data "parent_id")
+               ;;                           resolved-name (or (get category-data "name") album-category-name "")]
+               ;;                       (swap! category-state/category-state assoc
+               ;;                              :selected-category category-id
+               ;;                              :selected-category-name resolved-name
+               ;;                              :selected-category-parent parent-id)
+               ;;                       (get-categories :page 1 :per-page 100 :parent-id parent-id))))
+               ;;            (.catchError (fn [err]
+               ;;                           (dart:core/print (str "Failed to prefill category: " err))
+               ;;                           (get-categories :page 1 :per-page 100)))))
+               ;;      ;; No category on album, fall back to default category loading
+               ;;      (get-categories :page 1 :per-page 100)))
+               (swap! album-state/album-state assoc :loading false)))
+      (.catchError (fn [err]
+                     (dart:core/print (str "Failed to get album: " err))
+                     (swap! album-state/album-state assoc :error (str "Failed to get album: " err))
+                     (swap! album-state/album-state assoc :loading false))))
+
+  
+      )
 
 
 (defn create-category [category-data]
