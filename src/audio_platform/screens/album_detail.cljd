@@ -33,8 +33,6 @@
   (let [album (album-state/get-album)
         episodes (album-state/get-episodes)
         current-user (state/get-user)]
-    (dart:core/print "Album detail page")
-    (dart:core/print (str "current-user " current-user))
     (f/widget
      :context ctx
      :get [m/Navigator]
@@ -60,74 +58,72 @@
                     .style (m/TextStyle
                             .fontFamily font-family
                             .color m/Colors.red))]))
-         (m/SingleChildScrollView
+         (m/ListView.separated
           .scrollDirection m.Axis/horizontal
-          .child (m/Row
-                  .crossAxisAlignment m.CrossAxisAlignment/start
-                  .children
-                  [(m/Padding
-                    .padding (m.EdgeInsets/all 16)
-                    .child (m/Column
-                            .crossAxisAlignment m.CrossAxisAlignment/start
-                            .children
-                            [(m/Container
-                              .height 160
-                              .decoration (m/BoxDecoration
-                                           .color m/Colors.grey.shade300)
-                              .child (if (get album "cover_url")
-                                       (m/Image.network (get album "cover_url")
-                                                        .fit m.BoxFit/cover)
-                                       (m/Center
-                                        .child (m/Icon m.Icons/album
-                                                       .size 64
-                                                       .color m/Colors.grey.shade600))))
-                             (m/SizedBox .height 20)
-                             (m/Row
-                              .children
-                              [(mgl/MongolText
-                                (get album "title" "Unknown Album")
-                                .style (m/TextStyle
-                                        .fontFamily font-family
-                                        .fontSize 24
-                                        .fontWeight m.FontWeight/bold))
-                               (m/SizedBox .width 4)
-                               (mgl/MongolText
-                                (get album "description" "")
-                                .style (m/TextStyle
-                                        .fontFamily font-family
-                                        .fontSize 14
-                                        .color m/Colors.grey.shade700))
-
-                               (m/SizedBox .width 4)
-                               (m/VerticalDivider)
-                               (m/SizedBox .width 4)
-                               (mgl/MongolText
-                                (str "Episodes (" (count episodes) ")")
-                                .style (m/TextStyle
-                                        .fontFamily font-family
-                                        .fontSize 18
-                                        .fontWeight m.FontWeight/bold))])]))
-                   (if (empty? episodes)
-                     (m/Center
-                      .child (m/Column
-                              .mainAxisAlignment m.MainAxisAlignment/center
-                              .children
-                              [(m/Icon m.Icons/queue_music
-                                       .size 64
-                                       .color m/Colors.grey.shade400)
-                               (m/SizedBox .height 16)
-                               (mgl/MongolText
-                                "No episodes yet"
-                                .style (m/TextStyle
-                                        .fontFamily font-family
-                                        .color m/Colors.grey.shade600))]))
-                     (m/ListView.separated
-                      .scrollDirection m.Axis/horizontal
-                      .itemCount (count episodes)
-                      .itemBuilder (fn [_ index]
-                                     (episode-item (nth episodes index)
-                                                   (fn []
-                                                     (state/set-current-episode (nth episodes index))
-                                                     (dart:core/print (str "Episode tapped: " (get (nth episodes index) "id"))))
-                                                   font-family))
-                      .separatorBuilder (fn [_ __] (m/VerticalDivider .width 1 .thickness 0))))])))))))
+          .itemCount (+ 1 (if (empty? episodes) 1 (count episodes)))
+          .itemBuilder (fn [_ index]
+                         (if (= index 0)
+                           ;; First item: album information
+                           (m/Padding
+                            .padding (m.EdgeInsets/all 16)
+                            .child (m/Column
+                                    .crossAxisAlignment m.CrossAxisAlignment/start
+                                    .children
+                                    [(m/Container
+                                      .height 160
+                                      .decoration (m/BoxDecoration
+                                                   .color m/Colors.grey.shade300)
+                                      .child (if (get album "cover_url")
+                                               (m/Image.network (get album "cover_url")
+                                                                .fit m.BoxFit/cover)
+                                               (m/Center
+                                                .child (m/Icon m.Icons/album
+                                                               .size 64
+                                                               .color m/Colors.grey.shade600))))
+                                     (m/SizedBox .height 20)
+                                     (m/Row
+                                      .children
+                                      [(mgl/MongolText
+                                        (get album "title" "Unknown Album")
+                                        .style (m/TextStyle
+                                                .fontFamily font-family
+                                                .fontSize 24
+                                                .fontWeight m.FontWeight/bold))
+                                       (m/SizedBox .width 4)
+                                       (mgl/MongolText
+                                        (get album "description" "")
+                                        .style (m/TextStyle
+                                                .fontFamily font-family
+                                                .fontSize 14
+                                                .color m/Colors.grey.shade700))
+                                       (m/SizedBox .width 4)
+                                       (m/VerticalDivider)
+                                       (m/SizedBox .width 4)
+                                       (mgl/MongolText
+                                        (str "Episodes (" (count episodes) ")")
+                                        .style (m/TextStyle
+                                                .fontFamily font-family
+                                                .fontSize 18
+                                                .fontWeight m.FontWeight/bold))])]))
+                           ;; Subsequent items: episodes or empty state
+                           (if (empty? episodes)
+                             (m/Center
+                              .child (m/Column
+                                      .mainAxisAlignment m.MainAxisAlignment/center
+                                      .children
+                                      [(m/Icon m.Icons/queue_music
+                                               .size 64
+                                               .color m/Colors.grey.shade400)
+                                       (m/SizedBox .height 16)
+                                       (mgl/MongolText
+                                        "No episodes yet"
+                                        .style (m/TextStyle
+                                                .fontFamily font-family
+                                                .color m/Colors.grey.shade600))]))
+                             (episode-item (nth episodes (- index 1))
+                                          (fn []
+                                            (state/set-current-episode (nth episodes (- index 1)))
+                                            (dart:core/print (str "Episode tapped: " (get (nth episodes (- index 1)) "id"))))
+                                          font-family))))
+          .separatorBuilder (fn [_ _]
+                              (m/VerticalDivider .width 1 .thickness 0))))))))
