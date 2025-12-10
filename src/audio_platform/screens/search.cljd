@@ -3,10 +3,13 @@
    ["package:flutter/material.dart" :as m]
    ["package:mongol/mongol.dart" :as mgl]
    [cljd.flutter :as f]
+   [virtual-keyboard.keyboard :as keyboard]
    [audio-platform.services.api :as api]
    [audio-platform.state :as state]
    [audio-platform.states.font :as font-state]
-   [audio-platform.utils.format :as format]))
+   [audio-platform.utils.format :as format]
+   [audio-platform.services.search :as search-service]
+   [audio-platform.states.search :as search-state]))
 
 (defn episode-card [episode on-tap]
   (f/widget
@@ -41,74 +44,88 @@
                               .icon (m/Icon m.Icons/play_circle_outline)
                               .onPressed on-tap)]))))))
 
+(defn search-results-panel []
+  (f/widget
+   :watch [{loading :loading
+            results :results
+            query :query} search-state/search-state]
+   :let [font-family (font-state/get-app-font-family)]
+   (if loading
+     (m/Center
+      .child (m/CircularProgressIndicator))
+     (if-not (empty? query)
+       (if (empty? results)
+         (m/Center
+          .child (m/Column
+                  .mainAxisAlignment m.MainAxisAlignment/center
+                  .children
+                  [(m/Icon m.Icons/search_off
+                           .size 64
+                           .color m/Colors.grey.shade400)
+                   (m/SizedBox .height 16)
+                   (mgl/MongolText
+                    "No results found"
+                    .style (m/TextStyle
+                            .fontFamily font-family
+                            .color m/Colors.grey.shade600))]))
+         (m/ListView
+          .children (map (fn [episode]
+                           (episode-card episode
+                                         (fn []
+                                           (state/set-current-episode episode)
+                                           (dart:core/print (str "Episode tapped:" (get episode "id"))))))
+                         results)))
+       (m/Center
+        .child (m/Column
+                .mainAxisAlignment m.MainAxisAlignment/center
+                .children
+                [(m/Icon m.Icons/search
+                         .size 64
+                         .color m/Colors.grey.shade400)
+                 (m/SizedBox .height 16)
+                 (mgl/MongolText
+                  "Enter keywords to search audio content"
+                  .style (m/TextStyle
+                          .fontFamily font-family
+                          .color m/Colors.grey.shade600))]))))))
+
 (defn ^m/Widget search-page [_context]
-  (let [loading (atom false)
-        results (atom [])
-        has-searched (atom false)]
-    (f/widget
-     :watch [_font-state font-state/font-state]
-     :let [font-family (font-state/get-app-font-family)]
-     :managed [search-controller (m/TextEditingController.)]
-     (m/Scaffold
-      .appBar (m/AppBar
-               .title (m/TextField
-                       .controller search-controller
-                ;;        .hintText "Search audio..."
-                       .onSubmitted (fn [query]
-                                      (when (not-empty query)
-                                        (reset! loading true)
-                                        (reset! has-searched true)
-                                        (let [token (state/get-token)]
-                                          (-> (api/search token query :page 1 :limit 20)
-                                              (.then (fn [response]
-                                                       (reset! results (get response "items" []))
-                                                       (state/set-search-results (get response "items" []))
-                                                       (reset! loading false)))
-                                              (.catchError (fn [err]
-                                                             (dart:core/print (str "Search failed:" err))
-                                                             (reset! loading false)))))))))
-      .body (m/Column
-             .children
-             [(if @loading
-                (m/Expanded
-                 .child (m/Center
-                         .child (m/CircularProgressIndicator)))
-                (if @has-searched
-                    (if (empty? @results)
-                    (m/Expanded
-                     .child (m/Center
-                             .child (m/Column
-                                     .mainAxisAlignment m.MainAxisAlignment/center
-                                     .children
-                                     [(m/Icon m.Icons/search_off
-                                             .size 64
-                                             .color m/Colors.grey.shade400)
-                                      (m/SizedBox .height 16)
-                                      (mgl/MongolText
-                                       "No results found"
-                                       .style (m/TextStyle
-                                               .fontFamily font-family
-                                               .color m/Colors.grey.shade600))])))
-                    (m/Expanded
-                     .child (m/ListView
-                             .children (map (fn [episode]
-                                            (episode-card episode
-                                                         (fn []
-                                                           (state/set-current-episode episode)
-                                                           (dart:core/print (str "Episode tapped:" (get episode "id"))))))
-                                          @results))))
-                  (m/Expanded
-                   .child (m/Center
-                           .child (m/Column
-                                   .mainAxisAlignment m.MainAxisAlignment/center
-                                   .children
-                                   [(m/Icon m.Icons/search
-                                           .size 64
-                                           .color m/Colors.grey.shade400)
-                                    (m/SizedBox .height 16)
-                                    (mgl/MongolText
-                                     "Enter keywords to search audio content"
-                                     .style (m/TextStyle
-                                             .fontFamily font-family
-                                             .color m/Colors.grey.shade600))])))))])))))
+  (f/widget
+   :watch [_font-state font-state/font-state]
+   :let [font-family (font-state/get-app-font-family)]
+   :managed [search-controller (m/TextEditingController.)]
+   (m/Scaffold)
+   .body
+   (m/SafeArea)
+   (m/Column
+    .children
+    [(m/Expanded
+      .child (m/Stack
+              .children
+              [(m/Row
+                .crossAxisAlignment m.CrossAxisAlignment/stretch
+                .children
+                [(m/Container
+                  .margin (m.EdgeInsets/only .right 12 .bottom 12)
+                  .padding (m.EdgeInsets/all 12)
+                  .decoration (m/BoxDecoration
+                               .border (m.Border/all)
+                               .borderRadius (m.BorderRadius/circular 12))
+                  .child (mgl/MongolTextField
+                          .controller search-controller
+                          .maxLines 1
+                          .autofocus true
+                          .onChanged (fn [query]
+                                       (search-service/search query))
+                          .onTap (fn []
+                                   (dart:core/print "onTap MongolTextField"))
+                          .style (m/TextStyle
+                                  .fontFamily font-family
+                                  .fontSize 20
+                                  .color (-> m/Theme (.of _context) .-colorScheme .-onSurface))
+                          .decoration nil))
+                 (m/Expanded
+                  .child (search-results-panel))])
+               (keyboard/candidates nil)]))
+     (keyboard/keyboard {:custom-fns {}})])))
 

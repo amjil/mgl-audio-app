@@ -1,6 +1,7 @@
 (ns audio-platform.states.search)
 
 (def search-state (atom {:results []
+                         :query ""
                          :loading false
                          :error ""}))
 

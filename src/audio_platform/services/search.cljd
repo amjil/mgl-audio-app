@@ -2,10 +2,11 @@
   (:require
    [audio-platform.services.api :as api]
    [audio-platform.state :as state]
-   [audio-platform.states.search :as search-state])
-  )
+   [audio-platform.states.search :as search-state]))
 
 (defn search [query & {:keys [page limit tag sort]}]
+  (swap! search-state/search-state assoc :loading true)
+  (swap! search-state/search-state assoc :query query)
   (let [token (state/get-token)]
     (-> (api/search token query :page page :limit limit :tag tag :sort sort)
         (.then (fn [response]
