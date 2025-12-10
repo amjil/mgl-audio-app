@@ -1,15 +1,31 @@
 (ns audio-platform.states.episode)
 
 
-(def episode-state (atom {:episodes nil
+(def episode-state (atom {:episode nil
+                          :episodes nil
                           :loading false
                           :error nil}))
 
 (defn get-episode []
   (:episode @episode-state))
 
+(defn set-episode [episode]
+  (swap! episode-state assoc :episode episode))
+
+(defn get-episodes []
+  (:episodes @episode-state))
+
+(defn set-episodes [episodes]
+  (swap! episode-state assoc :episodes episodes))
+
 (defn get-loading []
   (:loading @episode-state))
 
 (defn get-error []
   (:error @episode-state))
+
+(defn reset-state []
+  (reset! episode-state {:episode nil
+                         :episodes nil
+                         :loading false
+                         :error nil}))

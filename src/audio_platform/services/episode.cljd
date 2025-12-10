@@ -1,0 +1,55 @@
+(ns audio-platform.services.episode
+  (:require
+   [audio-platform.services.api :as api]
+   [audio-platform.state :as state]
+   [audio-platform.states.episode :as episode-state]
+   [audio-platform.states.album :as album-state]
+   [audio-platform.utils.navigator :as nav]))
+
+(defn get-episodes [& {:keys [album-id page per-page]}]
+  (swap! episode-state/episode-state assoc :loading true :error nil)
+  (-> (api/get-episodes (state/get-token) :album-id album-id :page page :per-page per-page)
+      (.catchError (fn [err]
+                     (swap! episode-state/episode-state assoc :error (str "Failed to load episodes: " err))
+                     (swap! episode-state/episode-state assoc :loading false)))
+      (.then (fn [episodes-data]
+               (swap! episode-state/episode-state assoc :episodes (get episodes-data "items" []))
+               (swap! episode-state/episode-state assoc :loading false)))))
+
+(defn get-episode [episode-id]
+  (swap! episode-state/episode-state assoc :loading true :error nil)
+  (-> (api/get-episode (state/get-token) episode-id)
+      (.catchError (fn [err]
+                     (swap! episode-state/episode-state assoc :error (str "Failed to load episode: " err))
+                     (swap! episode-state/episode-state assoc :loading false)))
+      (.then (fn [episode-data]
+               (swap! episode-state/episode-state assoc :episode episode-data)
+               (swap! episode-state/episode-state assoc :loading false)))))
+
+(defn create-episode [navigator album-id episode-data]
+  (swap! episode-state/episode-state assoc :loading true :error nil)
+  (-> (api/create-episode (state/get-token) album-id episode-data)
+      (.then (fn [episode-data]
+               (dart:core/print "Episode created successfully")
+               (dart:core/print (str "Episode data: " episode-data))
+               (nav/navigator-pop navigator)
+               ;; Reload episodes for the album
+               (get-episodes :album-id album-id)
+               (swap! episode-state/episode-state assoc :loading false)))
+      (.catchError (fn [err]
+                     (dart:core/print (str "Error creating episode: " err))
+                     (swap! episode-state/episode-state assoc :error (str "Failed to create episode: " err))
+                     (swap! episode-state/episode-state assoc :loading false)))))
+
+(defn delete-episode [navigator episode-id album-id]
+  (swap! episode-state/episode-state assoc :loading true :error nil)
+  (-> (api/delete-episode (state/get-token) episode-id)
+      (.then (fn [_]
+               (dart:core/print "Episode deleted successfully")
+               ;; Reload episodes for the album
+               (get-episodes :album-id album-id)
+               (swap! episode-state/episode-state assoc :loading false)))
+      (.catchError (fn [err]
+                     (dart:core/print (str "Error deleting episode: " err))
+                     (swap! episode-state/episode-state assoc :error (str "Failed to delete episode: " err))
+                     (swap! episode-state/episode-state assoc :loading false)))))

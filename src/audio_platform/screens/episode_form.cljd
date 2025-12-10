@@ -1,0 +1,192 @@
+(ns audio-platform.screens.episode-form
+  (:require
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [cljd.flutter :as f]
+   [audio-platform.services.episode :as episode-service]
+   [audio-platform.states.font :as font-state]
+   [audio-platform.states.episode :as episode-state]
+   [audio-platform.states.album :as album-state]
+   [audio-platform.utils.navigator :as nav]))
+
+(defn ^m/Widget episode-form-page [_context]
+  (let [episode (episode-state/get-episode)
+        album (album-state/get-album)
+        album-id (get album "id")
+        is-edit (some? episode)]
+    (f/widget
+     :watch [_font-state font-state/font-state
+             {error-msg :error
+              loading :loading} episode-state/episode-state]
+     :context ctx
+     :get [m/Navigator]
+     :let [font-family (font-state/get-app-font-family)]
+     :managed [title-controller (m/TextEditingController .text (if (some? episode) (get episode "title") ""))
+               duration-controller (m/TextEditingController .text (if (some? episode) (str (get episode "duration" 0)) ""))
+               media-id-controller (m/TextEditingController .text "")
+               sequence-controller (m/TextEditingController .text (if (some? episode) (str (or (get episode "sequence") "")) ""))
+               price-controller (m/TextEditingController .text (if (some? episode) (str (or (get episode "price") "")) ""))]
+     (m/Scaffold
+      .appBar (m/AppBar
+               .leading (m/IconButton
+                         .icon (m/Icon m.Icons/arrow_back)
+                         .onPressed (fn []
+                                      (episode-state/reset-state)
+                                      (nav/navigator-pop navigator)))
+               .title (mgl/MongolText (if is-edit "Edit Episode" "Create Episode")
+                                      .style (m/TextStyle .fontFamily font-family))))
+      .body
+      (m/SafeArea)
+      (m/SingleChildScrollView
+       .scrollDirection m.Axis/horizontal)
+      (m/Padding
+       .padding (m.EdgeInsets/all 16))
+      (m/Row
+       .crossAxisAlignment m.CrossAxisAlignment/start
+       .children
+       [(if (not (empty? error-msg))
+          (m/Container
+           .padding (m.EdgeInsets/all 12)
+           .margin (m.EdgeInsets/only .bottom 16)
+           .decoration (m/BoxDecoration
+                        .color m/Colors.red.shade50
+                        .borderRadius (m.BorderRadius/circular 8))
+           .child (m/Column
+                   .children
+                   [(m/Icon m.Icons/error_outline
+                            .color m/Colors.red)
+                    (m/SizedBox .width 8)
+                    (m/Expanded
+                     .child (mgl/MongolText
+                             error-msg
+                             .style (m/TextStyle
+                                     .fontFamily font-family
+                                     .color m/Colors.red)))]))
+          (m/SizedBox))
+        (mgl/MongolText
+         "Title *"
+         .style (m/TextStyle
+                 .fontFamily font-family
+                 .fontSize 14
+                 .fontWeight m.FontWeight/bold))
+        (m/SizedBox .width 8)
+        (mgl/MongolTextField
+         .controller title-controller
+         .decoration (m/InputDecoration
+                      .hintText "Enter episode title"
+                      .border (m/OutlineInputBorder))
+         .style (m/TextStyle
+                 .fontFamily font-family))
+        (m/SizedBox .width 16)
+        (mgl/MongolText
+         "Duration (seconds) *"
+         .style (m/TextStyle
+                 .fontFamily font-family
+                 .fontSize 14
+                 .fontWeight m.FontWeight/bold))
+        (m/SizedBox .width 8)
+        (mgl/MongolTextField
+         .controller duration-controller
+         .keyboardType m.TextInputType/number
+         .decoration (m/InputDecoration
+                      .hintText "Enter duration in seconds"
+                      .border (m/OutlineInputBorder))
+         .style (m/TextStyle
+                 .fontFamily font-family))
+        (m/SizedBox .width 16)
+        (mgl/MongolText
+         "Media ID *"
+         .style (m/TextStyle
+                 .fontFamily font-family
+                 .fontSize 14
+                 .fontWeight m.FontWeight/bold))
+        (m/SizedBox .width 8)
+        (mgl/MongolTextField
+         .controller media-id-controller
+         .decoration (m/InputDecoration
+                      .hintText "Enter media ID"
+                      .border (m/OutlineInputBorder))
+         .style (m/TextStyle
+                 .fontFamily font-family))
+        (m/SizedBox .width 16)
+        (mgl/MongolText
+         "Sequence"
+         .style (m/TextStyle
+                 .fontFamily font-family
+                 .fontSize 14
+                 .fontWeight m.FontWeight/bold))
+        (m/SizedBox .width 8)
+        (mgl/MongolTextField
+         .controller sequence-controller
+         .keyboardType m.TextInputType/number
+         .decoration (m/InputDecoration
+                      .hintText "Enter sequence number"
+                      .border (m/OutlineInputBorder))
+         .style (m/TextStyle
+                 .fontFamily font-family))
+        (m/SizedBox .width 16)
+        (mgl/MongolText
+         "Price"
+         .style (m/TextStyle
+                 .fontFamily font-family
+                 .fontSize 14
+                 .fontWeight m.FontWeight/bold))
+        (m/SizedBox .width 8)
+        (mgl/MongolTextField
+         .controller price-controller
+        ;;  .keyboardType m.TextInputType/numberWithOptions .decimal true
+         .decoration (m/InputDecoration
+                      .hintText "Enter price"
+                      .border (m/OutlineInputBorder))
+         .style (m/TextStyle
+                 .fontFamily font-family))
+        (m/SizedBox .width 32)
+        (m/Row
+         .mainAxisAlignment m.MainAxisAlignment/end
+         .children
+         [(mgl/MongolTextButton
+           .child (mgl/MongolText "Cancel")
+           .onPressed (fn []
+                        (episode-state/reset-state)
+                        (nav/navigator-pop navigator)))
+          (m/SizedBox .width 16)
+          (mgl/MongolElevatedButton
+           .child (if loading
+                    (m/SizedBox
+                     .width 20
+                     .height 20
+                     .child (m/CircularProgressIndicator
+                             .strokeWidth 2
+                             .valueColor (m/AlwaysStoppedAnimation m/Colors.white)))
+                    (mgl/MongolText "Create"))
+           .onPressed (fn []
+                        (when (not loading)
+                          (let [title (.-text title-controller)
+                                duration-str (.-text duration-controller)
+                                media-id (.-text media-id-controller)
+                                sequence-str (.-text sequence-controller)
+                                price-str (.-text price-controller)]
+                            (cond
+                              (empty? title)
+                              (swap! episode-state/episode-state assoc :error "Title is required")
+                              
+                              (empty? duration-str)
+                              (swap! episode-state/episode-state assoc :error "Duration is required")
+                              
+                              (empty? media-id)
+                              (swap! episode-state/episode-state assoc :error "Media ID is required")
+                              
+                              :else
+                              (do
+                                (swap! episode-state/episode-state assoc :loading true)
+                                (swap! episode-state/episode-state assoc :error nil)
+                                (let [duration (int/parse duration-str) 
+                                      episode-data (cond-> {"title" title
+                                                            "duration" duration
+                                                            "media_id" media-id}
+                                                     (not (empty? sequence-str))
+                                                     (assoc "sequence" (int/parse sequence-str))
+                                                     (not (empty? price-str))
+                                                     (assoc "price" (double/parse price-str)))]
+                                  (dart:core/print (str "Episode data: " episode-data))
+                                  (episode-service/create-episode navigator album-id episode-data))))))))])]))))

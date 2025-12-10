@@ -79,7 +79,8 @@
    :profile "/profile"
    :player "/player"
    :album-detail "/album-detail"
-   :album-form "/album-form"})
+   :album-form "/album-form"
+   :episode-form "/episode-form"})
 
 ;; Convenience function: get route name
 (defn get-route
