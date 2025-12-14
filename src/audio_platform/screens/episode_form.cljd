@@ -99,7 +99,7 @@
                  .fontSize 14
                  .fontWeight m.FontWeight/bold))
         (m/SizedBox .width 8)
-        (m/Column
+        (m/Row
          .crossAxisAlignment m.CrossAxisAlignment/start
          .children
          [(mgl/MongolElevatedButton

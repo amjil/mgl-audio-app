@@ -6,89 +6,151 @@
    [virtual-keyboard.keyboard :as keyboard]
    [audio-platform.state :as state]
    [audio-platform.states.font :as font-state]
-   [audio-platform.utils.format :as format]
    [audio-platform.services.search :as search-service]
    [audio-platform.states.search :as search-state]
-   [audio-platform.utils.navigator :as nav]))
+   [audio-platform.utils.navigator :as nav]
+   [audio-platform.widgets.cards :as cards]
+   [audio-platform.services.album :as album-service]))
 
-(defn episode-card [episode on-tap]
+(defn category-item [_type label count selected? on-tap]
   (f/widget
    :context _context
    :watch [_font-state font-state/font-state]
    :let [font-family (font-state/get-app-font-family)]
-   (m/Card
-    .margin (m.EdgeInsets/symmetric .horizontal 8 .vertical 4)
-    .child (m/InkWell
-            .onTap on-tap
-            .child (m/Padding
-                    .padding (m.EdgeInsets/all 12)
-                    .child (m/Row
-                            .children
-                            [(m/Expanded
-                              .child (m/Column
-                                      .crossAxisAlignment m.CrossAxisAlignment/start
-                                      .children
-                                      [(mgl/MongolText
-                                        (get episode "title" "Unknown Title")
-                                        .style (m/TextStyle
-                                                .fontFamily font-family
-                                                .fontSize 16
-                                                .fontWeight m.FontWeight/bold))
-                                       (m/SizedBox .height 4)
-                                       (mgl/MongolText
-                                        (format/format-duration (get episode "duration" 0))
-                                        .style (m/TextStyle
-                                                .fontFamily font-family
-                                                .color m/Colors.grey.shade600
-                                                .fontSize 12))]))
-                             (m/IconButton
-                              .icon (m/Icon m.Icons/play_circle_outline)
-                              .onPressed on-tap)]))))))
+   (m/InkWell
+    .onTap on-tap
+    .child (m/Container
+            .padding (m.EdgeInsets/all 4)
+            .decoration (m/BoxDecoration
+                         .color (if selected?
+                                  (-> m/Theme (.of _context) .-colorScheme .-primaryContainer)
+                                  m/Colors.transparent)
+                         .borderRadius (m.BorderRadius/circular 8))
+            .child (m/Column
+                    .crossAxisAlignment m.CrossAxisAlignment/start
+                    .children
+                    [(mgl/MongolText
+                      label
+                      .style (m/TextStyle
+                              .fontFamily font-family
+                              .fontSize 16
+                              .fontWeight (if selected? m.FontWeight/bold m.FontWeight/normal)
+                              .color (if selected?
+                                       (-> m/Theme (.of _context) .-colorScheme .-onPrimaryContainer)
+                                       (-> m/Theme (.of _context) .-colorScheme .-onSurface))))
+                     (m/SizedBox .height 4)
+                     (mgl/MongolText
+                      (str "(" count ")")
+                      .style (m/TextStyle
+                              .fontFamily font-family
+                              .fontSize 12
+                              .color (if selected?
+                                       (-> m/Theme (.of _context) .-colorScheme .-onPrimaryContainer)
+                                       m/Colors.grey.shade600)))])))))
+
+(defn search-results-list [results _selected-type]
+  (f/widget
+   :get [m/Navigator]
+   :watch [_font-state font-state/font-state]
+   :let [font-family (font-state/get-app-font-family)]
+   (cond
+     (empty? results)
+     (m/Center
+      .child (m/Column
+              .mainAxisAlignment m.MainAxisAlignment/center
+              .children
+              [(m/Icon m.Icons/search_off
+                       .size 64
+                       .color m/Colors.grey.shade400)
+               (m/SizedBox .height 16)
+               (mgl/MongolText
+                "No results found"
+                .style (m/TextStyle
+                        .fontFamily font-family
+                        .color m/Colors.grey.shade600))]))
+     
+     :else
+     (m/ListView.builder
+      .itemCount (count results)
+      .itemBuilder (fn [_ index]
+                     (let [item (nth results index)
+                           item-type (get item "type")
+                           on-tap (fn []
+                                    (case item-type
+                                      "album"
+                                      (do
+                                        (album-service/prefill-category-from-album-id (get item "id"))
+                                        (nav/push-route-with-arguments navigator
+                                                                       :album-detail
+                                                                       {"album_id" (get item "id")}))
+                                      "episode"
+                                      (state/set-current-episode item)
+                                      "creator"
+                                      (dart:core/print (str "Creator tapped:" (get item "id")))
+                                      (dart:core/print (str "Unknown type:" item-type))))]
+                       (case item-type
+                         "album"
+                         (cards/album-card item on-tap)
+                         "episode"
+                         (cards/episode-card item on-tap)
+                         "creator"
+                         (cards/feed-card item on-tap)
+                         (cards/feed-card item on-tap))))))))
 
 (defn search-results-panel []
   (f/widget
    :watch [{loading :loading
-            results :results
+            albums :albums
+            episodes :episodes
+            creators :creators
+            selected-type :selected-type
             query :query} search-state/search-state]
-   :let [font-family (font-state/get-app-font-family)]
-   (if loading
+   :let [font-family (font-state/get-app-font-family)
+         current-results (case selected-type
+                           "albums" albums
+                           "episodes" episodes
+                           "creators" creators
+                           albums)]
+   (cond
+     loading
      (m/Center
       .child (m/CircularProgressIndicator))
-     (if-not (empty? query)
-       (if (empty? results)
-         (m/Center
-          .child (m/Column
-                  .mainAxisAlignment m.MainAxisAlignment/center
-                  .children
-                  [(m/Icon m.Icons/search_off
-                           .size 64
-                           .color m/Colors.grey.shade400)
-                   (m/SizedBox .height 16)
-                   (mgl/MongolText
-                    "No results found"
-                    .style (m/TextStyle
-                            .fontFamily font-family
-                            .color m/Colors.grey.shade600))]))
-         (m/ListView
-          .children (map (fn [episode]
-                           (episode-card episode
-                                         (fn []
-                                           (state/set-current-episode episode)
-                                           (dart:core/print (str "Episode tapped:" (get episode "id"))))))
-                         results)))
-       (m/Center
+     
+     (empty? query)
+     (m/Center
+      .child (m/Column
+              .mainAxisAlignment m.MainAxisAlignment/center
+              .children
+              [(m/Icon m.Icons/search
+                       .size 64
+                       .color m/Colors.grey.shade400)
+               (m/SizedBox .height 16)
+               (mgl/MongolText
+                "Enter keywords to search audio content"
+                .style (m/TextStyle
+                        .fontFamily font-family
+                        .color m/Colors.grey.shade600))]))
+     
+     :else
+     (m/Row
+      .crossAxisAlignment m.CrossAxisAlignment/stretch
+      .children
+      [(m/Container
+        .decoration (m/BoxDecoration
+                     .border (m/Border
+                              .right (m/BorderSide
+                                      .color m/Colors.grey.shade300
+                                      .width 1)))
         .child (m/Column
-                .mainAxisAlignment m.MainAxisAlignment/center
                 .children
-                [(m/Icon m.Icons/search
-                         .size 64
-                         .color m/Colors.grey.shade400)
-                 (m/SizedBox .height 16)
-                 (mgl/MongolText
-                  "Enter keywords to search audio content"
-                  .style (m/TextStyle
-                          .fontFamily font-family
-                          .color m/Colors.grey.shade600))]))))))
+                [(category-item "albums" "Albums" (count albums) (= selected-type "albums")
+                                (fn [] (search-state/set-selected-type "albums")))
+                 (category-item "episodes" "Episodes" (count episodes) (= selected-type "episodes")
+                                (fn [] (search-state/set-selected-type "episodes")))
+                 (category-item "creators" "Creators" (count creators) (= selected-type "creators")
+                                (fn [] (search-state/set-selected-type "creators")))]))
+       (m/Expanded
+        .child (search-results-list current-results selected-type))]))))
 
 (defn ^m/Widget search-page [_context]
   (f/widget
@@ -114,7 +176,7 @@
                 .crossAxisAlignment m.CrossAxisAlignment/stretch
                 .children
                 [(m/Container
-                  .margin (m.EdgeInsets/only .right 12 .bottom 12)
+                  .margin (m.EdgeInsets/only .right 4 .bottom 12)
                   .padding (m.EdgeInsets/all 12)
                   .decoration (m/BoxDecoration
                                .border (m.Border/all)
@@ -136,4 +198,3 @@
                   .child (search-results-panel))])
                (keyboard/candidates nil)]))
      (keyboard/keyboard {:custom-fns {}})])))
-

@@ -15,11 +15,19 @@
           (-> (api/search token query :page page :limit limit :tag tag :sort sort)
               (.then (fn [response]
                        (dart:core/print (str "Search response: " response))
-                       (swap! search-state/search-state assoc :results (get response "items" []))
-                       (let [next-query (:pending-query @search-state/search-state)]
-                         (swap! search-state/search-state assoc :loading false :pending-query nil)
-                         (when (and next-query (not= next-query query))
-                           (search next-query)))))
+                       ;; Extract albums, episodes, and creators from response
+                       (let [albums (get response "albums" [])
+                             episodes (get response "episodes" [])
+                             creators (get response "creators" [])
+                             ;; Convert Dart Maps to Clojure maps and add type field
+                             albums-with-type (map (fn [album] (merge (into {} album) {"type" "album"})) albums)
+                             episodes-with-type (map (fn [episode] (merge (into {} episode) {"type" "episode"})) episodes)
+                             creators-with-type (map (fn [creator] (merge (into {} creator) {"type" "creator"})) creators)]
+                         (search-state/set-search-results albums-with-type episodes-with-type creators-with-type)
+                         (let [next-query (:pending-query @search-state/search-state)]
+                           (swap! search-state/search-state assoc :loading false :pending-query nil)
+                           (when (and next-query (not= next-query query))
+                             (search next-query))))))
               (.catchError (fn [err]
                              (swap! search-state/search-state assoc :error (str "Failed to search: " err))
                              (let [next-query (:pending-query @search-state/search-state)]
