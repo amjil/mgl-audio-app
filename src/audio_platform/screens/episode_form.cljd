@@ -12,7 +12,9 @@
 (defn ^m/Widget episode-form-page [_context]
   (let [episode (episode-state/get-episode)
         album (album-state/get-album)
-        album-id (get album "id")]
+        album-id (get album "id")
+        selected-file (atom nil)
+        uploading (atom false)]
     (f/widget
      :watch [_font-state font-state/font-state
              {error-msg :error
@@ -20,12 +22,9 @@
      :get [m/Navigator]
      :let [font-family (font-state/get-app-font-family)]
      :managed [title-controller (m/TextEditingController .text (if (some? episode) (get episode "title") ""))
-               duration-controller (m/TextEditingController .text (if (some? episode) (str (get episode "duration" 0)) ""))
                media-id-controller (m/TextEditingController .text "")
                sequence-controller (m/TextEditingController .text (if (some? episode) (str (or (get episode "sequence") "")) ""))
-               price-controller (m/TextEditingController .text (if (some? episode) (str (or (get episode "price") "")) ""))
-               selected-file (atom nil)
-               uploading (atom false)]
+               price-controller (m/TextEditingController .text (if (some? episode) (str (or (get episode "price") "")) ""))]
      (m/Scaffold
       .appBar (m/AppBar
                .leading (m/IconButton
@@ -72,22 +71,6 @@
          .controller title-controller
          .decoration (m/InputDecoration
                       .hintText "Enter episode title"
-                      .border (m/OutlineInputBorder))
-         .style (m/TextStyle
-                 .fontFamily font-family))
-        (m/SizedBox .width 16)
-        (mgl/MongolText
-         "Duration (seconds) *"
-         .style (m/TextStyle
-                 .fontFamily font-family
-                 .fontSize 14
-                 .fontWeight m.FontWeight/bold))
-        (m/SizedBox .width 8)
-        (mgl/MongolTextField
-         .controller duration-controller
-         .keyboardType m.TextInputType/number
-         .decoration (m/InputDecoration
-                      .hintText "Enter duration in seconds"
                       .border (m/OutlineInputBorder))
          .style (m/TextStyle
                  .fontFamily font-family))
@@ -191,16 +174,12 @@
            .onPressed (fn []
                         (when (and (not loading) (not @uploading))
                           (let [title (.-text title-controller)
-                                duration-str (.-text duration-controller)
                                 media-id (.-text media-id-controller)
                                 sequence-str (.-text sequence-controller)
                                 price-str (.-text price-controller)]
                             (cond
                               (empty? title)
                               (swap! episode-state/episode-state assoc :error "Title is required")
-                              
-                              (empty? duration-str)
-                              (swap! episode-state/episode-state assoc :error "Duration is required")
                               
                               (empty? media-id)
                               (swap! episode-state/episode-state assoc :error "Please upload an audio file first")
@@ -209,9 +188,7 @@
                               (do
                                 (swap! episode-state/episode-state assoc :loading true)
                                 (swap! episode-state/episode-state assoc :error nil)
-                                (let [duration (dart:core/int.parse duration-str) 
-                                      episode-data (cond-> {"title" title
-                                                            "duration" duration
+                                (let [episode-data (cond-> {"title" title
                                                             "media_id" media-id}
                                                      (not (empty? sequence-str))
                                                      (assoc "sequence" (dart:core/int.parse sequence-str))
