@@ -94,7 +94,7 @@
                          "episode"
                          (cards/episode-card item on-tap)
                          "creator"
-                         (cards/feed-card item on-tap)
+                         (cards/creator-card item on-tap)
                          (cards/feed-card item on-tap))))))))
 
 (defn search-results-panel []
