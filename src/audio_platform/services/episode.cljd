@@ -1,5 +1,8 @@
 (ns audio-platform.services.episode
   (:require
+   ["package:file_picker/file_picker.dart" :as file-picker]
+   ["package:http/http.dart" :as http]
+   ["dart:io" :as io]
    [audio-platform.services.api :as api]
    [audio-platform.state :as state]
    [audio-platform.states.episode :as episode-state]
@@ -53,3 +56,50 @@
                      (dart:core/print (str "Error deleting episode: " err))
                      (swap! episode-state/episode-state assoc :error (str "Failed to delete episode: " err))
                      (swap! episode-state/episode-state assoc :loading false)))))
+
+;; Upload an audio file. Returns a Promise that resolves with {:media-id media-id :file-info {:path path :name name :size size}} or rejects with an error.
+(defn upload-audio-file []
+  (-> (file-picker/FilePicker.platform.pickFiles
+       .type file-picker.FileType/audio
+       .allowMultiple false)
+      (.then (fn [result]
+               (if (and (some? result) (some? (.-files result)) (> (count (.-files result)) 0))
+                 (let [file (first (.-files result))
+                       file-path (.-path file)
+                       file-name (.-name file)
+                       file-size (.-size file)]
+                   ;; Create upload session
+                   (-> (api/create-upload-session (state/get-token) file-name :file-size file-size)
+                       (.then (fn [session-data]
+                                (let [media-id (get session-data "media_id")
+                                      presigned-url (get session-data "presigned_url")]
+                                  ;; Upload file to S3
+                                  (let [file (io/File file-path)]
+                                    (-> (.readAsBytes file)
+                                        (.then (fn [file-bytes]
+                                                 (let [request (http/put (dart:core/Uri.parse presigned-url)
+                                                                        .body file-bytes
+                                                                        .headers {"Content-Type" "audio/mpeg"})]
+                                                   (-> request
+                                                       (.then (fn [response]
+                                                                (let [status-code (.-statusCode response)]
+                                                                  (if (and (>= status-code 200) (< status-code 300))
+                                                                    ;; Mark upload as complete
+                                                                    (-> (api/mark-upload-complete (state/get-token) media-id :file-size file-size)
+                                                                        (.then (fn [_]
+                                                                                {:media-id media-id
+                                                                                 :file-info {:path file-path
+                                                                                            :name file-name
+                                                                                            :size file-size}}))
+                                                                        (.catchError (fn [err]
+                                                                                     (throw (dart:core/Exception (str "Failed to complete upload: " err))))))
+                                                                    (throw (dart:core/Exception (str "Failed to upload file: HTTP " status-code))))))))
+                                                       (.catchError (fn [err]
+                                                                    (throw (dart:core/Exception (str "Failed to upload file: " err)))))))))
+                                        (.catchError (fn [err]
+                                                     (throw (dart:core/Exception (str "Failed to read file: " err)))))))))
+                       (.catchError (fn [err]
+                                      (throw (dart:core/Exception (str "Failed to create upload session: " err)))))))
+                 (throw (dart:core/Exception "No file selected")))))
+      (.catchError (fn [err]
+                     (throw (dart:core/Exception (str "File picker error: " err)))))))

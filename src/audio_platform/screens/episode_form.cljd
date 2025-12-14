@@ -12,29 +12,27 @@
 (defn ^m/Widget episode-form-page [_context]
   (let [episode (episode-state/get-episode)
         album (album-state/get-album)
-        album-id (get album "id")
-        is-edit (some? episode)]
+        album-id (get album "id")]
     (f/widget
      :watch [_font-state font-state/font-state
              {error-msg :error
               loading :loading} episode-state/episode-state]
-     :context ctx
      :get [m/Navigator]
      :let [font-family (font-state/get-app-font-family)]
      :managed [title-controller (m/TextEditingController .text (if (some? episode) (get episode "title") ""))
                duration-controller (m/TextEditingController .text (if (some? episode) (str (get episode "duration" 0)) ""))
                media-id-controller (m/TextEditingController .text "")
                sequence-controller (m/TextEditingController .text (if (some? episode) (str (or (get episode "sequence") "")) ""))
-               price-controller (m/TextEditingController .text (if (some? episode) (str (or (get episode "price") "")) ""))]
+               price-controller (m/TextEditingController .text (if (some? episode) (str (or (get episode "price") "")) ""))
+               selected-file (atom nil)
+               uploading (atom false)]
      (m/Scaffold
       .appBar (m/AppBar
                .leading (m/IconButton
                          .icon (m/Icon m.Icons/arrow_back)
                          .onPressed (fn []
                                       (episode-state/reset-state)
-                                      (nav/navigator-pop navigator)))
-               .title (mgl/MongolText (if is-edit "Edit Episode" "Create Episode")
-                                      .style (m/TextStyle .fontFamily font-family))))
+                                      (nav/navigator-pop navigator)))))
       .body
       (m/SafeArea)
       (m/SingleChildScrollView
@@ -95,19 +93,50 @@
                  .fontFamily font-family))
         (m/SizedBox .width 16)
         (mgl/MongolText
-         "Media ID *"
+         "Audio File *"
          .style (m/TextStyle
                  .fontFamily font-family
                  .fontSize 14
                  .fontWeight m.FontWeight/bold))
         (m/SizedBox .width 8)
-        (mgl/MongolTextField
-         .controller media-id-controller
-         .decoration (m/InputDecoration
-                      .hintText "Enter media ID"
-                      .border (m/OutlineInputBorder))
-         .style (m/TextStyle
-                 .fontFamily font-family))
+        (m/Column
+         .crossAxisAlignment m.CrossAxisAlignment/start
+         .children
+         [(mgl/MongolElevatedButton
+           .child (mgl/MongolText (if @uploading "Uploading..." "Select Audio File"))
+           .onPressed (fn []
+                       (when (not @uploading)
+                         (reset! uploading true)
+                         (swap! episode-state/episode-state assoc :error nil)
+                         (-> (episode-service/upload-audio-file)
+                             (.then (fn [result]
+                                     (let [media-id (:media-id result)
+                                           file-info (:file-info result)]
+                                       (set! (.-text media-id-controller) media-id)
+                                       (reset! selected-file file-info)
+                                       (reset! uploading false)
+                                       (swap! episode-state/episode-state assoc :error nil))))
+                             (.catchError (fn [err]
+                                           (reset! uploading false)
+                                           (swap! episode-state/episode-state assoc :error (str "Upload failed: " err))))))))
+          (m/SizedBox .height 8)
+          (if (some? @selected-file)
+            (mgl/MongolText
+             (str "Selected: " (:name @selected-file))
+             .style (m/TextStyle
+                     .fontFamily font-family
+                     .fontSize 12
+                     .color m/Colors.green))
+            (m/SizedBox))
+          (m/SizedBox .height 8)
+          (mgl/MongolTextField
+           .controller media-id-controller
+           .decoration (m/InputDecoration
+                        .hintText "Media ID (auto-filled after upload)"
+                        .border (m/OutlineInputBorder)
+                        .enabled (not @uploading))
+           .style (m/TextStyle
+                   .fontFamily font-family))])
         (m/SizedBox .width 16)
         (mgl/MongolText
          "Sequence"
@@ -160,7 +189,7 @@
                              .valueColor (m/AlwaysStoppedAnimation m/Colors.white)))
                     (mgl/MongolText "Create"))
            .onPressed (fn []
-                        (when (not loading)
+                        (when (and (not loading) (not @uploading))
                           (let [title (.-text title-controller)
                                 duration-str (.-text duration-controller)
                                 media-id (.-text media-id-controller)
@@ -174,19 +203,19 @@
                               (swap! episode-state/episode-state assoc :error "Duration is required")
                               
                               (empty? media-id)
-                              (swap! episode-state/episode-state assoc :error "Media ID is required")
+                              (swap! episode-state/episode-state assoc :error "Please upload an audio file first")
                               
                               :else
                               (do
                                 (swap! episode-state/episode-state assoc :loading true)
                                 (swap! episode-state/episode-state assoc :error nil)
-                                (let [duration (int/parse duration-str) 
+                                (let [duration (dart:core/int.parse duration-str) 
                                       episode-data (cond-> {"title" title
                                                             "duration" duration
                                                             "media_id" media-id}
                                                      (not (empty? sequence-str))
-                                                     (assoc "sequence" (int/parse sequence-str))
+                                                     (assoc "sequence" (dart:core/int.parse sequence-str))
                                                      (not (empty? price-str))
-                                                     (assoc "price" (double/parse price-str)))]
+                                                     (assoc "price" (dart:core/double.parse price-str)))]
                                   (dart:core/print (str "Episode data: " episode-data))
                                   (episode-service/create-episode navigator album-id episode-data))))))))])]))))
