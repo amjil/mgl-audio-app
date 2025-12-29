@@ -1,12 +1,18 @@
 (ns audio-platform.services.album
   (:require
    [audio-platform.services.api :as api]
+   [audio-platform.services.media :as media]
    [audio-platform.state :as state]
    [audio-platform.states.album :as album-state]
    [audio-platform.states.episode :as episode-state]
    [audio-platform.states.category :as category-state]
    [audio-platform.utils.navigator :as nav]))
    
+(defn upload-cover-image [& {:keys [on-progress]}]
+  (media/pick-and-upload-file
+   :type :image
+   :on-progress on-progress))
+
 (defn get-album [album-id]
   (swap! album-state/album-state assoc :loading true :error nil)
   (-> (api/get-album (state/get-token) album-id)

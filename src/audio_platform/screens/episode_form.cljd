@@ -14,7 +14,8 @@
         album (album-state/get-album)
         album-id (get album "id")
         selected-file (atom nil)
-        uploading (atom false)]
+        uploading (atom false)
+        upload-progress (atom 0.0)]
     (f/widget
      :watch [_font-state font-state/font-state
              {error-msg :error
@@ -85,12 +86,16 @@
          .crossAxisAlignment m.CrossAxisAlignment/start
          .children
          [(mgl/MongolElevatedButton
-           .child (mgl/MongolText (if @uploading "Uploading..." "Select Audio File"))
+           .child (mgl/MongolText (if @uploading 
+                                    (str "Uploading... " (int (* @upload-progress 100)) "%") 
+                                    "Select Audio File"))
            .onPressed (fn []
                        (when (not @uploading)
                          (reset! uploading true)
+                         (reset! upload-progress 0.0)
                          (swap! episode-state/episode-state assoc :error nil)
-                         (-> (episode-service/upload-audio-file)
+                         (-> (episode-service/upload-audio-file 
+                              :on-progress (fn [p] (reset! upload-progress p)))
                              (.then (fn [result]
                                      (let [media-id (:media-id result)
                                            file-info (:file-info result)]
@@ -101,6 +106,13 @@
                              (.catchError (fn [err]
                                            (reset! uploading false)
                                            (swap! episode-state/episode-state assoc :error (str "Upload failed: " err))))))))
+          (m/SizedBox .height 8)
+          (if @uploading
+            (m/SizedBox
+             .height 100
+             .child (m/LinearProgressIndicator
+                     .value @upload-progress))
+            (m/SizedBox))
           (m/SizedBox .height 8)
           (if (some? @selected-file)
             (mgl/MongolText

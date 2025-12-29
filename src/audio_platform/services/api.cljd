@@ -7,8 +7,6 @@
 
 (def base-url "http://100.64.0.6:8080/api/v1")
 
-(declare refresh-token)
-
 (defn get-auth-header [token]
   (if (and (some? token) (not (empty? token)))
     {"Authorization" (str "Bearer " token)}
@@ -73,6 +71,14 @@
                    :else
                    (throw (dart:core/Exception (str "HTTP Error " status-code ": " body)))))))))
 
+(defn refresh-token [refresh-token]
+  (let [url (str base-url "/auth/refresh")
+        body (convert/jsonEncode {"refresh_token" refresh-token})
+        response (http/post (dart:core/Uri.parse url)
+                            .headers {"Content-Type" "application/json"}
+                            .body body)]
+    (handle-response response)))
+
 ;; Helper function to automatically refresh token on 401 and retry
 ;; Takes an API function that accepts a token and returns a Promise
 (defn with-auto-refresh [api-fn & args]
@@ -119,14 +125,6 @@
   (let [url (str base-url "/auth/login")
         body (convert/jsonEncode {"username" username
                                   "password" password})
-        response (http/post (dart:core/Uri.parse url)
-                            .headers {"Content-Type" "application/json"}
-                            .body body)]
-    (handle-response response)))
-
-(defn refresh-token [refresh-token]
-  (let [url (str base-url "/auth/refresh")
-        body (convert/jsonEncode {"refresh_token" refresh-token})
         response (http/post (dart:core/Uri.parse url)
                             .headers {"Content-Type" "application/json"}
                             .body body)]
@@ -903,4 +901,3 @@
                                          {"Content-Type" "application/json"})
                           .body body)]
     (handle-response response)))
-

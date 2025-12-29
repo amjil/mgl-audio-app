@@ -23,7 +23,9 @@
      :let [font-family (font-state/get-app-font-family)]
      :managed [title-controller (m/TextEditingController .text (if (some? album) (get album "title") ""))
                description-controller (m/TextEditingController .text (if (some? album) (get album "description") ""))
-               cover-url-controller (m/TextEditingController .text (if (some? album) (get album "cover_url") ""))]
+               cover-url-controller (m/TextEditingController .text (if (some? album) (get album "cover_url") ""))
+               uploading-cover (atom false)
+               upload-progress (atom 0.0)]
      (m/Scaffold
       .appBar (m/AppBar
                .leading (m/IconButton
@@ -97,13 +99,32 @@
                 .fontSize 14
                 .fontWeight m.FontWeight/bold))
        (m/SizedBox .width 8)
-       (mgl/MongolTextField
-        .controller cover-url-controller
-        .decoration (m/InputDecoration
-                     .hintText "Enter cover image URL"
-                     .border (m/OutlineInputBorder))
-        .style (m/TextStyle
-                .fontFamily font-family))
+       (m/Row
+        .crossAxisAlignment m.CrossAxisAlignment/start
+        .children
+        [(mgl/MongolTextField
+          .controller cover-url-controller
+          .decoration (m/InputDecoration
+                       .hintText "Enter cover image URL"
+                       .border (m/OutlineInputBorder))
+          .style (m/TextStyle
+                  .fontFamily font-family))
+         (m/SizedBox .width 8)
+         (mgl/MongolElevatedButton
+          .child (mgl/MongolText (if @uploading-cover
+                                   (str "Uploading... " (int (* @upload-progress 100)) "%")
+                                   "Upload Image"))
+          .onPressed (fn []
+                       (when (not @uploading-cover)
+                         (reset! uploading-cover true)
+                         (reset! upload-progress 0.0)
+                         (-> (album-service/upload-cover-image :on-progress (fn [p] (reset! upload-progress p)))
+                             (.then (fn [result]
+                                      (set! (.-text cover-url-controller) (:url result))
+                                      (reset! uploading-cover false)))
+                             (.catchError (fn [err]
+                                            (reset! uploading-cover false)
+                                            (swap! album-state/album-state assoc :error (str "Image upload failed: " err))))))))])
        (m/SizedBox .width 16)
        (mgl/MongolText
         "Category"
