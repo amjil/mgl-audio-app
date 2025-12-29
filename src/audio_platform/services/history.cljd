@@ -1,0 +1,16 @@
+(ns audio-platform.services.history
+  (:require [audio-platform.services.api :as api]
+            [audio-platform.state :as state]
+            [audio-platform.states.history :as history-state]))
+
+(defn fetch-history []
+  (history-state/set-loading true)
+  (let [token (state/get-token)]
+    (-> (api/get-history token)
+        (.then (fn [history]
+                 (history-state/set-history history)
+                 (history-state/set-loading false)))
+        (.catchError (fn [err]
+                       (dart:core/print (str "Error fetching history: " err))
+                       (history-state/set-loading false))))))
+

@@ -20,7 +20,10 @@
    [audio-platform.screens.album-detail :as album-detail]
    [audio-platform.screens.episode-detail :as episode-detail]
    [audio-platform.screens.album-form :as album-form]
-   [audio-platform.screens.episode-form :as episode-form]))
+   [audio-platform.screens.episode-form :as episode-form]
+   [audio-platform.screens.favorites :as favorites]
+   [audio-platform.screens.history :as history]
+   [audio-platform.screens.playlists :as playlists]))
 
 (defn ^:async main []
   ;; Ensure Flutter binding is initialized
@@ -69,5 +72,8 @@
               "/album-detail" album-detail/album-detail-page
               "/episode-detail" episode-detail/episode-detail-page
               "/album-form" album-form/album-form-page
-              "/episode-form" episode-form/episode-form-page}))))
+              "/episode-form" episode-form/episode-form-page
+              "/favorites" favorites/favorites-page
+              "/history" history/history-page
+              "/playlists" playlists/playlists-page}))))
     

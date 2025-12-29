@@ -1,0 +1,86 @@
+(ns audio-platform.screens.favorites
+  (:require
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [cljd.flutter :as f]
+   [audio-platform.state :as state]
+   [audio-platform.states.font :as font-state]
+   [audio-platform.states.favorites :as favorites-state]
+   [audio-platform.services.favorites :as favorites-service]
+   [audio-platform.utils.navigator :as nav]
+   [audio-platform.widgets.cards :as cards]
+   [audio-platform.services.album :as album-service]))
+
+(defn- tab-item [label selected? on-tap]
+  (f/widget
+   :watch [_font-state font-state/font-state]
+   :let [font-family (font-state/get-app-font-family)]
+   (m/InkWell
+    .onTap on-tap
+    .child (m/Container
+            .padding (m.EdgeInsets/all 12)
+            .decoration (m/BoxDecoration
+                         .border (when selected?
+                                   (m/Border .bottom (m/BorderSide .color m/Colors.blue .width 2))))
+            .child (mgl/MongolText
+                    label
+                    .style (m/TextStyle
+                            .fontFamily font-family
+                            .fontSize 18
+                            .fontWeight (if selected? m.FontWeight/bold m.FontWeight/normal)
+                            .color (if selected? m/Colors.blue m/Colors.grey)))))))
+
+(defn ^m/Widget favorites-page [_context]
+  (f/widget
+   :get [m/Navigator]
+   :watch [{loading :loading
+            episodes :episodes
+            albums :albums
+            selected-tab :selected-tab} favorites-state/favorites-state
+           _font-state font-state/font-state]
+   :let [font-family (font-state/get-app-font-family)]
+   :init (favorites-service/fetch-favorites)
+   (m/Scaffold
+    .appBar (m/AppBar
+             .title (mgl/MongolText "Favorites" .style (m/TextStyle .fontFamily font-family))
+             .leading (m/IconButton
+                       .icon (m/Icon m.Icons/arrow_back)
+                       .onPressed (fn [] (nav/navigator-pop navigator))))
+    .body
+    (if loading
+      (m/Center .child (m/CircularProgressIndicator))
+      (m/Row
+       .children
+       [(m/Container
+         .width 60
+         .decoration (m/BoxDecoration
+                      .border (m/Border .right (m/BorderSide .color m/Colors.grey.shade300)))
+         .child (m/Column
+                 .children
+                 [(tab-item "Episodes" (= selected-tab :episodes)
+                            (fn [] (favorites-state/set-selected-tab :episodes)))
+                  (tab-item "Albums" (= selected-tab :albums)
+                            (fn [] (favorites-state/set-selected-tab :albums)))]))
+        (m/Expanded
+         .child
+         (let [items (if (= selected-tab :episodes) episodes albums)]
+           (if (empty? items)
+             (m/Center .child (mgl/MongolText "No favorites yet" .style (m/TextStyle .fontFamily font-family)))
+             (m/ListView.builder
+              .scrollDirection m.Axis/horizontal
+              .itemCount (count items)
+              .itemBuilder (fn [_ index]
+                             (let [item (nth items index)]
+                               (if (= selected-tab :episodes)
+                                 (cards/episode-card item
+                                                     (fn []
+                                                       (state/set-current-episode item)
+                                                       (nav/push-route navigator :player)))
+                                 (cards/album-card item
+                                                   (fn []
+                                                     (album-service/prefill-category-from-album-id (get item "id"))
+                                                     (nav/push-route-with-arguments navigator
+                                                                                    :album-detail
+                                                                                    {"album_id" (get item "id")})))))
+                             )))))])))))
+

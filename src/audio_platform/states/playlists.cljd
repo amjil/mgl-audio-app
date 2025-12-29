@@ -1,0 +1,16 @@
+(ns audio-platform.states.playlists)
+
+(def playlists-state
+  (atom {:loading false
+         :playlists []
+         :selected-playlist nil}))
+
+(defn set-loading [loading]
+  (swap! playlists-state assoc :loading loading))
+
+(defn set-playlists [playlists]
+  (swap! playlists-state assoc :playlists playlists))
+
+(defn set-selected-playlist [playlist]
+  (swap! playlists-state assoc :selected-playlist playlist))
+

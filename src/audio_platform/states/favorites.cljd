@@ -1,0 +1,17 @@
+(ns audio-platform.states.favorites)
+
+(def favorites-state
+  (atom {:loading false
+         :episodes []
+         :albums []
+         :selected-tab :episodes}))
+
+(defn set-loading [loading]
+  (swap! favorites-state assoc :loading loading))
+
+(defn set-favorites [episodes albums]
+  (swap! favorites-state assoc :episodes episodes :albums albums))
+
+(defn set-selected-tab [tab]
+  (swap! favorites-state assoc :selected-tab tab))
+

@@ -1,0 +1,12 @@
+(ns audio-platform.states.history)
+
+(def history-state
+  (atom {:loading false
+         :history []}))
+
+(defn set-loading [loading]
+  (swap! history-state assoc :loading loading))
+
+(defn set-history [history]
+  (swap! history-state assoc :history history))
+

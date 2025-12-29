@@ -1,0 +1,27 @@
+(ns audio-platform.services.playlists
+  (:require [audio-platform.services.api :as api]
+            [audio-platform.state :as state]
+            [audio-platform.states.playlists :as playlists-state]))
+
+(defn fetch-playlists []
+  (playlists-state/set-loading true)
+  (let [token (state/get-token)]
+    (-> (api/get-playlists token)
+        (.then (fn [playlists]
+                 (playlists-state/set-playlists playlists)
+                 (playlists-state/set-loading false)))
+        (.catchError (fn [err]
+                       (dart:core/print (str "Error fetching playlists: " err))
+                       (playlists-state/set-loading false))))))
+
+(defn fetch-playlist [playlist-id]
+  (playlists-state/set-loading true)
+  (let [token (state/get-token)]
+    (-> (api/get-playlist token playlist-id)
+        (.then (fn [playlist]
+                 (playlists-state/set-selected-playlist playlist)
+                 (playlists-state/set-loading false)))
+        (.catchError (fn [err]
+                       (dart:core/print (str "Error fetching playlist: " err))
+                       (playlists-state/set-loading false))))))
+

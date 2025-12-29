@@ -80,7 +80,10 @@
    :player "/player"
    :album-detail "/album-detail"
    :album-form "/album-form"
-   :episode-form "/episode-form"})
+   :episode-form "/episode-form"
+   :favorites "/favorites"
+   :history "/history"
+   :playlists "/playlists"})
 
 ;; Convenience function: get route name
 (defn get-route

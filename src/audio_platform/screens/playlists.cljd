@@ -1,0 +1,88 @@
+(ns audio-platform.screens.playlists
+  (:require
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [cljd.flutter :as f]
+   [audio-platform.state :as state]
+   [audio-platform.states.font :as font-state]
+   [audio-platform.states.playlists :as playlists-state]
+   [audio-platform.services.playlists :as playlists-service]
+   [audio-platform.utils.navigator :as nav]
+   [audio-platform.widgets.cards :as cards]))
+
+(defn- playlist-item [playlist on-tap]
+  (f/widget
+   :watch [_font-state font-state/font-state]
+   :let [font-family (font-state/get-app-font-family)]
+   (m/Card
+    .margin (m.EdgeInsets/all 8)
+    .child (m/InkWell
+            .onTap on-tap
+            .child (m/Padding
+                    .padding (m.EdgeInsets/all 12)
+                    .child (m/Column
+                            .crossAxisAlignment m.CrossAxisAlignment/start
+                            .children
+                            [(mgl/MongolText
+                              (get playlist "title" "Untitled Playlist")
+                              .style (m/TextStyle
+                                      .fontFamily font-family
+                                      .fontSize 18
+                                      .fontWeight m.FontWeight/bold))
+                             (m/SizedBox .height 8)
+                             (mgl/MongolText
+                              (or (get playlist "description") "No description")
+                              .style (m/TextStyle
+                                      .fontFamily font-family
+                                      .color m/Colors.grey.shade600
+                                      .fontSize 14))]))))))
+
+(defn ^m/Widget playlists-page [_context]
+  (f/widget
+   :get [m/Navigator]
+   :watch [{loading :loading
+            playlists :playlists
+            selected-playlist :selected-playlist} playlists-state/playlists-state
+           _font-state font-state/font-state]
+   :let [font-family (font-state/get-app-font-family)]
+   :init (playlists-service/fetch-playlists)
+   (m/Scaffold
+    .appBar (m/AppBar
+             .title (mgl/MongolText (if selected-playlist
+                                      (get selected-playlist "title")
+                                      "My Playlists")
+                                    .style (m/TextStyle .fontFamily font-family))
+             .leading (m/IconButton
+                       .icon (m/Icon m.Icons/arrow_back)
+                       .onPressed (fn []
+                                    (if selected-playlist
+                                      (playlists-state/set-selected-playlist nil)
+                                      (nav/navigator-pop navigator)))))
+    .body
+    (if loading
+      (m/Center .child (m/CircularProgressIndicator))
+      (if selected-playlist
+        (let [items (get selected-playlist "items" [])]
+          (if (empty? items)
+            (m/Center .child (mgl/MongolText "Playlist is empty" .style (m/TextStyle .fontFamily font-family)))
+            (m/ListView.builder
+             .scrollDirection m.Axis/horizontal
+             .itemCount (count items)
+             .itemBuilder (fn [_ index]
+                            (let [item (nth items index)
+                                  episode (get item "episode")]
+                              (cards/episode-card episode
+                                                  (fn []
+                                                    (state/set-current-episode episode)
+                                                    (nav/push-route navigator :player))))))))
+        (if (empty? playlists)
+          (m/Center .child (mgl/MongolText "No playlists yet" .style (m/TextStyle .fontFamily font-family)))
+          (m/ListView.builder
+           .scrollDirection m.Axis/horizontal
+           .itemCount (count playlists)
+           .itemBuilder (fn [_ index]
+                          (let [playlist (nth playlists index)]
+                            (playlist-item playlist
+                                           (fn []
+                                             (playlists-service/fetch-playlist (get playlist "id")))))))))))))
+

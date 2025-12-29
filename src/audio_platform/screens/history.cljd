@@ -1,0 +1,44 @@
+(ns audio-platform.screens.history
+  (:require
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [cljd.flutter :as f]
+   [audio-platform.state :as state]
+   [audio-platform.states.font :as font-state]
+   [audio-platform.states.history :as history-state]
+   [audio-platform.services.history :as history-service]
+   [audio-platform.utils.navigator :as nav]
+   [audio-platform.widgets.cards :as cards]))
+
+(defn ^m/Widget history-page [_context]
+  (f/widget
+   :get [m/Navigator]
+   :watch [{loading :loading
+            history :history} history-state/history-state
+           _font-state font-state/font-state]
+   :let [font-family (font-state/get-app-font-family)]
+   :init (history-service/fetch-history)
+   (m/Scaffold
+    .appBar (m/AppBar
+             .title (mgl/MongolText "History" .style (m/TextStyle .fontFamily font-family))
+             .leading (m/IconButton
+                       .icon (m/Icon m.Icons/arrow_back)
+                       .onPressed (fn [] (nav/navigator-pop navigator))))
+    .body
+    (if loading
+      (m/Center .child (m/CircularProgressIndicator))
+      (if (empty? history)
+        (m/Center .child (mgl/MongolText "No history yet" .style (m/TextStyle .fontFamily font-family)))
+        (m/ListView.builder
+         .scrollDirection m.Axis/horizontal
+         .itemCount (count history)
+         .itemBuilder (fn [_ index]
+                        (let [item (nth history index)
+                              ;; History usually returns a list of play records, which include the episode
+                              episode (get item "episode" item)]
+                          (cards/episode-card episode
+                                              (fn []
+                                                (state/set-current-episode episode)
+                                                (nav/push-route navigator :player)))))
+         ))))))
+

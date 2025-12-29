@@ -1,0 +1,20 @@
+(ns audio-platform.services.favorites
+  (:require [audio-platform.services.api :as api]
+            [audio-platform.state :as state]
+            [audio-platform.states.favorites :as favorites-state]
+            ["dart:async" :as async]))
+
+(defn fetch-favorites []
+  (favorites-state/set-loading true)
+  (let [token (state/get-token)]
+    (-> (async/Future.wait [(api/get-favorites token)
+                            (api/get-album-favorites token)])
+        (.then (fn [results]
+                 (let [episodes (first results)
+                       albums (second results)]
+                   (favorites-state/set-favorites episodes albums)
+                   (favorites-state/set-loading false))))
+        (.catchError (fn [err]
+                       (dart:core/print (str "Error fetching favorites: " err))
+                       (favorites-state/set-loading false))))))
+

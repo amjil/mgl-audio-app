@@ -15,7 +15,6 @@
     (f/widget
      :watch [_font-state font-state/font-state]
      :get [m/Navigator]
-     :let [font-family (font-state/get-app-font-family)]
      (m/Scaffold
       .appBar (m/AppBar
                .title (m/Text "Profile"))
@@ -55,13 +54,13 @@
                .title (mgl/MongolText "Favorites")
                .trailing (m/Icon m.Icons/chevron_right)
                .onTap (fn []
-                        (dart:core/print "Favorites")))
+                        (nav/push-route navigator :favorites)))
               (mgl/MongolListTile
                .leading (m/Icon m.Icons/history)
                .title (mgl/MongolText "History")
                .trailing (m/Icon m.Icons/chevron_right)
                .onTap (fn []
-                        (dart:core/print "History")))
+                        (nav/push-route navigator :history)))
               (mgl/MongolListTile
                .leading (m/Icon m.Icons/add_circle)
                .title (mgl/MongolText "Create Album")
@@ -73,7 +72,7 @@
                .title (mgl/MongolText "My Playlists")
                .trailing (m/Icon m.Icons/chevron_right)
                .onTap (fn []
-                        (dart:core/print "Playlists")))
+                        (nav/push-route navigator :playlists)))
               (mgl/MongolListTile
                .leading (m/Icon m.Icons/notifications)
                .title (mgl/MongolText "Notifications")
