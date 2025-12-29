@@ -13,7 +13,6 @@
   [audio-platform.theme :as theme]
   [audio-platform.states.font :as font-state]
   [audio-platform.states.home :as home-state]
-  [audio-platform.utils.navigator :as nav]
   ["package:flutter_styled_toast/flutter_styled_toast.dart" :as styled-toast]
   [audio-platform.screens.navigation :as navigation]
   [audio-platform.screens.login :as login]
@@ -62,10 +61,8 @@
                       :keyboard/mongol-font-family "OnonSoninSans"})]
    :bind {:info info}
    (styled-toast/StyledToast
-    .locale (m/Locale "mn" "MN")
     .child
     (m/MaterialApp
-     .navigatorKey nav/navigator-key
      .title "Mongol Audio Platform"
      .debugShowCheckedModeBanner false
      .theme (theme/get-light-theme)

@@ -5,7 +5,6 @@
    [cljd.flutter :as f]
    [audio-platform.state :as state]
    [audio-platform.states.history :as history-state]
-   [audio-platform.services.history :as history-service]
    [audio-platform.utils.navigator :as nav]
    [audio-platform.widgets.cards :as cards]
    [audio-platform.widgets.common :as common]))
@@ -15,7 +14,6 @@
    :get [m/Navigator]
    :watch [{loading :loading
             history :history} history-state/history-state]
-   :init (history-service/fetch-history)
    (m/Scaffold
     .appBar (m/AppBar
              .title (mgl/MongolText "History" .style (common/m-style))
@@ -25,7 +23,7 @@
     .body
     (common/async-view
      {:loading loading
-      :empty? (empty? history)
+      :is-empty? (empty? history)
       :empty-view (common/empty-state-view {:message "No history yet"})
       :content-fn
       (fn []

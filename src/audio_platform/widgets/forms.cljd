@@ -8,7 +8,7 @@
 (defn field-label [label]
   (f/widget
    (mgl/MongolText label
-                    .style (common/m-style .fontSize 14 .fontWeight m.FontWeight/bold))))
+                    .style (common/m-style :fontSize 14 :fontWeight m.FontWeight/bold))))
 
 (defn form-actions [{:keys [loading submit-label on-submit on-cancel]}]
   (m/Row
@@ -35,10 +35,10 @@
            .controller controller
            .maxLines 1
            .autofocus true
-           .onChanged (fn [query]
-                        (when on-changed (on-changed query)))
-           .style (common/m-style
-                   .fontSize 20
-                   .color (-> m/Theme (.of context) .-colorScheme .-onSurface))
-           .decoration nil)))
+          .onChanged (fn [query]
+                       (when on-changed (on-changed query)))
+          .style (common/m-style
+                  :fontSize 20
+                  :color (-> m/Theme (.of context) .-colorScheme .-onSurface))
+          .decoration nil)))
 

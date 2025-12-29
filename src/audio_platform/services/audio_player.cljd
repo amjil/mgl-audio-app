@@ -19,10 +19,11 @@
                      (cond
                        (== type as/AudioInterruptionType.pause) (.pause player)
                        (== type as/AudioInterruptionType.duck) (.setVolume player 0.5)
-                       :else (.pause player))))))
+                       :else (.pause player)))
+                   nil)))
     ;; Listen to becoming noisy (earphones unplugged)
     (-> (.-becomingNoisyEventStream session)
-        (.listen (fn [_] (.pause player)))))
+        (.listen (fn [_] (.pause player) nil)))))
 
   ;; Listen to player state
   (-> (.-playerStateStream player)
@@ -51,12 +52,14 @@
                      (do (state/set-buffering false)
                          (dart:core/print "Player completed")
                          (.seek player (dart:core/Duration. .seconds 0))
-                         (.pause player)))))))
+                         (.pause player))))
+                 nil)))
   
   ;; Listen to position changes
   (-> (.-positionStream player)
       (.listen (fn [position]
-                 (state/set-play-position (.-inMilliseconds position)))))
+                 (state/set-play-position (.-inMilliseconds position))
+                 nil)))
   
   ;; Listen to duration changes
   (-> (.-durationStream player)
@@ -64,7 +67,8 @@
                  (when duration
                    (let [episode (state/get-current-episode)]
                      (when episode
-                       (state/set-current-episode (assoc episode "duration" (.-inMilliseconds duration))))))))))
+                       (state/set-current-episode (assoc episode "duration" (.-inMilliseconds duration))))))
+                 nil)))
 
 (defn play-episode [episode]
   (let [url (get episode "audio_url")]

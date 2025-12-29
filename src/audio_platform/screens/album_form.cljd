@@ -43,7 +43,7 @@
            .padding (m.EdgeInsets/all 12)
            .decoration (m/BoxDecoration .border (m/Border.all .color m/Colors.grey.shade400) .borderRadius (m.BorderRadius/circular 4))
            .child (mgl/MongolText (if (empty? category-name) "Select category" category-name)
-                                  .style (common/m-style .color (if category-name m/Colors.blue m/Colors.grey.shade600))))))
+                                  .style (common/m-style :color (if category-name m/Colors.blue m/Colors.grey.shade600))))))
 
 (defn ^m/Widget album-form-page [_context]
   (let [album (album-state/get-album)

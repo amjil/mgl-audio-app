@@ -36,26 +36,26 @@
                (nav/navigator-pop navigator)
                ;; Reload episodes for the album
                (get-episodes :album-id album-id)
-               (toast/handle-success-with-toast nil "Дугаар амжилттай үүслээ")
+               (toast/handle-success-with-toast (.-context navigator) "Дугаар амжилттай үүслээ")
                (swap! episode-state/episode-state assoc :loading false)))
       (.catchError (fn [err]
                      (dart:core/print (str "Error creating episode: " err))
-                     (toast/handle-error-with-toast nil err "Дугаар үүсгэхэд алдаа гарлаа")
+                     (toast/handle-error-with-toast (.-context navigator) err "Дугаар үүсгэхэд алдаа гарлаа")
                      (swap! episode-state/episode-state assoc :error (str "Failed to create episode: " err))
                      (swap! episode-state/episode-state assoc :loading false)))))
 
-(defn delete-episode [_navigator episode-id album-id]
+(defn delete-episode [navigator episode-id album-id]
   (swap! episode-state/episode-state assoc :loading true :error nil)
   (-> (api/delete-episode (state/get-token) episode-id)
       (.then (fn [_]
                (dart:core/print "Episode deleted successfully")
                ;; Reload episodes for the album
                (get-episodes :album-id album-id)
-               (toast/handle-success-with-toast nil "Дугаар амжилттай устгагдлаа")
+               (toast/handle-success-with-toast (.-context navigator) "Дугаар амжилттай устгагдлаа")
                (swap! episode-state/episode-state assoc :loading false)))
       (.catchError (fn [err]
                      (dart:core/print (str "Error deleting episode: " err))
-                     (toast/handle-error-with-toast nil err "Дугаар устгахад алдаа гарлаа")
+                     (toast/handle-error-with-toast (.-context navigator) err "Дугаар устгахад алдаа гарлаа")
                      (swap! episode-state/episode-state assoc :error (str "Failed to delete episode: " err))
                      (swap! episode-state/episode-state assoc :loading false)))))
 
@@ -88,6 +88,7 @@
 
 ;; Upload an audio file. Returns a Promise that resolves with {:media-id media-id :file-info {:path path :name name :size size}} or rejects with an error.
 (defn upload-audio-file [& {:keys [on-progress]}]
+  (dart:core/print "episode-service/upload-audio-file called")
   (media/pick-and-upload-file
    :type :audio
    :content-type "audio/mpeg"

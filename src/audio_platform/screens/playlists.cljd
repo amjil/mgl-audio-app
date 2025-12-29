@@ -24,14 +24,14 @@
                             [(mgl/MongolText
                               (get playlist "title" "Untitled Playlist")
                               .style (common/m-style
-                                      .fontSize 18
-                                      .fontWeight m.FontWeight/bold))
+                                      :fontSize 18
+                                      :fontWeight m.FontWeight/bold))
                              (m/SizedBox .height 8)
                              (mgl/MongolText
                               (or (get playlist "description") "No description")
                               .style (common/m-style
-                                      .color m/Colors.grey.shade600
-                                      .fontSize 14))]))))))
+                                      :color m/Colors.grey.shade600
+                                      :fontSize 14))]))))))
 
 (defn ^m/Widget playlists-page [_context]
   (f/widget
@@ -39,46 +39,42 @@
    :watch [{loading :loading
             playlists :playlists
             selected-playlist :selected-playlist} playlists-state/playlists-state]
-   :init (playlists-service/fetch-playlists)
    (m/Scaffold
     .appBar (m/AppBar
-             .title (mgl/MongolText (if selected-playlist
-                                      (get selected-playlist "title")
-                                      "My Playlists")
-                                    .style (common/m-style))
              .leading (m/IconButton
                        .icon (m/Icon m.Icons/arrow_back)
                        .onPressed (fn []
                                     (if selected-playlist
                                       (playlists-state/set-selected-playlist nil)
-                                      (nav/navigator-pop navigator)))))
-    .body
-    (common/async-view
-     {:loading loading
-      :content-fn
-      (fn []
-        (if selected-playlist
-          (let [items (get selected-playlist "items" [])]
-            (if (empty? items)
-              (common/empty-state-view {:message "Playlist is empty"})
-              (m/ListView.builder
-               .scrollDirection m.Axis/horizontal
-               .itemCount (count items)
-               .itemBuilder (fn [_ index]
-                              (let [item (nth items index)
-                                    episode (get item "episode")]
-                                (cards/episode-card episode
-                                                    (fn []
-                                                      (state/set-current-episode episode)
-                                                      (nav/push-route navigator :player))))))))
-          (if (empty? playlists)
-            (common/empty-state-view {:message "No playlists yet"})
-            (m/ListView.builder
-             .scrollDirection m.Axis/horizontal
-             .itemCount (count playlists)
-             .itemBuilder (fn [_ index]
-                            (let [playlist (nth playlists index)]
-                              (playlist-item playlist
-                                             (fn []
-                                               (playlists-service/fetch-playlist (get playlist "id"))))))))))}))))
+                                      (nav/navigator-pop navigator))))))
+   .body
+   (m/SafeArea)
+   (common/async-view
+    {:loading loading
+     :content-fn
+     (fn []
+       (if selected-playlist
+         (let [items (get selected-playlist "items" [])]
+           (if (empty? items)
+             (common/empty-state-view {:message "Playlist is empty"})
+             (m/ListView.builder
+              .scrollDirection m.Axis/horizontal
+              .itemCount (count items)
+              .itemBuilder (fn [_ index]
+                             (let [item (nth items index)
+                                   episode (get item "episode")]
+                               (cards/episode-card episode
+                                                   (fn []
+                                                     (state/set-current-episode episode)
+                                                     (nav/push-route navigator :player))))))))
+         (if (empty? playlists)
+           (common/empty-state-view {:message "No playlists yet"})
+           (m/ListView.builder
+            .scrollDirection m.Axis/horizontal
+            .itemCount (count playlists)
+            .itemBuilder (fn [_ index]
+                           (let [playlist (nth playlists index)]
+                             (playlist-item playlist
+                                            (fn []
+                                              (playlists-service/fetch-playlist (get playlist "id"))))))))))})))
 

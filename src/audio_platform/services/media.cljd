@@ -8,7 +8,9 @@
    [audio-platform.services.api :as api]
    [audio-platform.state :as state]))
 
-;; Generic file upload function with progress reporting
+;; Global lock for media service
+(defonce ^:private service-lock (atom false))
+
 (defn upload-file [file-path presigned-url content-type on-progress]
   (let [file (io/File file-path)
         total-bytes (.lengthSync file)
@@ -18,30 +20,33 @@
     (.addAll (.-headers request) {"Content-Type" content-type})
     
     (let [bytes-sent (atom 0)
-          stream (.openRead file)]
-      (async/Future.
-       (fn []
-         (let [completer (async/Completer.)]
-           (-> (.listen stream
-                        (fn [chunk]
-                          (swap! bytes-sent + (count chunk))
-                          (when on-progress
-                            (on-progress (/ @bytes-sent total-bytes)))
-                          (.add (.-sink request) chunk))
-                        .onDone (fn []
-                                  (.close (.-sink request)))
-                        .onError (fn [err]
-                                   (.close (.-sink request))
-                                   (.completeError completer err)))
-               (.then (fn [_]
-                        (-> (.send client request)
-                            (.then (fn [streamed-response]
-                                     (-> (http/Response.fromStream streamed-response)
-                                         (.then (fn [response]
-                                                  (.complete completer response))))))
-                            (.catchError (fn [err]
-                                           (.completeError completer err)))))))
-           (.-future completer)))))))
+          stream (.openRead file)
+          completer (async/Completer.)]
+      (.listen stream
+               (fn [chunk]
+                 (swap! bytes-sent + (count chunk))
+                 (when on-progress
+                   (on-progress (/ (double @bytes-sent) total-bytes)))
+                 (.add (.-sink request) chunk)
+                 nil)
+               .onDone (fn []
+                         (.close (.-sink request))
+                         (-> (.send client request)
+                             (.then (fn [streamed-response]
+                                      (-> (http/Response.fromStream streamed-response)
+                                          (.then (fn [response]
+                                                   (.close client)
+                                                   (.complete completer response))))))
+                             (.catchError (fn [err]
+                                            (.close client)
+                                            (.completeError completer err))))
+                         nil)
+               .onError (fn [err]
+                          (.close (.-sink request))
+                          (.close client)
+                          (.completeError completer err)
+                          nil))
+      (.-future completer))))
 
 (defn get-content-type [file-name]
   (let [ext (-> file-name (str/split #"\.") last str/lower-case)]
@@ -83,16 +88,37 @@
                    (handle-upload-result session-data file-path file-name file-size detected-content-type on-progress)))))))
 
 (defn pick-and-upload-file [& {:keys [type allowed-extensions on-progress content-type]}]
-  (let [resolved-type (case type
-                        :audio file-picker.FileType/audio
-                        :image file-picker.FileType/image
-                        :video file-picker.FileType/video
-                        :media file-picker.FileType/media
-                        :any file-picker.FileType/any
-                        :custom file-picker.FileType/custom
-                        (or type file-picker.FileType/any))]
-    (-> (file-picker/FilePicker.platform.pickFiles
-         .type resolved-type
-         .allowedExtensions allowed-extensions
-         .allowMultiple false)
-        (.then (fn [result] (handle-picker-result result on-progress content-type))))))
+  (if @service-lock
+    (do
+      (dart:core/print "Ignoring pick-and-upload-file: service-lock is active")
+      (async/Future.error (dart:core/Exception "Another file picker is already active")))
+    (do
+      (reset! service-lock true)
+      (dart:core/print (str "pick-and-upload-file called with type: " type))
+      (let [resolved-type (case type
+                            :audio file-picker/FileType.any
+                            :image file-picker/FileType.image
+                            :video file-picker/FileType.video
+                            :media file-picker/FileType.media
+                            :any file-picker/FileType.any
+                            :custom file-picker/FileType.custom
+                            file-picker/FileType.any)]
+        (-> (async/Future.delayed (dart:core/Duration .milliseconds 100))
+            (.then (fn [_]
+                     (dart:core/print "Native pickFiles call initiated after delay...")
+                     (.pickFiles file-picker/FilePicker.platform
+                                 .type resolved-type
+                                 .allowedExtensions (when (= resolved-type file-picker/FileType.custom) allowed-extensions)
+                                 .allowMultiple false)))
+            (.timeout (dart:core/Duration .seconds 30)
+                      .onTimeout (fn [] 
+                                   (reset! service-lock false)
+                                   (throw (async/TimeoutException. "File picker timed out after 30 seconds"))))
+            (.then (fn [result] 
+                     (reset! service-lock false)
+                     (dart:core/print (str "Picker result received: " result))
+                     (handle-picker-result result on-progress content-type)))
+            (.catchError (fn [err]
+                           (reset! service-lock false)
+                           (dart:core/print (str "Picker error: " err))
+                           (throw err))))))))

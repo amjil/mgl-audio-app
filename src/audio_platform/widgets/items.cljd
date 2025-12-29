@@ -9,12 +9,12 @@
 (defn episode-item [episode is-creator {:keys [on-edit on-delete on-play on-tap]}]
   (mgl/MongolListTile
    .leading (m/Icon m/Icons.play_circle_outline)
-   .title (mgl/MongolText
-           (get episode "title" "Unknown Episode")
-           .style (common/m-style .fontSize 16 .fontWeight m/FontWeight.normal))
-   .subtitle (mgl/MongolText
-              (format/format-duration (get episode "duration" 0))
-              .style (common/m-style .color m/Colors.grey.shade600 .fontSize 12))
+  .title (mgl/MongolText
+          (get episode "title" "Unknown Episode")
+          .style (common/m-style :fontSize 16 :fontWeight m/FontWeight.normal))
+  .subtitle (mgl/MongolText
+             (format/format-duration (get episode "duration" 0))
+             .style (common/m-style :color m/Colors.grey.shade600 :fontSize 12))
    .trailing (m/Row
               .mainAxisSize m/MainAxisSize.min
               .children
@@ -51,15 +51,15 @@
      (m/Row
       .children
       [(mgl/MongolText (get album "title" "Unknown Album")
-                      .style (common/m-style .fontSize 24 .fontWeight m/FontWeight.bold))
+                     .style (common/m-style :fontSize 24 :fontWeight m/FontWeight.bold))
        (m/SizedBox .width 4)
        (mgl/MongolText (get album "description" "")
-                      .style (common/m-style .fontSize 14 .color m/Colors.grey.shade700))
+                     .style (common/m-style :fontSize 14 :color m/Colors.grey.shade700))
        (m/SizedBox .width 4)
        (m/VerticalDivider)
        (m/SizedBox .width 4)
        (mgl/MongolText (str "Episodes (" (count episodes) ")")
-                      .style (common/m-style .fontSize 18 .fontWeight m/FontWeight.bold))])])))
+                     .style (common/m-style :fontSize 18 :fontWeight m/FontWeight.bold))])])))
 
 (defn category-tab-item [label count selected? on-tap]
   (f/widget
@@ -79,17 +79,17 @@
                     [(mgl/MongolText
                       label
                       .style (common/m-style
-                              .fontSize 16
-                              .fontWeight (if selected? m.FontWeight/bold m.FontWeight/normal)
-                              .color (if selected?
+                              :fontSize 16
+                              :fontWeight (if selected? m.FontWeight/bold m.FontWeight/normal)
+                              :color (if selected?
                                        (-> m/Theme (.of _context) .-colorScheme .-onPrimaryContainer)
                                        (-> m/Theme (.of _context) .-colorScheme .-onSurface))))
                      (m/SizedBox .height 4)
                      (mgl/MongolText
                       (str "(" count ")")
                       .style (common/m-style
-                              .fontSize 12
-                              .color (if selected?
+                              :fontSize 12
+                              :color (if selected?
                                        (-> m/Theme (.of _context) .-colorScheme .-onPrimaryContainer)
                                        m/Colors.grey.shade600)))])))))
 

@@ -5,6 +5,8 @@
    [cljd.flutter :as f]
    [audio-platform.state :as state]
    [audio-platform.services.favorites :as favorites-service]
+   [audio-platform.services.history :as history-service]
+   [audio-platform.services.playlists :as playlists-service]
    [audio-platform.utils.navigator :as nav]
    [audio-platform.widgets.common :as common]))
 
@@ -13,84 +15,86 @@
         loading (atom false)]
     (f/widget
      :get [m/Navigator]
-     (m/Scaffold
-      .appBar (m/AppBar
-               .title (mgl/MongolText "Profile" .style (common/m-style)))
-      .body (m/ListView
-             .scrollDirection m.Axis/horizontal
-             .children
-             [(m/Container
-               .padding (m/EdgeInsets.all 16)
-               .child (m/Column
-                       .children
-                       [(m/CircleAvatar
-                         .radius 40
-                         .backgroundImage (when (get user "avatar_url")
-                                            (m/NetworkImage (get user "avatar_url")))
-                         .child (when (not (get user "avatar_url"))
-                                  (m/Icon m.Icons/person
-                                          .size 40)))
-                        (m/SizedBox .height 16)
-                        (m/Column
-                         .crossAxisAlignment m.CrossAxisAlignment/start
-                         .children
-                         [(mgl/MongolText
-                           (or (get user "display_name")
-                               (get user "username")
-                               "User")
-                           .style (common/m-style
-                                   .fontSize 20
-                                   .fontWeight m.FontWeight/bold))
-                          (m/SizedBox .height 4)
-                          (mgl/MongolText
-                           (get user "email" "")
-                           .style (common/m-style
-                                   .color m/Colors.grey.shade600))])]))
-              (m/Divider)
-              (mgl/MongolListTile
-               .leading (m/Icon m.Icons/favorite)
-               .title (mgl/MongolText "Favorites" .style (common/m-style))
-               .trailing (m/Icon m.Icons/chevron_right)
-               .onTap (fn []
-                        (favorites-service/fetch-favorites)
-                        (nav/push-route navigator :favorites)))
-              (mgl/MongolListTile
-               .leading (m/Icon m.Icons/history)
-               .title (mgl/MongolText "History" .style (common/m-style))
-               .trailing (m/Icon m.Icons/chevron_right)
-               .onTap (fn []
-                        (nav/push-route navigator :history)))
-              (mgl/MongolListTile
-               .leading (m/Icon m.Icons/add_circle)
-               .title (mgl/MongolText "Create Album" .style (common/m-style))
-               .trailing (m/Icon m.Icons/chevron_right)
-               .onTap (fn []
-                        (nav/push-route navigator :album-form)))
-              (mgl/MongolListTile
-               .leading (m/Icon m.Icons/playlist_play)
-               .title (mgl/MongolText "My Playlists" .style (common/m-style))
-               .trailing (m/Icon m.Icons/chevron_right)
-               .onTap (fn []
-                        (nav/push-route navigator :playlists)))
-              (mgl/MongolListTile
-               .leading (m/Icon m.Icons/notifications)
-               .title (mgl/MongolText "Notifications" .style (common/m-style))
-               .trailing (m/Icon m.Icons/chevron_right)
-               .onTap (fn []
-                        (dart:core/print "Notifications")))
-              (m/Divider)
-              (mgl/MongolListTile
-               .leading (m/Icon m.Icons/settings)
-               .title (mgl/MongolText "Settings" .style (common/m-style))
-               .trailing (m/Icon m.Icons/chevron_right)
-               .onTap (fn []
-                        (dart:core/print "Settings")))
-              (mgl/MongolListTile
-               .leading (m/Icon m.Icons/logout)
-               .title (mgl/MongolText "Logout" .style (common/m-style))
-               .onTap (fn []
-                        (reset! loading true)
-                        (state/clear-auth)
-                        (reset! loading false)
-                        (nav/push-route-and-remove-until navigator :login (fn [_route] false))))])))))
+     (m/Scaffold)
+     .body 
+     (m/SafeArea)
+     (m/ListView
+      .scrollDirection m.Axis/horizontal
+      .children
+      [(m/Container
+        .padding (m/EdgeInsets.all 16)
+        .child (m/Column
+                .children
+                [(m/CircleAvatar
+                  .radius 40
+                  .backgroundImage (when (get user "avatar_url")
+                                     (m/NetworkImage (get user "avatar_url")))
+                  .child (when (not (get user "avatar_url"))
+                           (m/Icon m.Icons/person
+                                   .size 40)))
+                 (m/SizedBox .height 16)
+                 (m/Column
+                  .crossAxisAlignment m.CrossAxisAlignment/start
+                  .children
+                  [(mgl/MongolText
+                    (or (get user "display_name")
+                        (get user "username")
+                        "User")
+                    .style (common/m-style
+                            :fontSize 20
+                            :fontWeight m.FontWeight/bold))
+                   (m/SizedBox .height 4)
+                   (mgl/MongolText
+                    (get user "email" "")
+                    .style (common/m-style
+                            :color m/Colors.grey.shade600))])]))
+       (m/Divider)
+       (mgl/MongolListTile
+        .leading (m/Icon m.Icons/favorite)
+        .title (mgl/MongolText "Favorites" .style (common/m-style))
+        .trailing (m/Icon m.Icons/chevron_right)
+        .onTap (fn []
+                 (favorites-service/fetch-favorites)
+                 (nav/push-route navigator :favorites)))
+       (mgl/MongolListTile
+        .leading (m/Icon m.Icons/history)
+        .title (mgl/MongolText "History" .style (common/m-style))
+        .trailing (m/Icon m.Icons/chevron_right)
+        .onTap (fn []
+                 (history-service/fetch-history)
+                 (nav/push-route navigator :history)))
+       (mgl/MongolListTile
+        .leading (m/Icon m.Icons/add_circle)
+        .title (mgl/MongolText "Create Album" .style (common/m-style))
+        .trailing (m/Icon m.Icons/chevron_right)
+        .onTap (fn []
+                 (nav/push-route navigator :album-form)))
+       (mgl/MongolListTile
+        .leading (m/Icon m.Icons/playlist_play)
+        .title (mgl/MongolText "My Playlists" .style (common/m-style))
+        .trailing (m/Icon m.Icons/chevron_right)
+        .onTap (fn []
+                 (playlists-service/fetch-playlists)
+                 (nav/push-route navigator :playlists)))
+       (mgl/MongolListTile
+        .leading (m/Icon m.Icons/notifications)
+        .title (mgl/MongolText "Notifications" .style (common/m-style))
+        .trailing (m/Icon m.Icons/chevron_right)
+        .onTap (fn []
+                 (dart:core/print "Notifications")))
+       (m/Divider)
+       (mgl/MongolListTile
+        .leading (m/Icon m.Icons/settings)
+        .title (mgl/MongolText "Settings" .style (common/m-style))
+        .trailing (m/Icon m.Icons/chevron_right)
+        .onTap (fn []
+                 (dart:core/print "Settings")))
+       (mgl/MongolListTile
+        .leading (m/Icon m.Icons/logout)
+        .title (mgl/MongolText "Logout" .style (common/m-style))
+        .onTap (fn []
+                 (reset! loading true)
+                 (state/clear-auth)
+                 (reset! loading false)
+                 (nav/push-route-and-remove-until navigator :login (fn [_route] false))))]))))
 

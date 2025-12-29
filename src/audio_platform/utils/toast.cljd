@@ -1,15 +1,14 @@
-(ns audio-platform.utils.toast
+ (ns audio-platform.utils.toast
  (:require
   ["package:flutter/material.dart" :as m]
   ["package:mongol/mongol.dart" :as mgl]
-  [audio-platform.utils.navigator :as nav]
   ["package:flutter_styled_toast/flutter_styled_toast.dart" :as styled-toast]))
 
 ;; Toast Utilities
 ;; Provides common toast notification functions for the application
 
 (defn- get-context [ctx]
-  (or ctx (.-currentContext nav/navigator-key)))
+  ctx)
 
 ;; Show error toast
 (defn show-error-toast [ctx msg]

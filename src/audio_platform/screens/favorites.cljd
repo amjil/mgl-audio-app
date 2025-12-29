@@ -22,9 +22,9 @@
             .child (mgl/MongolText
                     label
                     .style (common/m-style
-                            .fontSize 18
-                            .fontWeight (if selected? m.FontWeight/bold m.FontWeight/normal)
-                            .color (if selected? m/Colors.blue m/Colors.grey)))))))
+                            :fontSize 18
+                            :fontWeight (if selected? m.FontWeight/bold m.FontWeight/normal)
+                            :color (if selected? m/Colors.blue m/Colors.grey)))))))
 
 (defn ^m/Widget favorites-page [_context]
   (f/widget

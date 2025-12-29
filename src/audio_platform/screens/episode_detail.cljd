@@ -34,23 +34,23 @@
          .children
          [(m/Row
            .children
-           [(mgl/MongolText (str "User " (subs (get comment "user_id") 0 4))
-                           .style (common/m-style .fontWeight m/FontWeight.bold .fontSize 12))
-            (m/SizedBox .width 8)
-            (mgl/MongolText (format/format-duration (get comment "timestamp_seconds" 0))
-                           .style (common/m-style .fontSize 10 .color m/Colors.blue))])
-          (m/SizedBox .height 4)
-          (mgl/MongolText (get comment "content")
-                          .style (common/m-style .fontSize 14))
-          (m/Row
-           .children
-           [(m/IconButton
-             .icon (m/Icon (if (get comment "is_liked") m/Icons.thumb_up m/Icons.thumb_up_outlined) .size 16)
-             .onPressed (fn [] 
-                          (if (get comment "is_liked")
-                            (comment-service/unlike-comment (get comment "id"))
-                            (comment-service/like-comment (get comment "id")))))
-            (mgl/MongolText (str (get comment "likes" 0)) .style (common/m-style .fontSize 12))
+          [(mgl/MongolText (str "User " (subs (get comment "user_id") 0 4))
+                          .style (common/m-style :fontWeight m/FontWeight.bold :fontSize 12))
+           (m/SizedBox .width 8)
+           (mgl/MongolText (format/format-duration (get comment "timestamp_seconds" 0))
+                          .style (common/m-style :fontSize 10 :color m/Colors.blue))])
+         (m/SizedBox .height 4)
+         (mgl/MongolText (get comment "content")
+                         .style (common/m-style :fontSize 14))
+         (m/Row
+          .children
+          [(m/IconButton
+            .icon (m/Icon (if (get comment "is_liked") m/Icons.thumb_up m/Icons.thumb_up_outlined) .size 16)
+            .onPressed (fn [] 
+                         (if (get comment "is_liked")
+                           (comment-service/unlike-comment (get comment "id"))
+                           (comment-service/like-comment (get comment "id")))))
+           (mgl/MongolText (str (get comment "likes" 0)) .style (common/m-style :fontSize 12))
             (if is-author
               (m/IconButton
                .icon (m/Icon m/Icons.delete_outline .size 16)
@@ -66,14 +66,14 @@
     .crossAxisAlignment m.CrossAxisAlignment/start
     .children
     [(mgl/MongolText (get ep "title" "Unknown Episode")
-                    .style (common/m-style .fontSize 24 .fontWeight m/FontWeight.bold))
+                   .style (common/m-style :fontSize 24 :fontWeight m/FontWeight.bold))
      (m/SizedBox .height 16)
      (m/Row
       .children
       [(m/Icon m/Icons.access_time .size 16 .color m/Colors.grey)
        (m/SizedBox .width 4)
        (mgl/MongolText (format/format-duration (get ep "duration" 0))
-                      .style (common/m-style .fontSize 14 .color m/Colors.grey.shade600))])
+                     .style (common/m-style :fontSize 14 :color m/Colors.grey.shade600))])
      (m/SizedBox .height 20)
      (mgl/MongolElevatedButton.icon
       .icon (m/Icon m/Icons.play_arrow)
@@ -81,12 +81,12 @@
       .onPressed (fn [] (audio-player/play-episode ep)))
      (m/SizedBox .height 30)
      (mgl/MongolText "Description"
-                    .style (common/m-style .fontSize 18 .fontWeight m/FontWeight.bold))
+                   .style (common/m-style :fontSize 18 :fontWeight m/FontWeight.bold))
      (m/SizedBox .height 8)
      (m/Expanded
       .child (m/SingleChildScrollView
               .child (mgl/MongolText (get ep "description" "No description available.")
-                                     .style (common/m-style .fontSize 14))))])))
+                                    .style (common/m-style :fontSize 14))))])))
 
 (defn- comments-column [ep comments comments-loading current-user-id controller]
   (m/Container
@@ -98,7 +98,7 @@
     .crossAxisAlignment m.CrossAxisAlignment/start
     .children
     [(mgl/MongolText (str "Comments (" (count comments) ")")
-                    .style (common/m-style .fontSize 18 .fontWeight m/FontWeight.bold))
+                   .style (common/m-style :fontSize 18 :fontWeight m/FontWeight.bold))
      (m/SizedBox .height 16)
      (m/Row
       .children
@@ -169,7 +169,7 @@
      .child (common/async-view
              {:loading loading
               :error error
-              :empty? (nil? ep)
+              :is-empty? (nil? ep)
               :empty-view (common/empty-state-view {:message "No episode data"})
               :content-fn
               (fn []

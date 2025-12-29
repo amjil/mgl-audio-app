@@ -40,7 +40,7 @@
     .body (common/async-view
            {:loading loading
             :error error
-            :empty? (empty? feed-items)
+            :is-empty? (empty? feed-items)
             :content-fn
             (fn []
               (m/ListView.separated

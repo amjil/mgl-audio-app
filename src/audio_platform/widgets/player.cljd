@@ -46,8 +46,8 @@
                                 [                                 (mgl/MongolText
                                   (get episode "title" "Unknown Title")
                                   .style (common/m-style
-                                          .fontSize 14
-                                          .fontWeight m/FontWeight.bold)
+                                          :fontSize 14
+                                          :fontWeight m/FontWeight.bold)
                                   .maxLines 1
                                   .overflow m/TextOverflow.ellipsis)
                                  (m/SizedBox .width 4)
@@ -66,8 +66,8 @@
                                     (str (format/format-duration position) " / "
                                          (format/format-duration (get episode "duration" 0)))
                                     .style (common/m-style
-                                            .fontSize 10
-                                            .color m/Colors.grey.shade600))])])))
+                                            :fontSize 10
+                                            :color m/Colors.grey.shade600))])])))
                (m/IconButton
                 .icon (if is-buffering
                         (m/SizedBox .width 24 .height 24 .child (m/CircularProgressIndicator .strokeWidth 2))

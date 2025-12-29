@@ -36,8 +36,8 @@
                                    (swap! category-state/category-state assoc :selected-category-parent (-> parents (nth index) (get "id")))
                                    (album-service/get-sub-categories (-> parents (nth index) (get "id"))))
                           .child (mgl/MongolText (-> parents (nth index) (get "name"))
-                                                 .style (common/m-style .fontSize 16
-                                                                      .color (if (= (-> parents (nth index) (get "id")) selected-category-parent)
+                                                 .style (common/m-style :fontSize 16
+                                                                      :color (if (= (-> parents (nth index) (get "id")) selected-category-parent)
                                                                                m/Colors.blue
                                                                                m/Colors.black)))))))))
 
@@ -62,8 +62,8 @@
                                        (swap! category-state/category-state assoc :selected-category-name (get item "name")))
                               .child (mgl/MongolText
                                       (get item "name")
-                                      .style (common/m-style .fontSize 16
-                                                           .color (if (= (get item "id") selected-category) m/Colors.blue m/Colors.black))))))))))])))
+                                      .style (common/m-style :fontSize 16
+                                                           :color (if (= (get item "id") selected-category) m/Colors.blue m/Colors.black))))))))))])))
 
 (defn show-add-category-dialog [context]
    (f/widget

@@ -38,12 +38,12 @@
                (dart:core/print "Album created successfully")
                (dart:core/print (str "Album data: " album-data))
                (nav/navigator-pop navigator)
-               (toast/handle-success-with-toast nil "Цомог амжилттай үүслээ")
+               (toast/handle-success-with-toast (.-context navigator) "Цомог амжилттай үүслээ")
                (swap! album-state/album-state assoc :album album-data)
                (swap! album-state/album-state assoc :loading false)))
       (.catchError (fn [err]
                      (dart:core/print (str "Error creating album: " err))
-                     (toast/handle-error-with-toast nil err "Цомог үүсгэхэд алдаа гарлаа")
+                     (toast/handle-error-with-toast (.-context navigator) err "Цомог үүсгэхэд алдаа гарлаа")
                      (swap! album-state/album-state assoc :error (str "Failed to create album: " err))
                      (swap! album-state/album-state assoc :loading false)))))
                
@@ -143,13 +143,13 @@
   (swap! album-state/album-state assoc :loading true :error nil)
   (-> (api/update-album (state/get-token) album-id album-data)
       (.catchError (fn [err]
-                     (toast/handle-error-with-toast nil err "Цомог шинэчлэхэд алдаа гарлаа")
+                     (toast/handle-error-with-toast (.-context navigator) err "Цомог шинэчлэхэд алдаа гарлаа")
                      (swap! album-state/album-state assoc :error (str "Failed to update album: " err))
                      (swap! album-state/album-state assoc :loading false)))
       (.then (fn [album-data]
                (dart:core/print "Album updated successfully")
                (nav/navigator-pop navigator)
-               (toast/handle-success-with-toast nil "Цомог амжилттай шинэчлэгдлээ")
+               (toast/handle-success-with-toast (.-context navigator) "Цомог амжилттай шинэчлэгдлээ")
                (swap! album-state/album-state assoc :album album-data)
                (swap! album-state/album-state assoc :loading false)))))
 

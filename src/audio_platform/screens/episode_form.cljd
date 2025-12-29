@@ -11,39 +11,47 @@
    [audio-platform.widgets.forms :as forms]
    [audio-platform.widgets.common :as common]))
 
-(defn- audio-upload-section [uploading upload-progress selected-file media-id-controller ctx]
-  (m/Row
-   .crossAxisAlignment m.CrossAxisAlignment/start
-   .children
-   [(mgl/MongolElevatedButton
-     .child (mgl/MongolText (if @uploading
-                              (str "Uploading... " (int (* @upload-progress 100)) "%")
-                              "Select Audio File")
-                            .style (common/m-style))
-     .onPressed
-     (fn []
-       (when (not @uploading)
-         (reset! uploading true)
-         (reset! upload-progress 0.0)
-         (-> (episode-service/upload-audio-file :on-progress (fn [p] (reset! upload-progress p)))
-             (.then (fn [result]
-                      (let [media-id (:media-id result)
-                            file-info (:file-info result)]
-                        (set! (.-text media-id-controller) media-id)
-                        (reset! selected-file file-info)
-                        (reset! uploading false))))
-             (.catchError (fn [err]
-                            (reset! uploading false)
-                            (toast/handle-error-with-toast ctx err "Файл хуулахад алдаа гарлаа")))))))
-    (m/SizedBox .width 8)
-    (if @uploading
-      (m/SizedBox .width 100 .child (m/LinearProgressIndicator .value @upload-progress))
-      (m/SizedBox))
-    (m/SizedBox .width 8)
-    (if (some? @selected-file)
-      (mgl/MongolText (str "Selected: " (:name @selected-file))
-                      .style (common/m-style .fontSize 12 .color m/Colors.green))
-      (m/SizedBox))]))
+(defn- audio-upload-section [uploading-atom progress-atom selected-atom lock-atom media-id-controller ctx]
+  (f/widget
+   :watch [uploading uploading-atom
+           progress progress-atom
+           selected selected-atom]
+   (m/Row
+    .crossAxisAlignment m.CrossAxisAlignment/start
+    .children
+    [(mgl/MongolElevatedButton
+      .child (mgl/MongolText (if uploading
+                               (str "Uploading... " (int (* progress 100)) "%")
+                               "Select Audio File")
+                             .style (common/m-style))
+      .onPressed
+      (when (not (or uploading @lock-atom))
+        (fn []
+          (dart:core/print "Select Audio File button pressed!")
+          (reset! lock-atom true)
+          (reset! uploading-atom true)
+          (reset! progress-atom 0.0)
+          (-> (episode-service/upload-audio-file :on-progress (fn [p] (reset! progress-atom p)))
+              (.then (fn [result]
+                       (let [media-id (:media-id result)
+                             file-info (:file-info result)]
+                         (set! (.-text media-id-controller) media-id)
+                         (reset! selected-atom file-info)
+                         (reset! uploading-atom false)
+                         (reset! lock-atom false))))
+              (.catchError (fn [err]
+                               (reset! uploading-atom false)
+                               (reset! lock-atom false)
+                               (toast/handle-error-with-toast ctx err "Файл хуулахад алдаа гарлаа")))))))
+     (m/SizedBox .width 8)
+     (if uploading
+       (m/SizedBox .width 100 .child (m/LinearProgressIndicator .value progress))
+       (m/SizedBox))
+     (m/SizedBox .width 8)
+     (if (some? selected)
+       (mgl/MongolText (str "Selected: " (:name selected))
+                       .style (common/m-style :fontSize 12 :color m/Colors.green))
+       (m/SizedBox)) ])))
 
 (defn ^m/Widget episode-form-page [_context]
   (let [episode (episode-state/get-episode)
@@ -51,9 +59,11 @@
         album-id (get album "id")
         selected-file (atom nil)
         uploading (atom false)
-        upload-progress (atom 0.0)]
+        upload-progress (atom 0.0)
+        picker-lock (atom false)]
     (f/widget
-     :watch [{loading :loading} episode-state/episode-state]
+     :watch [{loading :loading} episode-state/episode-state
+             is-uploading uploading]
      :context ctx
      :get [m/Navigator]
      :managed [title-controller (m/TextEditingController .text (if (some? episode) (get episode "title") ""))
@@ -85,11 +95,11 @@
            (m/SizedBox .width 16)
            (forms/field-label "Audio File *")
            (m/SizedBox .width 8)
-           (audio-upload-section uploading upload-progress selected-file media-id-controller ctx)
+           (audio-upload-section uploading upload-progress selected-file picker-lock media-id-controller ctx)
            (m/SizedBox .width 8)
            (mgl/MongolTextField
             .controller media-id-controller
-            .decoration (m/InputDecoration .hintText "Media ID (auto-filled after upload)" .border (m/OutlineInputBorder) .enabled (not @uploading))
+            .decoration (m/InputDecoration .hintText "Media ID (auto-filled after upload)" .border (m/OutlineInputBorder) .enabled (not is-uploading))
             .style (common/m-style))
            (m/SizedBox .width 16)
            (forms/field-label "Sequence")
@@ -104,13 +114,13 @@
             {:loading loading
              :on-cancel (fn [] (episode-state/reset-state) (nav/navigator-pop navigator))
              :on-submit (fn []
-                          (when (and (not loading) (not @uploading))
+                          (when (and (not loading) (not is-uploading))
                             (let [title (.-text title-controller)
                                   media-id (.-text media-id-controller)
                                   sequence-str (.-text sequence-controller)]
                               (cond
                                 (empty? title) (toast/show-error-toast ctx "Гарчиг заавал байх ёстой")
-                                (empty? media-id) (toast/show-error-toast ctx "Аудио файл хуулна уу")
+                                (empty? media-id) (toast/show-error-toast ctx "Аудио файл хуулна uу")
                                 :else
                                 (do
                                   (swap! episode-state/episode-state assoc :loading true)
