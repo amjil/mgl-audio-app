@@ -1,16 +1,16 @@
- (ns audio-platform.widgets.cards
-   (:require
-    ["package:flutter/material.dart" :as m]
-    ["package:mongol/mongol.dart" :as mgl]
-    [cljd.flutter :as f]
-    [audio-platform.states.font :as font-state]
-    [audio-platform.utils.format :as format]
-    [audio-platform.utils.highlight :as highlight]))
+(ns audio-platform.widgets.cards
+  (:require
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [cljd.flutter :as f]
+   [audio-platform.states.font :as font-state]
+   [audio-platform.utils.format :as format]
+   [audio-platform.utils.highlight :as highlight]
+   [audio-platform.widgets.common :as common]))
 
 (defn feed-card [item on-tap]
   (f/widget
    :watch [_font-state font-state/font-state]
-   :let [font-family (font-state/get-app-font-family)]
    (m/Card
     .margin (m.EdgeInsets/symmetric .horizontal 12 .vertical 6)
     .child
@@ -46,8 +46,7 @@
                       .borderRadius (m.BorderRadius/circular 4))
          .child (mgl/MongolText
                  (if (= (get item "type") "album") "Album" "Episode")
-                 .style (m/TextStyle
-                         .fontFamily font-family
+                 .style (common/m-style
                          .fontSize 10
                          .color (if (= (get item "type") "album")
                                   m/Colors.blue
@@ -61,8 +60,7 @@
           [(mgl/MongolText
             (let [title-text (highlight/get-highlighted-text item "title")]
               (or (highlight/strip-html-tags title-text) "Unknown"))
-            .style (m/TextStyle
-                    .fontFamily font-family
+            .style (common/m-style
                     .fontSize 16
                     .fontWeight m.FontWeight/bold)
             .maxLines 2
@@ -71,8 +69,7 @@
            (if-let [subtitle (get item "subtitle")]
              (mgl/MongolText
               subtitle
-              .style (m/TextStyle
-                      .fontFamily font-family
+              .style (common/m-style
                       .color m/Colors.grey.shade600
                       .fontSize 12)
               .maxLines 2
@@ -90,8 +87,7 @@
                        (m/SizedBox .width 4)
                        (mgl/MongolText
                         (str "Rating " score)
-                        .style (m/TextStyle
-                                .fontFamily font-family
+                        .style (common/m-style
                                 .fontSize 12
                                 .color m/Colors.grey.shade800))]))
              (m/SizedBox))]))]))))))
@@ -99,7 +95,6 @@
 (defn episode-card [episode on-tap]
   (f/widget
    :watch [_font-state font-state/font-state]
-   :let [font-family (font-state/get-app-font-family)]
    (m/Card
     .margin (m.EdgeInsets/symmetric .horizontal 8 .vertical 4)
     .child (m/InkWell
@@ -115,15 +110,13 @@
                                       [(mgl/MongolText
                                         (let [title-text (highlight/get-highlighted-text episode "title")]
                                           (or (highlight/strip-html-tags title-text) "Unknown Title"))
-                                        .style (m/TextStyle
-                                                .fontFamily font-family
+                                        .style (common/m-style
                                                 .fontSize 16
                                                 .fontWeight m.FontWeight/bold))
                                        (m/SizedBox .height 4)
                                        (mgl/MongolText
                                         (format/format-duration (get episode "duration" 0))
-                                        .style (m/TextStyle
-                                                .fontFamily font-family
+                                        .style (common/m-style
                                                 .color m/Colors.grey.shade600
                                                 .fontSize 12))]))
                              (m/IconButton
@@ -133,8 +126,7 @@
 (defn album-card [album on-tap]
   (f/widget
    :watch [_font-state font-state/font-state]
-   :let [font-family (font-state/get-app-font-family)
-         description-text (highlight/get-highlighted-text album "description")]
+   :let [description-text (highlight/get-highlighted-text album "description")]
    (m/Card
     .margin (m.EdgeInsets/all 8)
     .child (m/InkWell
@@ -167,8 +159,7 @@
                                  (mgl/MongolText
                                   (let [title-text (highlight/get-highlighted-text album "title")]
                                     (or (highlight/strip-html-tags title-text) "Unknown Album"))
-                                  .style (m/TextStyle
-                                          .fontFamily font-family
+                                  .style (common/m-style
                                           .fontSize 16
                                           .fontWeight m.FontWeight/bold)
                                   .maxLines 2
@@ -176,8 +167,7 @@
                                (m/SizedBox .width 4)
                                (mgl/MongolText
                                 (or (highlight/strip-html-tags description-text) "")
-                                .style (m/TextStyle
-                                        .fontFamily font-family
+                                .style (common/m-style
                                         .color m/Colors.grey.shade600
                                         .fontSize 12)
                                 .maxLines 2
@@ -186,8 +176,7 @@
 (defn creator-card [creator on-tap]
   (f/widget
    :watch [_font-state font-state/font-state]
-   :let [font-family (font-state/get-app-font-family)
-         description-text (highlight/get-highlighted-text creator "description")]
+   :let [description-text (highlight/get-highlighted-text creator "description")]
    (m/Card
     .margin (m.EdgeInsets/symmetric .horizontal 8 .vertical 4)
     .child (m/InkWell
@@ -222,16 +211,14 @@
                                                      .borderRadius (m.BorderRadius/circular 4))
                                         .child (mgl/MongolText
                                                 "Creator"
-                                                .style (m/TextStyle
-                                                        .fontFamily font-family
+                                                .style (common/m-style
                                                         .fontSize 10
                                                         .color m/Colors.purple)))
                                        (m/SizedBox .height 8)
                                        (mgl/MongolText
                                         (let [title-text (highlight/get-highlighted-text creator "title")]
                                           (or (highlight/strip-html-tags title-text) "Unknown Creator"))
-                                        .style (m/TextStyle
-                                                .fontFamily font-family
+                                        .style (common/m-style
                                                 .fontSize 16
                                                 .fontWeight m.FontWeight/bold)
                                         .maxLines 2
@@ -242,8 +229,7 @@
                                           [(m/SizedBox .height 4)
                                            (mgl/MongolText
                                             (highlight/strip-html-tags description-text)
-                                            .style (m/TextStyle
-                                                    .fontFamily font-family
+                                            .style (common/m-style
                                                     .color m/Colors.grey.shade600
                                                     .fontSize 12)
                                             .maxLines 2

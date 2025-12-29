@@ -5,17 +5,15 @@
    [cljd.flutter :as f]
    [audio-platform.state :as state]
    [audio-platform.services.audio-player :as audio-player]
-   [audio-platform.states.font :as font-state]
-   [audio-platform.utils.format :as format]))
+   [audio-platform.utils.format :as format]
+   [audio-platform.widgets.common :as common]))
 
 (defn player-widget []
   (f/widget
    :watch [{episode :current-episode
             is-playing :is-playing
             is-buffering :is-buffering
-            position :play-position} state/app-state
-           _font-state font-state/font-state]
-   :let [font-family (font-state/get-app-font-family)]
+            position :play-position} state/app-state]
    (if episode
      (m/Container
       .height 80
@@ -47,8 +45,7 @@
                                 .children
                                 [(mgl/MongolText
                                   (get episode "title" "Unknown Title")
-                                  .style (m/TextStyle
-                                          .fontFamily font-family
+                                  .style (common/m-style
                                           .fontSize 14
                                           .fontWeight m/FontWeight.bold)
                                   .maxLines 1
@@ -68,8 +65,7 @@
                                    (mgl/MongolText
                                     (str (format/format-duration position) " / "
                                          (format/format-duration (get episode "duration" 0)))
-                                    .style (m/TextStyle
-                                            .fontFamily font-family
+                                    .style (common/m-style
                                             .fontSize 10
                                             .color m/Colors.grey.shade600))])])))
                (m/IconButton

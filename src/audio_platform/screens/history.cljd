@@ -4,31 +4,31 @@
    ["package:mongol/mongol.dart" :as mgl]
    [cljd.flutter :as f]
    [audio-platform.state :as state]
-   [audio-platform.states.font :as font-state]
    [audio-platform.states.history :as history-state]
    [audio-platform.services.history :as history-service]
    [audio-platform.utils.navigator :as nav]
-   [audio-platform.widgets.cards :as cards]))
+   [audio-platform.widgets.cards :as cards]
+   [audio-platform.widgets.common :as common]))
 
 (defn ^m/Widget history-page [_context]
   (f/widget
    :get [m/Navigator]
    :watch [{loading :loading
-            history :history} history-state/history-state
-           _font-state font-state/font-state]
-   :let [font-family (font-state/get-app-font-family)]
+            history :history} history-state/history-state]
    :init (history-service/fetch-history)
    (m/Scaffold
     .appBar (m/AppBar
-             .title (mgl/MongolText "History" .style (m/TextStyle .fontFamily font-family))
+             .title (mgl/MongolText "History" .style (common/m-style))
              .leading (m/IconButton
                        .icon (m/Icon m.Icons/arrow_back)
                        .onPressed (fn [] (nav/navigator-pop navigator))))
     .body
-    (if loading
-      (m/Center .child (m/CircularProgressIndicator))
-      (if (empty? history)
-        (m/Center .child (mgl/MongolText "No history yet" .style (m/TextStyle .fontFamily font-family)))
+    (common/async-view
+     {:loading loading
+      :empty? (empty? history)
+      :empty-view (common/empty-state-view {:message "No history yet"})
+      :content-fn
+      (fn []
         (m/ListView.builder
          .scrollDirection m.Axis/horizontal
          .itemCount (count history)
@@ -40,5 +40,5 @@
                                               (fn []
                                                 (state/set-current-episode episode)
                                                 (nav/push-route navigator :player)))))
-         ))))))
+         ))}))))
 

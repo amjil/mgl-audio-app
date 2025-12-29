@@ -5,12 +5,15 @@
    [cljd.flutter :as f]
    [audio-platform.states.font :as font-state]))
 
+(defn m-style [& {:as args}]
+  (let [font-family (font-state/get-app-font-family)]
+    (apply m/TextStyle .fontFamily font-family (mapcat identity args))))
+
 (defn loading-view []
   (m/Center .child (m/CircularProgressIndicator)))
 
 (defn error-view [error-message]
   (f/widget
-   :let [font-family (font-state/get-app-font-family)]
    (m/Center
     .child (m/Column
             .mainAxisAlignment m.MainAxisAlignment/center
@@ -18,11 +21,10 @@
             [(m/Icon m.Icons/error_outline .size 64 .color m/Colors.red)
              (m/SizedBox .height 16)
              (mgl/MongolText error-message
-                             .style (m/TextStyle .fontFamily font-family .color m/Colors.red))]))))
+                             .style (m-style .color m/Colors.red))]))))
 
 (defn empty-state-view [{:keys [icon message action-child]}]
   (f/widget
-   :let [font-family (font-state/get-app-font-family)]
    (m/Center
     .child (m/Column
             .mainAxisAlignment m/MainAxisAlignment.center
@@ -30,10 +32,34 @@
             [(m/Icon (or icon m/Icons.inbox) .size 64 .color m/Colors.grey.shade400)
              (m/SizedBox .height 16)
              (mgl/MongolText (or message "No data")
-                             .style (m/TextStyle .fontFamily font-family .color m/Colors.grey.shade600))
+                             .style (m-style .color m/Colors.grey.shade600))
              (if action-child
                (m/Padding
                 .padding (m.EdgeInsets/only .top 16)
                 .child action-child)
                (m/SizedBox))]))))
+
+(defn async-view [{:keys [loading error empty? empty-view content-fn]}]
+  (cond
+    loading (loading-view)
+    (and error (not (empty? error))) (error-view error)
+    empty? (or empty-view (empty-state-view {}))
+    :else (content-fn)))
+
+(defn show-confirmation-dialog [ctx {:keys [title message confirm-label cancel-label on-confirm]}]
+  (m/showDialog
+   .context ctx
+   .builder (fn [dialog-ctx]
+              (m/AlertDialog
+               .title (when title (mgl/MongolText title .style (m-style .fontWeight m/FontWeight.bold)))
+               .content (mgl/MongolText message .style (m-style))
+               .actions
+               [(m/TextButton
+                 .child (mgl/MongolText (or cancel-label "Cancel") .style (m-style))
+                 .onPressed (fn [] (m/Navigator.pop dialog-ctx)))
+                (m/TextButton
+                 .child (mgl/MongolText (or confirm-label "Confirm") .style (m-style .color m/Colors.red))
+                 .onPressed (fn []
+                              (m/Navigator.pop dialog-ctx)
+                              (when on-confirm (on-confirm))))]))))
 

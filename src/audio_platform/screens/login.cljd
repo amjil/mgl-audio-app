@@ -5,11 +5,11 @@
    [cljd.flutter :as f]
    [audio-platform.services.api :as api]
    [audio-platform.state :as state]
-   [audio-platform.states.font :as font-state]
    [audio-platform.utils.toast :as toast]
-   [audio-platform.utils.navigator :as nav]))
+   [audio-platform.utils.navigator :as nav]
+   [audio-platform.widgets.common :as common]))
 
-(defn- login-form [username-controller password-controller loading-val font-family navigator context loading]
+(defn- login-form [username-controller password-controller loading-val navigator context loading]
   (m/Row
    .mainAxisAlignment m.MainAxisAlignment/center
    .crossAxisAlignment m.CrossAxisAlignment/stretch
@@ -18,14 +18,14 @@
      .controller username-controller
      .decoration (m/InputDecoration .labelText "Username" .border (m/OutlineInputBorder))
      .enabled (not loading-val)
-     .style (m/TextStyle .fontFamily font-family))
+     .style (common/m-style))
     (m/SizedBox .width 16)
     (mgl/MongolTextField
      .controller password-controller
      .decoration (m/InputDecoration .labelText "Password" .border (m/OutlineInputBorder))
      .obscureText true
      .enabled (not loading-val)
-     .style (m/TextStyle .fontFamily font-family))
+     .style (common/m-style))
     (m/SizedBox .width 24)
     (m/ElevatedButton
      .onPressed
@@ -61,18 +61,16 @@
         .child (m/SizedBox .width 20 .height 20 .child (m/CircularProgressIndicator .strokeWidth 2 .color m.Colors/white)))
        (m/Padding
         .padding (m.EdgeInsets/symmetric .horizontal 0 .vertical 8)
-        .child (mgl/MongolText "Login" .style (m/TextStyle .fontFamily font-family)))))
+        .child (mgl/MongolText "Login" .style (common/m-style)))))
     (m/SizedBox .width 16)
     (m/TextButton
      .onPressed (fn [] (nav/push-route navigator :register))
-     .child (mgl/MongolText "Don't have an account? Register now" .style (m/TextStyle .fontFamily font-family)))]))
+     .child (mgl/MongolText "Don't have an account? Register now" .style (common/m-style)))]))
 
 (defn ^m/Widget login-page [context]
   (let [loading (atom false)]
     (f/widget
-     :watch [_font-state font-state/font-state
-             loading-val loading]
-     :let [font-family (font-state/get-app-font-family)]
+     :watch [loading-val loading]
      :get [m/Navigator]
      :managed [username-controller (m/TextEditingController.)
                password-controller (m/TextEditingController.)]
@@ -86,4 +84,4 @@
         (m/SingleChildScrollView
          .scrollDirection m.Axis/horizontal
          .child
-         (login-form username-controller password-controller loading-val font-family navigator context loading))))))))
+         (login-form username-controller password-controller loading-val navigator context loading))))))))

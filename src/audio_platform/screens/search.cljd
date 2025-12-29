@@ -5,7 +5,6 @@
    [cljd.flutter :as f]
    [virtual-keyboard.keyboard :as keyboard]
    [audio-platform.state :as state]
-   [audio-platform.states.font :as font-state]
    [audio-platform.services.search :as search-service]
    [audio-platform.states.search :as search-state]
    [audio-platform.utils.navigator :as nav]
@@ -16,8 +15,6 @@
 (defn category-item [_type label count selected? on-tap]
   (f/widget
    :context _context
-   :watch [_font-state font-state/font-state]
-   :let [font-family (font-state/get-app-font-family)]
    (m/InkWell
     .onTap on-tap
     .child (m/Container
@@ -32,8 +29,7 @@
                     .children
                     [(mgl/MongolText
                       label
-                      .style (m/TextStyle
-                              .fontFamily font-family
+                      .style (common/m-style
                               .fontSize 16
                               .fontWeight (if selected? m.FontWeight/bold m.FontWeight/normal)
                               .color (if selected?
@@ -42,8 +38,7 @@
                      (m/SizedBox .height 4)
                      (mgl/MongolText
                       (str "(" count ")")
-                      .style (m/TextStyle
-                              .fontFamily font-family
+                      .style (common/m-style
                               .fontSize 12
                               .color (if selected?
                                        (-> m/Theme (.of _context) .-colorScheme .-onPrimaryContainer)
@@ -132,7 +127,7 @@
        (m/Expanded
         .child (search-results-list current-results selected-type))]))))
 
-(defn- search-input-field [search-controller font-family context]
+(defn- search-input-field [search-controller context]
   (m/Container
    .margin (m.EdgeInsets/only .right 4 .bottom 12)
    .padding (m.EdgeInsets/all 12)
@@ -147,8 +142,7 @@
                         (search-service/search query))
            .onTap (fn []
                     (dart:core/print "onTap MongolTextField"))
-           .style (m/TextStyle
-                   .fontFamily font-family
+           .style (common/m-style
                    .fontSize 20
                    .color (-> m/Theme (.of context) .-colorScheme .-onSurface))
            .decoration nil)))
@@ -156,8 +150,6 @@
 (defn ^m/Widget search-page [_context]
   (f/widget
    :get [m/Navigator]
-   :watch [_font-state font-state/font-state]
-   :let [font-family (font-state/get-app-font-family)]
    :managed [search-controller (m/TextEditingController.)]
    (m/Scaffold
     .backgroundColor (-> m/Theme (.of _context) .-colorScheme .-surface)
@@ -177,7 +169,7 @@
                 [(m/Row
                   .crossAxisAlignment m.CrossAxisAlignment/stretch
                   .children
-                  [(search-input-field search-controller font-family _context)
+                  [(search-input-field search-controller _context)
                    (m/Expanded
                     .child (search-results-panel))])
                  (keyboard/candidates nil)]))

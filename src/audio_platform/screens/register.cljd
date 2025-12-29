@@ -5,11 +5,11 @@
    ["dart:async" :as async]
    [cljd.flutter :as f]
    [audio-platform.services.api :as api]
-   [audio-platform.states.font :as font-state]
    [audio-platform.utils.toast :as toast]
-   [audio-platform.utils.navigator :as nav]))
+   [audio-platform.utils.navigator :as nav]
+   [audio-platform.widgets.common :as common]))
 
-(defn- register-form [username-controller email-controller password-controller confirm-password-controller loading-val font-family navigator context loading]
+(defn- register-form [username-controller email-controller password-controller confirm-password-controller loading-val navigator context loading]
   (m/Row
    .mainAxisAlignment m.MainAxisAlignment/center
    .crossAxisAlignment m.CrossAxisAlignment/stretch
@@ -18,28 +18,28 @@
      .controller username-controller
      .decoration (m/InputDecoration .labelText "Username" .border (m/OutlineInputBorder))
      .enabled (not loading-val)
-     .style (m/TextStyle .fontFamily font-family))
+     .style (common/m-style))
     (m/SizedBox .width 16)
     (mgl/MongolTextField
      .controller email-controller
      .decoration (m/InputDecoration .labelText "Email" .border (m/OutlineInputBorder))
      .keyboardType m.TextInputType/emailAddress
      .enabled (not loading-val)
-     .style (m/TextStyle .fontFamily font-family))
+     .style (common/m-style))
     (m/SizedBox .width 16)
     (mgl/MongolTextField
      .controller password-controller
      .decoration (m/InputDecoration .labelText "Password" .border (m/OutlineInputBorder))
      .obscureText true
      .enabled (not loading-val)
-     .style (m/TextStyle .fontFamily font-family))
+     .style (common/m-style))
     (m/SizedBox .width 16)
     (mgl/MongolTextField
      .controller confirm-password-controller
      .decoration (m/InputDecoration .labelText "Confirm Password" .border (m/OutlineInputBorder))
      .obscureText true
      .enabled (not loading-val)
-     .style (m/TextStyle .fontFamily font-family))
+     .style (common/m-style))
     (m/SizedBox .width 24)
     (m/ElevatedButton
      .onPressed
@@ -72,18 +72,16 @@
         .child (m/SizedBox .width 20 .height 20 .child (m/CircularProgressIndicator .strokeWidth 2 .color m.Colors/white)))
        (m/Padding
         .padding (m.EdgeInsets/all 12)
-        .child (mgl/MongolText "Register" .style (m/TextStyle .fontFamily font-family)))))
+        .child (mgl/MongolText "Register" .style (common/m-style)))))
     (m/SizedBox .width 16)
     (m/TextButton
      .onPressed (fn [] (nav/push-replacement-route navigator :login))
-     .child (mgl/MongolText "Already have an account? Login now" .style (m/TextStyle .fontFamily font-family)))]))
+     .child (mgl/MongolText "Already have an account? Login now" .style (common/m-style)))]))
 
 (defn ^m/Widget register-page [context]
   (let [loading (atom false)]
     (f/widget
-     :watch [_font-state font-state/font-state
-             loading-val loading]
-     :let [font-family (font-state/get-app-font-family)]
+     :watch [loading-val loading]
      :get [m/Navigator]
      :managed [username-controller (m/TextEditingController.)
                email-controller (m/TextEditingController.)
@@ -99,4 +97,4 @@
         (m/SingleChildScrollView
          .scrollDirection m.Axis/horizontal
          .child
-         (register-form username-controller email-controller password-controller confirm-password-controller loading-val font-family navigator context loading))))))))
+         (register-form username-controller email-controller password-controller confirm-password-controller loading-val navigator context loading))))))))

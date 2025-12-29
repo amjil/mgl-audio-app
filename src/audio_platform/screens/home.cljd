@@ -7,16 +7,17 @@
    [audio-platform.states.album :as album-state]
    [audio-platform.utils.navigator :as nav]
    [audio-platform.services.album :as album-service]
-   [audio-platform.services.audio-player :as audio-player]))
+   [audio-platform.services.audio-player :as audio-player]
+   [audio-platform.widgets.common :as common]))
 
 
 (defn home-page [_context]
-  ;; Load data on mount
-  (home-state/init-home-data!)
   (f/widget
    :watch [{feed-items :items
-            loading :loading} home-state/home-feed-state]
+            loading :loading
+            error :error} home-state/home-feed-state]
    :get [m/Navigator]
+   :init (home-state/init-home-data!)
    (m/Scaffold
     .appBar (m/AppBar
              .actions
@@ -36,27 +37,28 @@
                .icon (m/Icon m.Icons/notifications)
                .onPressed (fn []
                             (dart:core/print "Notifications")))])
-    .body (if loading
-            (m/Center
-             .child (m/CircularProgressIndicator))
-            (m/ListView.separated
-             .scrollDirection m/Axis.horizontal
-             .padding (m/EdgeInsets.only .top 12 .bottom 24)
-             .itemCount (count feed-items)
-             .separatorBuilder (fn [_ __] (m/VerticalDivider .width 1 .thickness 0))
-             .itemBuilder (fn [_ index]
-                            (let [item (nth feed-items index)
-                                  item-type (get item "type")]
-                              (cards/feed-card item
-                                               (fn []
-                                                 (case item-type
-                                                   "album"
-                                                   (do
-                                                     (album-service/prefill-category-from-album-id (get item "id"))
-                                                     (nav/push-route-with-arguments navigator
-                                                   :album-detail
-                                                                                   {"album_id" (get item "id")}))
-                                                   ;; For episode, store current data; playback/detail can be added later
-                                                   "episode" (audio-player/play-episode item)
-                                                   (dart:core/print (str "Unknown type:" item-type))))))))))))
-
+    .body (common/async-view
+           {:loading loading
+            :error error
+            :empty? (empty? feed-items)
+            :content-fn
+            (fn []
+              (m/ListView.separated
+               .scrollDirection m/Axis.horizontal
+               .padding (m/EdgeInsets.only .top 12 .bottom 24)
+               .itemCount (count feed-items)
+               .separatorBuilder (fn [_ __] (m/VerticalDivider .width 1 .thickness 0))
+               .itemBuilder (fn [_ index]
+                              (let [item (nth feed-items index)
+                                    item-type (get item "type")]
+                                (cards/feed-card item
+                                                 (fn []
+                                                   (case item-type
+                                                     "album"
+                                                     (do
+                                                       (album-service/prefill-category-from-album-id (get item "id"))
+                                                       (nav/push-route-with-arguments navigator
+                                                                                     :album-detail
+                                                                                     {"album_id" (get item "id")}))
+                                                     "episode" (audio-player/play-episode item)
+                                                     (dart:core/print (str "Unknown type:" item-type)))))))))}))))
