@@ -106,7 +106,7 @@
         .child (mgl/MongolTextField
                 .controller controller
                 .style (common/m-style)
-                .decoration (mgl/MongolInputDecoration .hintText "Write a comment...")))
+                .decoration (m/InputDecoration .hintText "Write a comment...")))
        (m/IconButton
         .icon (m/Icon m/Icons.send)
         .onPressed (fn []
@@ -162,9 +162,6 @@
             ep :episode} episode-state/episode-state
            {comments :comments
             comments-loading :loading} comment-state/comment-state]
-   :init (when ep
-           (comment-service/get-comments (get ep "id"))
-           (episode-service/check-favorite (get ep "id")))
    (m/Scaffold
     .appBar (if ep (episode-app-bar ep ctx navigator) (m/AppBar))
     .body

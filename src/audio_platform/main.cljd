@@ -12,6 +12,7 @@
   [audio-platform.services.audio-player :as audio-player]
   [audio-platform.theme :as theme]
   [audio-platform.states.font :as font-state]
+  [audio-platform.states.home :as home-state]
   [audio-platform.utils.navigator :as nav]
   ["package:flutter_styled_toast/flutter_styled_toast.dart" :as styled-toast]
   [audio-platform.screens.navigation :as navigation]
@@ -39,6 +40,9 @@
  
  ;; Initialize font settings from preferences
  (await (font-state/init-app-font-settings!))
+ 
+ ;; Initialize home data
+ (home-state/init-home-data!)
 
  ;; Set up input control
  (control/set-control)

@@ -16,13 +16,13 @@
    .children
    [(mgl/MongolTextField
      .controller username-controller
-     .decoration (mgl/MongolInputDecoration .labelText "Username" .border (m/OutlineInputBorder))
+     .decoration (m/InputDecoration .labelText "Username" .border (m/OutlineInputBorder))
      .enabled (not loading-val)
      .style (common/m-style))
     (m/SizedBox .width 16)
     (mgl/MongolTextField
      .controller password-controller
-     .decoration (mgl/MongolInputDecoration .labelText "Password" .border (m/OutlineInputBorder))
+     .decoration (m/InputDecoration .labelText "Password" .border (m/OutlineInputBorder))
      .obscureText true
      .enabled (not loading-val)
      .style (common/m-style))

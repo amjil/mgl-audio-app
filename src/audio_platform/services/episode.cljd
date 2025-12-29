@@ -89,6 +89,6 @@
 ;; Upload an audio file. Returns a Promise that resolves with {:media-id media-id :file-info {:path path :name name :size size}} or rejects with an error.
 (defn upload-audio-file [& {:keys [on-progress]}]
   (media/pick-and-upload-file
-   :type file-picker.FileType/audio
+   :type :audio
    :content-type "audio/mpeg"
    :on-progress on-progress))

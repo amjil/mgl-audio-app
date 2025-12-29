@@ -7,6 +7,7 @@
    [audio-platform.states.album :as album-state]
    [audio-platform.states.episode :as episode-state]
    [audio-platform.services.episode :as episode-service]
+   [audio-platform.services.comment :as comment-service]
    [audio-platform.services.audio-player :as audio-player]
    [audio-platform.utils.navigator :as nav]
    [audio-platform.widgets.common :as common]
@@ -25,44 +26,46 @@
               error :error
               album :album} album-state/album-state
              {episodes :episodes} episode-state/episode-state]
-     :init (when album-id (album-service/check-favorite album-id))
      (m/Scaffold
-      .appBar (app-bar/album-detail-app-bar {:album album :album-id album-id :is-creator is-creator :navigator navigator :ctx ctx})
-      .body (m/SafeArea
-             .child (common/async-view
-                     {:loading loading
-                      :error error
-                      :content-fn
-                      (fn []
-                        (m/ListView.separated
-                         .scrollDirection m.Axis/horizontal
-                         .itemCount (+ 1 (if (empty? episodes) 1 (count episodes)))
-                         .itemBuilder (fn [_ index]
-                                        (if (= index 0)
-                                          (items/album-info-item album episodes)
-                                          (if (empty? episodes)
-                                            (common/empty-state-view
-                                             {:icon m/Icons.queue_music
-                                              :message "No episodes yet"
-                                              :action-child (when is-creator
-                                                              (mgl/MongolElevatedButton
-                                                               .child (mgl/MongolText "Add First Episode" .style (common/m-style))
-                                                               .onPressed (fn []
-                                                                            (episode-state/reset-state)
-                                                                            (episode-state/set-episode nil)
-                                                                            (nav/push-route navigator :episode-form))))})
-                                            (items/episode-item (nth episodes (- index 1)) is-creator
-                                                                {:on-edit (fn [episode]
-                                                                            (episode-state/set-episode episode)
-                                                                            (nav/push-route navigator :episode-form))
-                                                                 :on-delete (fn [episode]
-                                                                              (common/show-confirmation-dialog
-                                                                               ctx
-                                                                               {:message "Are you sure you want to delete this episode? This action cannot be undone."
-                                                                                :on-confirm #(episode-service/delete-episode navigator (get episode "id") album-id)}))
-                                                                 :on-play (fn [episode]
-                                                                            (audio-player/play-episode episode))
-                                                                 :on-tap (fn [episode]
-                                                                           (episode-state/set-episode episode)
-                                                                           (nav/push-route navigator :episode-detail))}))))
-                         .separatorBuilder (fn [_ _] (m/VerticalDivider .width 1 .thickness 0))))}))))))
+       .appBar (app-bar/album-detail-app-bar {:album album :album-id album-id :is-creator is-creator :navigator navigator :ctx ctx})
+       .body (m/SafeArea
+              .child (common/async-view
+                      {:loading loading
+                       :error error
+                       :content-fn
+                       (fn []
+                         (m/ListView.separated
+                          .scrollDirection m.Axis/horizontal
+                          .itemCount (+ 1 (if (empty? episodes) 1 (count episodes)))
+                          .itemBuilder (fn [_ index]
+                                         (if (= index 0)
+                                           (items/album-info-item album episodes)
+                                           (if (empty? episodes)
+                                             (common/empty-state-view
+                                              {:icon m/Icons.queue_music
+                                               :message "No episodes yet"
+                                               :action-child (when is-creator
+                                                               (mgl/MongolElevatedButton
+                                                                .child (mgl/MongolText "Add First Episode" .style (common/m-style))
+                                                                .onPressed (fn []
+                                                                             (episode-state/reset-state)
+                                                                             (episode-state/set-episode nil)
+                                                                             (nav/push-route navigator :episode-form))))})
+                                             (items/episode-item (nth episodes (- index 1)) is-creator
+                                                                 {:on-edit (fn [episode]
+                                                                             (episode-state/set-episode episode)
+                                                                             (nav/push-route navigator :episode-form))
+                                                                  :on-delete (fn [episode]
+                                                                               (common/show-confirmation-dialog
+                                                                                ctx
+                                                                                {:message "Are you sure you want to delete this episode? This action cannot be undone."
+                                                                                 :on-confirm #(episode-service/delete-episode navigator (get episode "id") album-id)}))
+                                                                  :on-play (fn [episode]
+                                                                             (audio-player/play-episode episode))
+                                                                  :on-tap (fn [episode]
+                                                                            (let [ep-id (get episode "id")]
+                                                                              (episode-state/set-episode episode)
+                                                                              (comment-service/get-comments ep-id)
+                                                                              (episode-service/check-favorite ep-id)
+                                                                              (nav/push-route navigator :episode-detail)))}))))
+                          .separatorBuilder (fn [_ _] (m/VerticalDivider .width 1 .thickness 0))))}))))))

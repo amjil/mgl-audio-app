@@ -31,11 +31,12 @@
                            on-tap (fn []
                                     (case item-type
                                       "album"
-                                      (do
-                                        (album-service/prefill-category-from-album-id (get item "id"))
+                                      (let [album-id (get item "id")]
+                                        (album-service/prefill-category-from-album-id album-id)
+                                        (album-service/check-favorite album-id)
                                         (nav/push-route-with-arguments navigator
                                                                        :album-detail
-                                                                       {"album_id" (get item "id")}))
+                                                                       {"album_id" album-id}))
                                       "episode"
                                       (state/set-current-episode item)
                                       "creator"

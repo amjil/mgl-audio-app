@@ -80,7 +80,7 @@
            (m/SizedBox .width 8)
            (mgl/MongolTextField
             .controller title-controller
-            .decoration (mgl/MongolInputDecoration .hintText "Enter episode title" .border (m/OutlineInputBorder))
+            .decoration (m/InputDecoration .hintText "Enter episode title" .border (m/OutlineInputBorder))
             .style (common/m-style))
            (m/SizedBox .width 16)
            (forms/field-label "Audio File *")
@@ -89,7 +89,7 @@
            (m/SizedBox .width 8)
            (mgl/MongolTextField
             .controller media-id-controller
-            .decoration (mgl/MongolInputDecoration .hintText "Media ID (auto-filled after upload)" .border (m/OutlineInputBorder) .enabled (not @uploading))
+            .decoration (m/InputDecoration .hintText "Media ID (auto-filled after upload)" .border (m/OutlineInputBorder) .enabled (not @uploading))
             .style (common/m-style))
            (m/SizedBox .width 16)
            (forms/field-label "Sequence")
@@ -97,7 +97,7 @@
            (mgl/MongolTextField
             .controller sequence-controller
             .keyboardType m.TextInputType/number
-            .decoration (mgl/MongolInputDecoration .hintText "Enter sequence number" .border (m/OutlineInputBorder))
+            .decoration (m/InputDecoration .hintText "Enter sequence number" .border (m/OutlineInputBorder))
             .style (common/m-style))
            (m/SizedBox .width 32)
            (forms/form-actions

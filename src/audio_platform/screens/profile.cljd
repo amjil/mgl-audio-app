@@ -4,6 +4,7 @@
    ["package:mongol/mongol.dart" :as mgl]
    [cljd.flutter :as f]
    [audio-platform.state :as state]
+   [audio-platform.services.favorites :as favorites-service]
    [audio-platform.utils.navigator :as nav]
    [audio-platform.widgets.common :as common]))
 
@@ -51,6 +52,7 @@
                .title (mgl/MongolText "Favorites" .style (common/m-style))
                .trailing (m/Icon m.Icons/chevron_right)
                .onTap (fn []
+                        (favorites-service/fetch-favorites)
                         (nav/push-route navigator :favorites)))
               (mgl/MongolListTile
                .leading (m/Icon m.Icons/history)

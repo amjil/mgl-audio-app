@@ -17,7 +17,7 @@
             loading :loading
             error :error} home-state/home-feed-state]
    :get [m/Navigator]
-   :init (home-state/init-home-data!)
+  ;;  :init (home-state/init-home-data!)
    (m/Scaffold
     .appBar (m/AppBar
              .actions
@@ -55,10 +55,11 @@
                                                  (fn []
                                                    (case item-type
                                                      "album"
-                                                     (do
-                                                       (album-service/prefill-category-from-album-id (get item "id"))
+                                                     (let [album-id (get item "id")]
+                                                       (album-service/prefill-category-from-album-id album-id)
+                                                       (album-service/check-favorite album-id)
                                                        (nav/push-route-with-arguments navigator
                                                                                      :album-detail
-                                                                                     {"album_id" (get item "id")}))
+                                                                                     {"album_id" album-id}))
                                                      "episode" (audio-player/play-episode item)
                                                      (dart:core/print (str "Unknown type:" item-type)))))))))}))))

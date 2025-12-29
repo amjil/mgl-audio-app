@@ -8,7 +8,7 @@
    Example: '<em>test</em> 001' -> [MongolTextSpan(text: 'test', style: bold), MongolTextSpan(text: ' 001')]"
   [html-text style-fn]
   (if (or (nil? html-text) (empty? html-text))
-    [(mgl/MongolTextSpan .text "")]
+    [(m/TextSpan .text "")]
     (let [text (str html-text)
           spans (atom [])]
       (letfn [(parse-recursive [remaining-text]
@@ -19,7 +19,7 @@
                     ;; No more <em> tags
                     (< em-start 0)
                     (when (> (count remaining-text) 0)
-                      (swap! spans conj (mgl/MongolTextSpan .text remaining-text .style (style-fn))))
+                      (swap! spans conj (m/TextSpan .text remaining-text .style (style-fn))))
                     
                     ;; Found <em> tag
                     (and (>= em-start 0) em-end)
@@ -28,10 +28,10 @@
                       (when (> em-start 0)
                         (let [before (subs remaining-text 0 em-start)]
                           (when (> (count before) 0)
-                            (swap! spans conj (mgl/MongolTextSpan .text before .style (style-fn))))))
+                            (swap! spans conj (m/TextSpan .text before .style (style-fn))))))
                       ;; Add highlighted text
                       (let [highlighted (subs remaining-text (+ em-start 4) em-end)]
-                        (swap! spans conj (mgl/MongolTextSpan
+                        (swap! spans conj (m/TextSpan
                                            .text highlighted
                                            .style (style-fn :fontWeight m.FontWeight/bold))))
                       ;; Continue parsing after </em>
@@ -41,10 +41,10 @@
                     
                     ;; Malformed <em> tag (no closing tag)
                     :else
-                    (swap! spans conj (mgl/MongolTextSpan .text remaining-text .style (style-fn))))))]
+                    (swap! spans conj (m/TextSpan .text remaining-text .style (style-fn))))))]
         (parse-recursive text)
         (if (empty? @spans)
-          [(mgl/MongolTextSpan .text text .style (style-fn))]
+          [(m/TextSpan .text text .style (style-fn))]
           @spans)))))
 
 (defn get-highlighted-text
