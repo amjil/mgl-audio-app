@@ -11,7 +11,8 @@
    [audio-platform.services.album :as album-service]
    [audio-platform.services.audio-player :as audio-player]
    [audio-platform.utils.format :as format]
-   [audio-platform.utils.navigator :as nav]))
+   [audio-platform.utils.navigator :as nav]
+   [audio-platform.widgets.common :as common]))
 
 (defn episode-item [episode ctx navigator album-id is-creator font-family]
   (mgl/MongolListTile
@@ -74,7 +75,7 @@
 (defn- album-info-item [album episodes font-family]
   (m/Padding
    .padding (m.EdgeInsets/all 16)
-   .child 
+   .child
    (m/Column
     .crossAxisAlignment m.CrossAxisAlignment/start
     .children
@@ -98,6 +99,54 @@
        (mgl/MongolText (str "Episodes (" (count episodes) ")")
                       .style (m/TextStyle .fontFamily font-family .fontSize 18 .fontWeight m/FontWeight.bold))])])))
 
+(defn- album-app-bar [album album-id is-creator navigator ctx]
+  (m/AppBar
+   .leading (m/IconButton
+             .icon (m/Icon m/Icons.arrow_back)
+             .onPressed (fn [] (nav/navigator-pop navigator)))
+   .actions (let [favorite-btn (m/IconButton
+                                .icon (m/Icon (if (get album "is_favorite") m/Icons.favorite m/Icons.favorite_border))
+                                .color (if (get album "is_favorite") m/Colors.red nil)
+                                .onPressed (fn []
+                                             (if (get album "is_favorite")
+                                               (album-service/remove-favorite album-id)
+                                               (album-service/add-favorite album-id))))]
+              (if is-creator
+                [favorite-btn
+                 (m/IconButton
+                  .icon (m/Icon m/Icons.add)
+                  .tooltip "Add Episode"
+                  .onPressed (fn []
+                               (episode-state/reset-state)
+                               (episode-state/set-episode nil)
+                               (nav/push-route navigator :episode-form)))
+                 (m/IconButton
+                  .icon (m/Icon m/Icons.edit)
+                  .onPressed (fn []
+                               (nav/push-route navigator :album-form)))
+                 (m/IconButton
+                  .icon (m/Icon m/Icons.delete)
+                  .onPressed (fn []
+                               (m/showDialog
+                                .context ctx
+                                .builder (fn [_ctx]
+                                           (m/AlertDialog
+                                            .content (mgl/MongolText "Are you sure you want to delete this album? This action cannot be undone.")
+                                            .actions
+                                            [(m/TextButton
+                                              .child (mgl/MongolText "Cancel")
+                                              .onPressed (fn []
+                                                           (nav/navigator-pop navigator)))
+                                             (m/TextButton
+                                              .child (mgl/MongolText "Delete")
+                                              .style (m/TextButton.styleFrom
+                                                      .foregroundColor m/Colors.red)
+                                              .onPressed (fn []
+                                                           (nav/navigator-pop navigator)
+                                                           (album-service/delete-album navigator album-id)))])))
+                               nil))]
+                [favorite-btn]))))
+
 (defn ^m/Widget album-detail-page [_context]
   (let [album (album-state/get-album)
         current-user (state/get-user)
@@ -113,88 +162,27 @@
              {episodes :episodes} episode-state/episode-state]
      :init (when album-id (album-service/check-favorite album-id))
      (m/Scaffold
-      .appBar (m/AppBar
-               .leading (m/IconButton
-                         .icon (m/Icon m/Icons.arrow_back)
-                         .onPressed (fn [] (nav/navigator-pop navigator)))
-               .actions (let [favorite-btn (m/IconButton
-                                            .icon (m/Icon (if (get album "is_favorite") m/Icons.favorite m/Icons.favorite_border))
-                                            .color (if (get album "is_favorite") m/Colors.red nil)
-                                            .onPressed (fn [] 
-                                                         (if (get album "is_favorite")
-                                                           (album-service/remove-favorite album-id)
-                                                           (album-service/add-favorite album-id))))]
-                         (if is-creator
-                           [favorite-btn
-                            (m/IconButton
-                             .icon (m/Icon m/Icons.add)
-                             .tooltip "Add Episode"
-                             .onPressed (fn []
-                                          (episode-state/reset-state)
-                                          (episode-state/set-episode nil)
-                                          (nav/push-route navigator :episode-form)))
-                            (m/IconButton
-                             .icon (m/Icon m/Icons.edit)
-                             .onPressed (fn []
-                                          (nav/push-route navigator :album-form)))
-                            (m/IconButton
-                             .icon (m/Icon m/Icons.delete)
-                             .onPressed (fn []
-                                          (m/showDialog
-                                           .context ctx
-                                           .builder (fn [_ctx]
-                                                      (m/AlertDialog
-                                                       .content (mgl/MongolText "Are you sure you want to delete this album? This action cannot be undone.")
-                                                       .actions
-                                                       [(m/TextButton
-                                                         .child (mgl/MongolText "Cancel")
-                                                         .onPressed (fn []
-                                                                      (nav/navigator-pop navigator)))
-                                                        (m/TextButton
-                                                         .child (mgl/MongolText "Delete")
-                                                         .style (m/TextButton.styleFrom
-                                                                 .foregroundColor m/Colors.red)
-                                                         .onPressed (fn []
-                                                                      (nav/navigator-pop navigator)
-                                                                      (album-service/delete-album navigator album-id)))])))
-                                          nil))]
-                           [favorite-btn])))
+      .appBar (album-app-bar album album-id is-creator navigator ctx)
       .body (m/SafeArea
-             .child (if loading
-                      (m/Center .child (m/CircularProgressIndicator))
-                      (if-not (empty? error)
-                        (m/Center
-                         .child (m/Column
-                                 .mainAxisAlignment m.MainAxisAlignment/center
-                                 .children
-                                 [(m/Icon m.Icons/error_outline .size 64 .color m/Colors.red)
-                                  (m/SizedBox .height 16)
-                                  (mgl/MongolText (album-state/get-error)
-                                                  .style (m/TextStyle .fontFamily font-family .color m/Colors.red))]))
-                        (m/ListView.separated
-                         .scrollDirection m.Axis/horizontal
-                         .itemCount (+ 1 (if (empty? episodes) 1 (count episodes)))
-                         .itemBuilder (fn [_ index]
-                                        (if (= index 0)
-                                          (album-info-item album episodes font-family)
-                                          (if (empty? episodes)
-                                            (m/Center
-                                             .child (m/Column
-                                                     .mainAxisAlignment m/MainAxisAlignment.center
-                                                     .children
-                                                     [(m/Icon m/Icons.queue_music .size 64 .color m/Colors.grey.shade400)
-                                                      (m/SizedBox .height 16)
-                                                      (mgl/MongolText "No episodes yet"
-                                                                      .style (m/TextStyle .fontFamily font-family .color m/Colors.grey.shade600))
-                                                      (if is-creator
-                                                        (m/Padding
-                                                         .padding (m.EdgeInsets/only .top 16)
-                                                         .child (mgl/MongolElevatedButton
-                                                                 .child (mgl/MongolText "Add First Episode")
-                                                                 .onPressed (fn []
-                                                                              (episode-state/reset-state)
-                                                                              (episode-state/set-episode nil)
-                                                                              (nav/push-route navigator :episode-form))))
-                                                        (m/SizedBox))]))
-                                            (episode-item (nth episodes (- index 1)) ctx navigator album-id is-creator font-family))))
-                         .separatorBuilder (fn [_ _] (m/VerticalDivider .width 1 .thickness 0))))))))))
+             .child (cond
+                      loading (common/loading-view)
+                      (seq error) (common/error-view (album-state/get-error))
+                      :else (m/ListView.separated
+                             .scrollDirection m.Axis/horizontal
+                             .itemCount (+ 1 (if (empty? episodes) 1 (count episodes)))
+                             .itemBuilder (fn [_ index]
+                                            (if (= index 0)
+                                              (album-info-item album episodes font-family)
+                                              (if (empty? episodes)
+                                                (common/empty-state-view
+                                                 {:icon m/Icons.queue_music
+                                                  :message "No episodes yet"
+                                                  :action-child (when is-creator
+                                                                  (mgl/MongolElevatedButton
+                                                                   .child (mgl/MongolText "Add First Episode")
+                                                                   .onPressed (fn []
+                                                                                (episode-state/reset-state)
+                                                                                (episode-state/set-episode nil)
+                                                                                (nav/push-route navigator :episode-form))))})
+                                                (episode-item (nth episodes (- index 1)) ctx navigator album-id is-creator font-family))))
+                             .separatorBuilder (fn [_ _] (m/VerticalDivider .width 1 .thickness 0)))))))))

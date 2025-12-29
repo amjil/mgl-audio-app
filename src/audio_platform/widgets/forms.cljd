@@ -1,0 +1,27 @@
+(ns audio-platform.widgets.forms
+  (:require
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [cljd.flutter :as f]
+   [audio-platform.states.font :as font-state]))
+
+(defn field-label [label]
+  (f/widget
+   :let [font-family (font-state/get-app-font-family)]
+   (mgl/MongolText label
+                    .style (m/TextStyle .fontFamily font-family .fontSize 14 .fontWeight m.FontWeight/bold))))
+
+(defn form-actions [{:keys [loading submit-label on-submit on-cancel]}]
+  (m/Row
+   .mainAxisAlignment m.MainAxisAlignment/end
+   .children
+   [(mgl/MongolTextButton
+     .child (mgl/MongolText "Cancel")
+     .onPressed on-cancel)
+    (m/SizedBox .width 16)
+    (mgl/MongolElevatedButton
+     .child (if loading
+              (m/SizedBox .width 20 .height 20 .child (m/CircularProgressIndicator .strokeWidth 2 .valueColor (m/AlwaysStoppedAnimation m/Colors.white)))
+              (mgl/MongolText (or submit-label "Submit")))
+     .onPressed (if loading nil on-submit))]))
+

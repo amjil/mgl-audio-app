@@ -12,7 +12,8 @@
    [audio-platform.services.api :as api]
    [audio-platform.services.audio-player :as audio-player]
    [audio-platform.utils.format :as format]
-   [audio-platform.utils.navigator :as nav]))
+   [audio-platform.utils.navigator :as nav]
+   [audio-platform.widgets.common :as common]))
 
 (defn- comment-item [comment font-family current-user-id]
   (let [is-author (= (get comment "user_id") current-user-id)]
@@ -119,11 +120,33 @@
      (m/SizedBox .height 16)
      (m/Expanded
       .child (if comments-loading
-               (m/Center .child (m/CircularProgressIndicator))
+               (common/loading-view)
                (m/ListView.builder
                 .itemCount (count comments)
                 .itemBuilder (fn [_ idx]
                                (comment-item (nth comments idx) font-family current-user-id)))))])))
+
+(defn- episode-app-bar [ep ctx navigator]
+  (m/AppBar
+   .leading (m/IconButton
+             .icon (m/Icon m/Icons.arrow_back)
+             .onPressed (fn [] (nav/navigator-pop navigator)))
+   .actions [(m/IconButton
+              .icon (m/Icon (if (get ep "is_favorite") m/Icons.favorite m/Icons.favorite_border))
+              .color (if (get ep "is_favorite") m/Colors.red nil)
+              .onPressed (fn []
+                           (if (get ep "is_favorite")
+                             (episode-service/remove-favorite (get ep "id"))
+                             (episode-service/add-favorite (get ep "id")))))
+             (m/IconButton
+              .icon (m/Icon m/Icons.share)
+              .onPressed (fn []
+                           (-> (api/create-share (state/get-token) "episode" (get ep "id"))
+                               (.then (fn [data]
+                                        (let [url (get data "share_url")
+                                              snack (m/SnackBar .content (m/Text (str "Share link created: " url)))]
+                                          (-> (m.ScaffoldMessenger/of ctx)
+                                              (.showSnackBar snack))))))))]))
 
 (defn ^m/Widget episode-detail-page [_context]
   (f/widget
@@ -138,41 +161,19 @@
             ep :episode} episode-state/episode-state
            {comments :comments
             comments-loading :loading} comment-state/comment-state]
-   :init (when ep 
+   :init (when ep
            (comment-service/get-comments (get ep "id"))
            (episode-service/check-favorite (get ep "id")))
    (m/Scaffold
-    .appBar (m/AppBar
-             .leading (m/IconButton
-                       .icon (m/Icon m/Icons.arrow_back)
-                       .onPressed (fn [] (nav/navigator-pop navigator)))
-             .actions [(m/IconButton
-                        .icon (m/Icon (if (get ep "is_favorite") m/Icons.favorite m/Icons.favorite_border))
-                        .color (if (get ep "is_favorite") m/Colors.red nil)
-                        .onPressed (fn [] 
-                                     (if (get ep "is_favorite")
-                                       (episode-service/remove-favorite (get ep "id"))
-                                       (episode-service/add-favorite (get ep "id")))))
-                       (m/IconButton
-                        .icon (m/Icon m/Icons.share)
-                        .onPressed (fn [] 
-                                     (-> (api/create-share (state/get-token) "episode" (get ep "id"))
-                                         (.then (fn [data]
-                                                  (let [url (get data "share_url")
-                                                        snack (m/SnackBar .content (m/Text (str "Share link created: " url)))]
-                                                    (-> (m.ScaffoldMessenger/of ctx)
-                                                        (.showSnackBar snack))))))))])
+    .appBar (if ep (episode-app-bar ep ctx navigator) (m/AppBar))
     .body
     (m/SafeArea
-     .child (if loading
-              (m/Center .child (m/CircularProgressIndicator))
-              (if (some? error)
-                (m/Center .child (mgl/MongolText (str "Error: " error)
-                                                 .style (m/TextStyle .color m/Colors.red .fontFamily font-family)))
-                (if (nil? ep)
-                  (m/Center .child (mgl/MongolText "No episode data" .style (m/TextStyle .fontFamily font-family)))
-                  (m/ListView
-                   .scrollDirection m.Axis/horizontal
-                   .children
-                   [(episode-info-column ep font-family)
-                    (comments-column ep comments comments-loading font-family current-user-id comment-controller)]))))))))
+     .child (cond
+              loading (common/loading-view)
+              error (common/error-view (str "Error: " error))
+              (nil? ep) (common/empty-state-view {:message "No episode data"})
+              :else (m/ListView
+                     .scrollDirection m.Axis/horizontal
+                     .children
+                     [(episode-info-column ep font-family)
+                      (comments-column ep comments comments-loading font-family current-user-id comment-controller)]))))))

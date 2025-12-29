@@ -10,7 +10,8 @@
    [audio-platform.states.search :as search-state]
    [audio-platform.utils.navigator :as nav]
    [audio-platform.widgets.cards :as cards]
-   [audio-platform.services.album :as album-service]))
+   [audio-platform.services.album :as album-service]
+   [audio-platform.widgets.common :as common]))
 
 (defn category-item [_type label count selected? on-tap]
   (f/widget
@@ -51,23 +52,11 @@
 (defn search-results-list [results _selected-type]
   (f/widget
    :get [m/Navigator]
-   :watch [_font-state font-state/font-state]
-   :let [font-family (font-state/get-app-font-family)]
    (cond
      (empty? results)
-     (m/Center
-      .child (m/Column
-              .mainAxisAlignment m.MainAxisAlignment/center
-              .children
-              [(m/Icon m.Icons/search_off
-                       .size 64
-                       .color m/Colors.grey.shade400)
-               (m/SizedBox .height 16)
-               (mgl/MongolText
-                "No results found"
-                .style (m/TextStyle
-                        .fontFamily font-family
-                        .color m/Colors.grey.shade600))]))
+     (common/empty-state-view
+      {:icon m.Icons/search_off
+       :message "No results found"})
      
      :else
      (m/ListView.builder
@@ -97,6 +86,22 @@
                          (cards/creator-card item on-tap)
                          (cards/feed-card item on-tap))))))))
 
+(defn- search-categories [albums episodes creators selected-type]
+  (m/Container
+   .decoration (m/BoxDecoration
+                .border (m/Border
+                         .right (m/BorderSide
+                                 .color m/Colors.grey.shade300
+                                 .width 1)))
+   .child (m/Column
+           .children
+           [(category-item "albums" "Albums" (count albums) (= selected-type "albums")
+                           (fn [] (search-state/set-selected-type "albums")))
+            (category-item "episodes" "Episodes" (count episodes) (= selected-type "episodes")
+                           (fn [] (search-state/set-selected-type "episodes")))
+            (category-item "creators" "Creators" (count creators) (= selected-type "creators")
+                           (fn [] (search-state/set-selected-type "creators")))])))
+
 (defn search-results-panel []
   (f/widget
    :watch [{loading :loading
@@ -105,52 +110,48 @@
             creators :creators
             selected-type :selected-type
             query :query} search-state/search-state]
-   :let [font-family (font-state/get-app-font-family)
-         current-results (case selected-type
+   :let [current-results (case selected-type
                            "albums" albums
                            "episodes" episodes
                            "creators" creators
                            albums)]
    (cond
      loading
-     (m/Center
-      .child (m/CircularProgressIndicator))
+     (common/loading-view)
      
      (empty? query)
-     (m/Center
-      .child (m/Column
-              .mainAxisAlignment m.MainAxisAlignment/center
-              .children
-              [(m/Icon m.Icons/search
-                       .size 64
-                       .color m/Colors.grey.shade400)
-               (m/SizedBox .height 16)
-               (mgl/MongolText
-                "Enter keywords to search audio content"
-                .style (m/TextStyle
-                        .fontFamily font-family
-                        .color m/Colors.grey.shade600))]))
+     (common/empty-state-view
+      {:icon m.Icons/search
+       :message "Enter keywords to search audio content"})
      
      :else
      (m/Row
       .crossAxisAlignment m.CrossAxisAlignment/stretch
       .children
-      [(m/Container
-        .decoration (m/BoxDecoration
-                     .border (m/Border
-                              .right (m/BorderSide
-                                      .color m/Colors.grey.shade300
-                                      .width 1)))
-        .child (m/Column
-                .children
-                [(category-item "albums" "Albums" (count albums) (= selected-type "albums")
-                                (fn [] (search-state/set-selected-type "albums")))
-                 (category-item "episodes" "Episodes" (count episodes) (= selected-type "episodes")
-                                (fn [] (search-state/set-selected-type "episodes")))
-                 (category-item "creators" "Creators" (count creators) (= selected-type "creators")
-                                (fn [] (search-state/set-selected-type "creators")))]))
+      [(search-categories albums episodes creators selected-type)
        (m/Expanded
         .child (search-results-list current-results selected-type))]))))
+
+(defn- search-input-field [search-controller font-family context]
+  (m/Container
+   .margin (m.EdgeInsets/only .right 4 .bottom 12)
+   .padding (m.EdgeInsets/all 12)
+   .decoration (m/BoxDecoration
+                .border (m.Border/all)
+                .borderRadius (m.BorderRadius/circular 12))
+   .child (mgl/MongolTextField
+           .controller search-controller
+           .maxLines 1
+           .autofocus true
+           .onChanged (fn [query]
+                        (search-service/search query))
+           .onTap (fn []
+                    (dart:core/print "onTap MongolTextField"))
+           .style (m/TextStyle
+                   .fontFamily font-family
+                   .fontSize 20
+                   .color (-> m/Theme (.of context) .-colorScheme .-onSurface))
+           .decoration nil)))
 
 (defn ^m/Widget search-page [_context]
   (f/widget
@@ -164,37 +165,20 @@
              .backgroundColor m/Colors.transparent
              .leading (m/IconButton
                        .icon (m/Icon m.Icons/arrow_back)
-                       .onPressed (fn [] (nav/navigator-pop navigator)))))
-   .body
-   (m/SafeArea)
-   (m/Column
-    .children
-    [(m/Expanded
-      .child (m/Stack
-              .children
-              [(m/Row
-                .crossAxisAlignment m.CrossAxisAlignment/stretch
+                       .onPressed (fn [] (nav/navigator-pop navigator))))
+    .body
+    (m/SafeArea
+     .child
+     (m/Column
+      .children
+      [(m/Expanded
+        .child (m/Stack
                 .children
-                [(m/Container
-                  .margin (m.EdgeInsets/only .right 4 .bottom 12)
-                  .padding (m.EdgeInsets/all 12)
-                  .decoration (m/BoxDecoration
-                               .border (m.Border/all)
-                               .borderRadius (m.BorderRadius/circular 12))
-                  .child (mgl/MongolTextField
-                          .controller search-controller
-                          .maxLines 1
-                          .autofocus true
-                          .onChanged (fn [query]
-                                       (search-service/search query))
-                          .onTap (fn []
-                                   (dart:core/print "onTap MongolTextField"))
-                           .style (m/TextStyle
-                                   .fontFamily font-family
-                                   .fontSize 20
-                                   .color (-> m/Theme (.of _context) .-colorScheme .-onSurface))
-                          .decoration nil))
-                 (m/Expanded
-                  .child (search-results-panel))])
-               (keyboard/candidates nil)]))
-     (keyboard/keyboard {:custom-fns {}})])))
+                [(m/Row
+                  .crossAxisAlignment m.CrossAxisAlignment/stretch
+                  .children
+                  [(search-input-field search-controller font-family _context)
+                   (m/Expanded
+                    .child (search-results-panel))])
+                 (keyboard/candidates nil)]))
+       (keyboard/keyboard {:custom-fns {}})])))))

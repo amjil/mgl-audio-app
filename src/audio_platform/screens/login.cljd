@@ -9,6 +9,64 @@
    [audio-platform.utils.toast :as toast]
    [audio-platform.utils.navigator :as nav]))
 
+(defn- login-form [username-controller password-controller loading-val font-family navigator context loading]
+  (m/Row
+   .mainAxisAlignment m.MainAxisAlignment/center
+   .crossAxisAlignment m.CrossAxisAlignment/stretch
+   .children
+   [(mgl/MongolTextField
+     .controller username-controller
+     .decoration (m/InputDecoration .labelText "Username" .border (m/OutlineInputBorder))
+     .enabled (not loading-val)
+     .style (m/TextStyle .fontFamily font-family))
+    (m/SizedBox .width 16)
+    (mgl/MongolTextField
+     .controller password-controller
+     .decoration (m/InputDecoration .labelText "Password" .border (m/OutlineInputBorder))
+     .obscureText true
+     .enabled (not loading-val)
+     .style (m/TextStyle .fontFamily font-family))
+    (m/SizedBox .width 24)
+    (m/ElevatedButton
+     .onPressed
+     (when (not loading-val)
+       (fn []
+         (reset! loading true)
+         (let [username (.-text username-controller)
+               password (.-text password-controller)]
+           (-> (api/login username password)
+               (.then
+                (fn [response]
+                  (let [token (get response "access_token")
+                        refresh-token (get response "refresh_token")]
+                    (state/set-token token refresh-token)
+                    (-> (api/get-current-user token)
+                        (.then
+                         (fn [user]
+                           (state/set-user user)
+                           (reset! loading false)
+                           (nav/push-replacement-route navigator :home)))
+                        (.catchError
+                         (fn [err]
+                           (reset! loading false)
+                           (toast/handle-error-with-toast context err "Хэрэглэгчийн мэдээлэл авахад алдаа гарлаа")))))))
+               (.catchError
+                (fn [err]
+                  (reset! loading false)
+                  (toast/handle-error-with-toast context err "Нэвтрэхэд алдаа гарлаа")))))))
+     .child
+     (if loading-val
+       (m/Padding
+        .padding (m.EdgeInsets/all 8)
+        .child (m/SizedBox .width 20 .height 20 .child (m/CircularProgressIndicator .strokeWidth 2 .color m.Colors/white)))
+       (m/Padding
+        .padding (m.EdgeInsets/symmetric .horizontal 0 .vertical 8)
+        .child (mgl/MongolText "Login" .style (m/TextStyle .fontFamily font-family)))))
+    (m/SizedBox .width 16)
+    (m/TextButton
+     .onPressed (fn [] (nav/push-route navigator :register))
+     .child (mgl/MongolText "Don't have an account? Register now" .style (m/TextStyle .fontFamily font-family)))]))
+
 (defn ^m/Widget login-page [context]
   (let [loading (atom false)]
     (f/widget
@@ -28,59 +86,4 @@
         (m/SingleChildScrollView
          .scrollDirection m.Axis/horizontal
          .child
-         (m/Row
-          .mainAxisAlignment m.MainAxisAlignment/center
-          .crossAxisAlignment m.CrossAxisAlignment/stretch
-          .children
-          [(mgl/MongolTextField
-            .controller username-controller
-            .decoration (m/InputDecoration .labelText "Username" .border (m/OutlineInputBorder))
-            .enabled (not loading-val)
-            .style (m/TextStyle .fontFamily font-family))
-           (m/SizedBox .width 16)
-           (mgl/MongolTextField
-            .controller password-controller
-            .decoration (m/InputDecoration .labelText "Password" .border (m/OutlineInputBorder))
-            .obscureText true
-            .enabled (not loading-val)
-            .style (m/TextStyle .fontFamily font-family))
-           (m/SizedBox .width 24)
-           (m/ElevatedButton
-            .onPressed
-            (when (not loading-val)
-              (fn []
-                (reset! loading true)
-                (let [username (.-text username-controller)
-                      password (.-text password-controller)]
-                  (-> (api/login username password)
-                      (.then
-                       (fn [response]
-                         (let [token (get response "access_token")
-                               refresh-token (get response "refresh_token")]
-                           (state/set-token token refresh-token)
-                           (-> (api/get-current-user token)
-                               (.then
-                                (fn [user]
-                                  (state/set-user user)
-                                  (reset! loading false)
-                                  (nav/push-replacement-route navigator :home)))
-                               (.catchError
-                                (fn [err]
-                                  (reset! loading false)
-                                  (toast/handle-error-with-toast context err "Хэрэглэгчийн мэдээлэл авахад алдаа гарлаа")))))))
-                      (.catchError
-                       (fn [err]
-                         (reset! loading false)
-                         (toast/handle-error-with-toast context err "Нэвтрэхэд алдаа гарлаа")))))))
-            .child
-            (if loading-val
-              (m/Padding
-               .padding (m.EdgeInsets/all 8)
-               .child (m/SizedBox .width 20 .height 20 .child (m/CircularProgressIndicator .strokeWidth 2 .color m.Colors/white)))
-              (m/Padding
-               .padding (m.EdgeInsets/symmetric .horizontal 0 .vertical 8)
-               .child (mgl/MongolText "Login" .style (m/TextStyle .fontFamily font-family)))))
-           (m/SizedBox .width 16)
-           (m/TextButton
-            .onPressed (fn [] (nav/push-route navigator :register))
-            .child (mgl/MongolText "Don't have an account? Register now" .style (m/TextStyle .fontFamily font-family)))]))))))))
+         (login-form username-controller password-controller loading-val font-family navigator context loading))))))))

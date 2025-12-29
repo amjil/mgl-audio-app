@@ -1,0 +1,39 @@
+(ns audio-platform.widgets.common
+  (:require
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [cljd.flutter :as f]
+   [audio-platform.states.font :as font-state]))
+
+(defn loading-view []
+  (m/Center .child (m/CircularProgressIndicator)))
+
+(defn error-view [error-message]
+  (f/widget
+   :let [font-family (font-state/get-app-font-family)]
+   (m/Center
+    .child (m/Column
+            .mainAxisAlignment m.MainAxisAlignment/center
+            .children
+            [(m/Icon m.Icons/error_outline .size 64 .color m/Colors.red)
+             (m/SizedBox .height 16)
+             (mgl/MongolText error-message
+                             .style (m/TextStyle .fontFamily font-family .color m/Colors.red))]))))
+
+(defn empty-state-view [{:keys [icon message action-child]}]
+  (f/widget
+   :let [font-family (font-state/get-app-font-family)]
+   (m/Center
+    .child (m/Column
+            .mainAxisAlignment m/MainAxisAlignment.center
+            .children
+            [(m/Icon (or icon m/Icons.inbox) .size 64 .color m/Colors.grey.shade400)
+             (m/SizedBox .height 16)
+             (mgl/MongolText (or message "No data")
+                             .style (m/TextStyle .fontFamily font-family .color m/Colors.grey.shade600))
+             (if action-child
+               (m/Padding
+                .padding (m.EdgeInsets/only .top 16)
+                .child action-child)
+               (m/SizedBox))]))))
+

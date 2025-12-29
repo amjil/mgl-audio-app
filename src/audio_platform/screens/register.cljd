@@ -9,6 +9,75 @@
    [audio-platform.utils.toast :as toast]
    [audio-platform.utils.navigator :as nav]))
 
+(defn- register-form [username-controller email-controller password-controller confirm-password-controller loading-val font-family navigator context loading]
+  (m/Row
+   .mainAxisAlignment m.MainAxisAlignment/center
+   .crossAxisAlignment m.CrossAxisAlignment/stretch
+   .children
+   [(mgl/MongolTextField
+     .controller username-controller
+     .decoration (m/InputDecoration .labelText "Username" .border (m/OutlineInputBorder))
+     .enabled (not loading-val)
+     .style (m/TextStyle .fontFamily font-family))
+    (m/SizedBox .width 16)
+    (mgl/MongolTextField
+     .controller email-controller
+     .decoration (m/InputDecoration .labelText "Email" .border (m/OutlineInputBorder))
+     .keyboardType m.TextInputType/emailAddress
+     .enabled (not loading-val)
+     .style (m/TextStyle .fontFamily font-family))
+    (m/SizedBox .width 16)
+    (mgl/MongolTextField
+     .controller password-controller
+     .decoration (m/InputDecoration .labelText "Password" .border (m/OutlineInputBorder))
+     .obscureText true
+     .enabled (not loading-val)
+     .style (m/TextStyle .fontFamily font-family))
+    (m/SizedBox .width 16)
+    (mgl/MongolTextField
+     .controller confirm-password-controller
+     .decoration (m/InputDecoration .labelText "Confirm Password" .border (m/OutlineInputBorder))
+     .obscureText true
+     .enabled (not loading-val)
+     .style (m/TextStyle .fontFamily font-family))
+    (m/SizedBox .width 24)
+    (m/ElevatedButton
+     .onPressed
+     (when (not loading-val)
+       (fn []
+         (let [username (.-text username-controller)
+               email (.-text email-controller)
+               password (.-text password-controller)
+               confirm-password (.-text confirm-password-controller)]
+           (if (not= password confirm-password)
+             (toast/show-error-toast context "Нууц үг зөрүүтэй байна")
+             (do
+               (reset! loading true)
+               (-> (api/register username email password)
+                   (.then
+                    (fn [_response]
+                      (toast/show-success-toast context "Бүртгэл амжилттай! Нэвтэрнэ үү")
+                      (reset! loading false)
+                      (async/Future.delayed
+                       (Duration .seconds 1)
+                       (fn [] (nav/push-replacement-route navigator :login)))))
+                   (.catchError
+                    (fn [err]
+                      (reset! loading false)
+                      (toast/handle-error-with-toast context err "Бүртгүүлэхэд алдаа гарлаа")))))))))
+     .child
+     (if loading-val
+       (m/Padding
+        .padding (m.EdgeInsets/all 12)
+        .child (m/SizedBox .width 20 .height 20 .child (m/CircularProgressIndicator .strokeWidth 2 .color m.Colors/white)))
+       (m/Padding
+        .padding (m.EdgeInsets/all 12)
+        .child (mgl/MongolText "Register" .style (m/TextStyle .fontFamily font-family)))))
+    (m/SizedBox .width 16)
+    (m/TextButton
+     .onPressed (fn [] (nav/push-replacement-route navigator :login))
+     .child (mgl/MongolText "Already have an account? Login now" .style (m/TextStyle .fontFamily font-family)))]))
+
 (defn ^m/Widget register-page [context]
   (let [loading (atom false)]
     (f/widget
@@ -30,70 +99,4 @@
         (m/SingleChildScrollView
          .scrollDirection m.Axis/horizontal
          .child
-         (m/Row
-          .mainAxisAlignment m.MainAxisAlignment/center
-          .crossAxisAlignment m.CrossAxisAlignment/stretch
-          .children
-          [(mgl/MongolTextField
-            .controller username-controller
-            .decoration (m/InputDecoration .labelText "Username" .border (m/OutlineInputBorder))
-            .enabled (not loading-val)
-            .style (m/TextStyle .fontFamily font-family))
-           (m/SizedBox .width 16)
-           (mgl/MongolTextField
-            .controller email-controller
-            .decoration (m/InputDecoration .labelText "Email" .border (m/OutlineInputBorder))
-            .keyboardType m.TextInputType/emailAddress
-            .enabled (not loading-val)
-            .style (m/TextStyle .fontFamily font-family))
-           (m/SizedBox .width 16)
-           (mgl/MongolTextField
-            .controller password-controller
-            .decoration (m/InputDecoration .labelText "Password" .border (m/OutlineInputBorder))
-            .obscureText true
-            .enabled (not loading-val)
-            .style (m/TextStyle .fontFamily font-family))
-           (m/SizedBox .width 16)
-           (mgl/MongolTextField
-            .controller confirm-password-controller
-            .decoration (m/InputDecoration .labelText "Confirm Password" .border (m/OutlineInputBorder))
-            .obscureText true
-            .enabled (not loading-val)
-            .style (m/TextStyle .fontFamily font-family))
-           (m/SizedBox .width 24)
-           (m/ElevatedButton
-            .onPressed
-            (when (not loading-val)
-              (fn []
-                (let [username (.-text username-controller)
-                      email (.-text email-controller)
-                      password (.-text password-controller)
-                      confirm-password (.-text confirm-password-controller)]
-                  (if (not= password confirm-password)
-                    (toast/show-error-toast context "Нууц үг зөрүүтэй байна")
-                    (do
-                      (reset! loading true)
-                      (-> (api/register username email password)
-                          (.then
-                           (fn [_response]
-                             (toast/show-success-toast context "Бүртгэл амжилттай! Нэвтэрнэ үү")
-                             (reset! loading false)
-                             (async/Future.delayed
-                              (Duration .seconds 1)
-                              (fn [] (nav/push-replacement-route navigator :login)))))
-                          (.catchError
-                           (fn [err]
-                             (reset! loading false)
-                             (toast/handle-error-with-toast context err "Бүртгүүлэхэд алдаа гарлаа")))))))))
-            .child
-            (if loading-val
-              (m/Padding
-               .padding (m.EdgeInsets/all 12)
-               .child (m/SizedBox .width 20 .height 20 .child (m/CircularProgressIndicator .strokeWidth 2 .color m.Colors/white)))
-              (m/Padding
-               .padding (m.EdgeInsets/all 12)
-               .child (mgl/MongolText "Register" .style (m/TextStyle .fontFamily font-family)))))
-           (m/SizedBox .width 16)
-           (m/TextButton
-            .onPressed (fn [] (nav/push-replacement-route navigator :login))
-            .child (mgl/MongolText "Already have an account? Login now" .style (m/TextStyle .fontFamily font-family)))]))))))))
+         (register-form username-controller email-controller password-controller confirm-password-controller loading-val font-family navigator context loading))))))))
