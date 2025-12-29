@@ -1,0 +1,91 @@
+(ns audio-platform.services.audio-player
+  (:require
+   ["package:just_audio/just_audio.dart" :as ja]
+   ["package:audio_session/audio_session.dart" :as as]
+   [audio-platform.state :as state]))
+
+(defonce player (ja/AudioPlayer.))
+
+(defn ^:async init! []
+  (dart:core/print "Initializing AudioPlayer service...")
+  
+  ;; Set up audio session for focus and interruptions
+  (let [session (await as/AudioSession.instance)]
+    (await (.configure session (as/AudioSessionConfiguration.music)))
+    ;; Listen to interruptions
+    (-> (.-interruptionEventStream session)
+        (.listen (fn [event]
+                   (let [type (.-type event)]
+                     (cond
+                       (== type as/AudioInterruptionType.pause) (.pause player)
+                       (== type as/AudioInterruptionType.duck) (.setVolume player 0.5)
+                       :else (.pause player))))))
+    ;; Listen to becoming noisy (earphones unplugged)
+    (-> (.-becomingNoisyEventStream session)
+        (.listen (fn [_] (.pause player)))))
+
+  ;; Listen to player state
+  (-> (.-playerStateStream player)
+      (.listen (fn [player-state]
+                 (let [playing (.-playing player-state)
+                       processing-state (.-processingState player-state)]
+                   (state/set-playing playing)
+                   (cond
+                     (== processing-state ja/ProcessingState.idle) 
+                     (do (state/set-buffering false)
+                         (dart:core/print "Player idle"))
+                     
+                     (== processing-state ja/ProcessingState.loading) 
+                     (do (state/set-buffering true)
+                         (dart:core/print "Player loading"))
+                     
+                     (== processing-state ja/ProcessingState.buffering) 
+                     (do (state/set-buffering true)
+                         (dart:core/print "Player buffering"))
+                     
+                     (== processing-state ja/ProcessingState.ready) 
+                     (do (state/set-buffering false)
+                         (dart:core/print "Player ready"))
+                     
+                     (== processing-state ja/ProcessingState.completed) 
+                     (do (state/set-buffering false)
+                         (dart:core/print "Player completed")
+                         (.seek player (dart:core/Duration. .seconds 0))
+                         (.pause player)))))))
+  
+  ;; Listen to position changes
+  (-> (.-positionStream player)
+      (.listen (fn [position]
+                 (state/set-play-position (.-inMilliseconds position)))))
+  
+  ;; Listen to duration changes
+  (-> (.-durationStream player)
+      (.listen (fn [duration]
+                 (when duration
+                   (let [episode (state/get-current-episode)]
+                     (when episode
+                       (state/set-current-episode (assoc episode "duration" (.-inMilliseconds duration))))))))))
+
+(defn play-episode [episode]
+  (let [url (get episode "audio_url")]
+    (if url
+      (do
+        (state/set-current-episode episode)
+        (-> (.setUrl player url)
+            (.then (fn [_] (.play player)))
+            (.catchError (fn [e] (dart:core/print (str "Error loading audio: " e))))))
+      (dart:core/print "Error: No audio URL provided for episode"))))
+
+(defn toggle-play []
+  (if (.-playing player)
+    (.pause player)
+    (.play player)))
+
+(defn seek [position-ms]
+  (.seek player (dart:core/Duration. .milliseconds position-ms)))
+
+(defn stop []
+  (.stop player))
+
+(defn set-volume [volume]
+  (.setVolume player volume))

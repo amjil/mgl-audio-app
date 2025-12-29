@@ -9,18 +9,19 @@
    [audio-platform.states.font :as font-state]
    [audio-platform.services.episode :as episode-service]
    [audio-platform.services.album :as album-service]
+   [audio-platform.services.audio-player :as audio-player]
    [audio-platform.utils.format :as format]
    [audio-platform.utils.navigator :as nav]))
 
 (defn episode-item [episode ctx navigator album-id is-creator font-family]
   (mgl/MongolListTile
-   .leading (m/Icon m.Icons/play_circle_outline)
+   .leading (m/Icon m/Icons.play_circle_outline)
    .title (mgl/MongolText
            (get episode "title" "Unknown Episode")
            .style (m/TextStyle
                    .fontFamily font-family
                    .fontSize 16
-                   .fontWeight m.FontWeight/normal))
+                   .fontWeight m/FontWeight.normal))
    .subtitle (mgl/MongolText
               (format/format-duration (get episode "duration" 0))
               .style (m/TextStyle
@@ -28,16 +29,16 @@
                       .color m/Colors.grey.shade600
                       .fontSize 12))
    .trailing (m/Row
-              .mainAxisSize m.MainAxisSize/min
+              .mainAxisSize m/MainAxisSize.min
               .children
               (if is-creator
                 [(m/IconButton
-                  .icon (m/Icon m.Icons/edit)
+                  .icon (m/Icon m/Icons.edit)
                   .onPressed (fn []
                                (episode-state/set-episode episode)
                                (nav/push-route navigator :episode-form)))
                  (m/IconButton
-                  .icon (m/Icon m.Icons/delete)
+                  .icon (m/Icon m/Icons.delete)
                   .color m/Colors.red
                   .onPressed (fn []
                                (m/showDialog
@@ -59,18 +60,16 @@
                                                            (episode-service/delete-episode navigator (get episode "id") album-id)))])))
                                nil))
                  (m/IconButton
-                  .icon (m/Icon m.Icons/play_arrow)
+                  .icon (m/Icon m/Icons.play_arrow)
                   .onPressed (fn []
-                               (state/set-current-episode episode)
-                               (dart:core/print (str "Episode tapped: " (get episode "id")))))]
+                               (audio-player/play-episode episode)))]
                 [(m/IconButton
-                  .icon (m/Icon m.Icons/play_arrow)
+                  .icon (m/Icon m/Icons.play_arrow)
                   .onPressed (fn []
-                               (state/set-current-episode episode)
-                               (dart:core/print (str "Episode tapped: " (get episode "id")))))]))
+                               (audio-player/play-episode episode)))]) ;; closing if
+              ) ;; closing m/Row
    .onTap (fn []
-            (state/set-current-episode episode)
-            (dart:core/print (str "Episode tapped: " (get episode "id"))))))
+            (audio-player/play-episode episode))))
 
 (defn ^m/Widget album-detail-page [_context]
   (let [album (album-state/get-album)
@@ -91,18 +90,18 @@
                          .onPressed (fn [] (nav/navigator-pop navigator)))
                .actions (if is-creator
                          [(m/IconButton
-                           .icon (m/Icon m.Icons/add)
+                           .icon (m/Icon m/Icons.add)
                            .tooltip "Add Episode"
                            .onPressed (fn []
                                         (episode-state/reset-state)
                                         (episode-state/set-episode nil)
                                         (nav/push-route navigator :episode-form)))
                           (m/IconButton
-                           .icon (m/Icon m.Icons/edit)
+                           .icon (m/Icon m/Icons.edit)
                            .onPressed (fn []
                                         (nav/push-route navigator :album-form)))
                           (m/IconButton
-                           .icon (m/Icon m.Icons/delete)
+                           .icon (m/Icon m/Icons.delete)
                            .onPressed (fn []
                                         (m/showDialog
                                          .context ctx
@@ -160,9 +159,9 @@
                                                            .color m/Colors.grey.shade300)
                                               .child (if (get album "cover_url")
                                                        (m/Image.network (get album "cover_url")
-                                                                        .fit m.BoxFit/cover)
+                                                                        .fit m/BoxFit.cover)
                                                        (m/Center
-                                                        .child (m/Icon m.Icons/album
+                                                        .child (m/Icon m/Icons.album
                                                                        .size 64
                                                                        .color m/Colors.grey.shade600))))
                                              (m/SizedBox .height 20)
@@ -173,7 +172,7 @@
                                                 .style (m/TextStyle
                                                         .fontFamily font-family
                                                         .fontSize 24
-                                                        .fontWeight m.FontWeight/bold))
+                                                        .fontWeight m/FontWeight.bold))
                                                (m/SizedBox .width 4)
                                                (mgl/MongolText
                                                 (get album "description" "")
@@ -189,14 +188,14 @@
                                                 .style (m/TextStyle
                                                         .fontFamily font-family
                                                         .fontSize 18
-                                                        .fontWeight m.FontWeight/bold))])]))
+                                                        .fontWeight m/FontWeight.bold))])]))
                                    ;; Subsequent items: episodes or empty state
                                    (if (empty? episodes)
                                      (m/Center
                                       .child (m/Column
-                                              .mainAxisAlignment m.MainAxisAlignment/center
+                                              .mainAxisAlignment m/MainAxisAlignment.center
                                               .children
-                                              [(m/Icon m.Icons/queue_music
+                                              [(m/Icon m/Icons.queue_music
                                                        .size 64
                                                        .color m/Colors.grey.shade400)
                                                (m/SizedBox .height 16)

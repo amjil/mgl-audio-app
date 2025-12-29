@@ -11,13 +11,14 @@
                            :is-authenticated false}))
 
 (defonce app-state (atom {:current-episode nil
-                         :is-playing false
-                         :play-position 0
-                         :albums []
-                         :episodes []
-                         :playlists []
-                         :notifications []
-                         :search-results []}))
+                        :is-playing false
+                        :is-buffering false
+                        :play-position 0
+                        :albums []
+                        :episodes []
+                        :playlists []
+                        :notifications []
+                        :search-results []}))
 
 (defn get-token []
   (:token @auth-state))
@@ -90,6 +91,12 @@
 
 (defn is-playing? []
   (:is-playing @app-state))
+
+(defn set-buffering [buffering]
+  (swap! app-state assoc :is-buffering buffering))
+
+(defn is-buffering? []
+  (:is-buffering @app-state))
 
 (defn set-play-position [position]
   (swap! app-state assoc :play-position position))
