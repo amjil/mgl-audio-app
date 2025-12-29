@@ -1,6 +1,7 @@
 (ns audio-platform.widgets.app-bar
  (:require 
   ["package:flutter/material.dart" :as m]
+  ["package:mongol/mongol.dart" :as mgl]
   [audio-platform.utils.navigator :as nav]
   [audio-platform.services.album :as album-service]
   [audio-platform.states.album :as album-state]
@@ -9,7 +10,7 @@
 
 (defn app-bar []
   (m/AppBar
-   .title (m/Text "App Bar")))
+   .title (mgl/MongolText "App Bar" .style (common/m-style))))
    
 (defn album-detail [ctx navigator current-user]
   (let [album (album-state/get-album)]

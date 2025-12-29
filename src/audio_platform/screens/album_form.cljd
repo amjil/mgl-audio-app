@@ -18,7 +18,7 @@
    .children
    [(mgl/MongolTextField
      .controller cover-url-controller
-     .decoration (m/InputDecoration .hintText "Enter cover image URL" .border (m/OutlineInputBorder))
+     .decoration (mgl/MongolInputDecoration .hintText "Enter cover image URL" .border (m/OutlineInputBorder))
      .style (common/m-style))
     (m/SizedBox .width 8)
     (mgl/MongolElevatedButton
@@ -79,7 +79,7 @@
            (m/SizedBox .width 8)
            (mgl/MongolTextField
             .controller title-controller
-            .decoration (m/InputDecoration .hintText "Enter album title" .border (m/OutlineInputBorder))
+            .decoration (mgl/MongolInputDecoration .hintText "Enter album title" .border (m/OutlineInputBorder))
             .style (common/m-style))
            (m/SizedBox .width 16)
            (forms/field-label "Description")
@@ -87,7 +87,7 @@
            (mgl/MongolTextField
             .controller description-controller
             .maxLines 5
-            .decoration (m/InputDecoration .hintText "Enter album description" .border (m/OutlineInputBorder) .alignLabelWithHint true)
+            .decoration (mgl/MongolInputDecoration .hintText "Enter album description" .border (m/OutlineInputBorder) .alignLabelWithHint true)
             .style (common/m-style))
            (m/SizedBox .width 16)
            (forms/field-label "Cover URL")

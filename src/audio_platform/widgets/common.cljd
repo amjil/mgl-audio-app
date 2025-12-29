@@ -54,10 +54,10 @@
                .title (when title (mgl/MongolText title .style (m-style .fontWeight m/FontWeight.bold)))
                .content (mgl/MongolText message .style (m-style))
                .actions
-               [(m/TextButton
+               [(mgl/MongolTextButton
                  .child (mgl/MongolText (or cancel-label "Cancel") .style (m-style))
                  .onPressed (fn [] (m/Navigator.pop dialog-ctx)))
-                (m/TextButton
+                (mgl/MongolTextButton
                  .child (mgl/MongolText (or confirm-label "Confirm") .style (m-style .color m/Colors.red))
                  .onPressed (fn []
                               (m/Navigator.pop dialog-ctx)

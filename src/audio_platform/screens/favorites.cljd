@@ -18,7 +18,7 @@
             .padding (m.EdgeInsets/all 12)
             .decoration (m/BoxDecoration
                          .border (when selected?
-                                   (m/Border .bottom (m/BorderSide .color m/Colors.blue .width 2))))
+                                   (m/Border .right (m/BorderSide .color m/Colors.blue .width 2))))
             .child (mgl/MongolText
                     label
                     .style (common/m-style

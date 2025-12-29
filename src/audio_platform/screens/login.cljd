@@ -16,18 +16,18 @@
    .children
    [(mgl/MongolTextField
      .controller username-controller
-     .decoration (m/InputDecoration .labelText "Username" .border (m/OutlineInputBorder))
+     .decoration (mgl/MongolInputDecoration .labelText "Username" .border (m/OutlineInputBorder))
      .enabled (not loading-val)
      .style (common/m-style))
     (m/SizedBox .width 16)
     (mgl/MongolTextField
      .controller password-controller
-     .decoration (m/InputDecoration .labelText "Password" .border (m/OutlineInputBorder))
+     .decoration (mgl/MongolInputDecoration .labelText "Password" .border (m/OutlineInputBorder))
      .obscureText true
      .enabled (not loading-val)
      .style (common/m-style))
     (m/SizedBox .width 24)
-    (m/ElevatedButton
+    (mgl/MongolElevatedButton
      .onPressed
      (when (not loading-val)
        (fn []
@@ -63,7 +63,7 @@
         .padding (m.EdgeInsets/symmetric .horizontal 0 .vertical 8)
         .child (mgl/MongolText "Login" .style (common/m-style)))))
     (m/SizedBox .width 16)
-    (m/TextButton
+    (mgl/MongolTextButton
      .onPressed (fn [] (nav/push-route navigator :register))
      .child (mgl/MongolText "Don't have an account? Register now" .style (common/m-style)))]))
 

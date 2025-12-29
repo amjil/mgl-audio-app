@@ -75,7 +75,7 @@
        (mgl/MongolText (format/format-duration (get ep "duration" 0))
                       .style (common/m-style .fontSize 14 .color m/Colors.grey.shade600))])
      (m/SizedBox .height 20)
-     (m/ElevatedButton.icon
+     (mgl/MongolElevatedButton.icon
       .icon (m/Icon m/Icons.play_arrow)
       .label (mgl/MongolText "Play Now" .style (common/m-style))
       .onPressed (fn [] (audio-player/play-episode ep)))
@@ -103,9 +103,10 @@
      (m/Row
       .children
       [(m/Expanded
-        .child (m/TextField
+        .child (mgl/MongolTextField
                 .controller controller
-                .decoration (m/InputDecoration .hintText "Write a comment...")))
+                .style (common/m-style)
+                .decoration (mgl/MongolInputDecoration .hintText "Write a comment...")))
        (m/IconButton
         .icon (m/Icon m/Icons.send)
         .onPressed (fn []
@@ -142,12 +143,12 @@
              (m/IconButton
               .icon (m/Icon m/Icons.share)
               .onPressed (fn []
-                           (-> (api/create-share (state/get-token) "episode" (get ep "id"))
-                               (.then (fn [data]
-                                        (let [url (get data "share_url")
-                                              snack (m/SnackBar .content (m/Text (str "Share link created: " url)))]
-                                          (-> (m.ScaffoldMessenger/of ctx)
-                                              (.showSnackBar snack))))))))]))
+                               (-> (api/create-share (state/get-token) "episode" (get ep "id"))
+                                   (.then (fn [data]
+                                            (let [url (get data "share_url")
+                                                  snack (m/SnackBar .content (mgl/MongolText (str "Share link created: " url) .style (common/m-style)))]
+                                              (-> (m.ScaffoldMessenger/of ctx)
+                                                  (.showSnackBar snack))))))))]))
 
 (defn ^m/Widget episode-detail-page [_context]
   (f/widget

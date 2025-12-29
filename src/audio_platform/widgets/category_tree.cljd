@@ -86,11 +86,11 @@
                                       .autofocus true
                                       .style (common/m-style))]))
                   .actions
-                  [(m/TextButton
+                  [(mgl/MongolTextButton
                     .onPressed (fn []
                                  (nav/navigator-pop navigator))
                     .child (mgl/MongolText "Cancel" .style (common/m-style)))
-                   (m/TextButton
+                   (mgl/MongolTextButton
                     .onPressed (fn []
                                  (let [name (.-text name-controller)]
                                    (when (not (empty? name))

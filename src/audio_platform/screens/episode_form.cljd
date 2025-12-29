@@ -35,11 +35,11 @@
              (.catchError (fn [err]
                             (reset! uploading false)
                             (toast/handle-error-with-toast ctx err "Файл хуулахад алдаа гарлаа")))))))
-    (m/SizedBox .height 8)
+    (m/SizedBox .width 8)
     (if @uploading
-      (m/SizedBox .height 100 .child (m/LinearProgressIndicator .value @upload-progress))
+      (m/SizedBox .width 100 .child (m/LinearProgressIndicator .value @upload-progress))
       (m/SizedBox))
-    (m/SizedBox .height 8)
+    (m/SizedBox .width 8)
     (if (some? @selected-file)
       (mgl/MongolText (str "Selected: " (:name @selected-file))
                       .style (common/m-style .fontSize 12 .color m/Colors.green))
@@ -80,16 +80,16 @@
            (m/SizedBox .width 8)
            (mgl/MongolTextField
             .controller title-controller
-            .decoration (m/InputDecoration .hintText "Enter episode title" .border (m/OutlineInputBorder))
+            .decoration (mgl/MongolInputDecoration .hintText "Enter episode title" .border (m/OutlineInputBorder))
             .style (common/m-style))
            (m/SizedBox .width 16)
            (forms/field-label "Audio File *")
            (m/SizedBox .width 8)
            (audio-upload-section uploading upload-progress selected-file media-id-controller ctx)
-           (m/SizedBox .height 8)
+           (m/SizedBox .width 8)
            (mgl/MongolTextField
             .controller media-id-controller
-            .decoration (m/InputDecoration .hintText "Media ID (auto-filled after upload)" .border (m/OutlineInputBorder) .enabled (not @uploading))
+            .decoration (mgl/MongolInputDecoration .hintText "Media ID (auto-filled after upload)" .border (m/OutlineInputBorder) .enabled (not @uploading))
             .style (common/m-style))
            (m/SizedBox .width 16)
            (forms/field-label "Sequence")
@@ -97,7 +97,7 @@
            (mgl/MongolTextField
             .controller sequence-controller
             .keyboardType m.TextInputType/number
-            .decoration (m/InputDecoration .hintText "Enter sequence number" .border (m/OutlineInputBorder))
+            .decoration (mgl/MongolInputDecoration .hintText "Enter sequence number" .border (m/OutlineInputBorder))
             .style (common/m-style))
            (m/SizedBox .width 32)
            (forms/form-actions

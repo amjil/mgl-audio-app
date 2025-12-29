@@ -14,7 +14,7 @@
      :get [m/Navigator]
      (m/Scaffold
       .appBar (m/AppBar
-               .title (m/Text "Profile"))
+               .title (mgl/MongolText "Profile" .style (common/m-style)))
       .body (m/ListView
              .scrollDirection m.Axis/horizontal
              .children

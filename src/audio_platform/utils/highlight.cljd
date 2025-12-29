@@ -1,12 +1,14 @@
 (ns audio-platform.utils.highlight
   (:require
-   ["package:flutter/material.dart" :as m]))
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]))
 
-(defn parse-html-highlight [html-text]
-  "Parse HTML text with <em> tags and return a list of TextSpan widgets.
-   Example: '<em>test</em> 001' -> [TextSpan(text: 'test', style: bold), TextSpan(text: ' 001')]"
+(defn parse-html-highlight
+  "Parse HTML text with <em> tags and return a list of MongolTextSpan widgets.
+   Example: '<em>test</em> 001' -> [MongolTextSpan(text: 'test', style: bold), MongolTextSpan(text: ' 001')]"
+  [html-text style-fn]
   (if (or (nil? html-text) (empty? html-text))
-    [(m/TextSpan .text "")]
+    [(mgl/MongolTextSpan .text "")]
     (let [text (str html-text)
           spans (atom [])]
       (letfn [(parse-recursive [remaining-text]
@@ -17,7 +19,7 @@
                     ;; No more <em> tags
                     (< em-start 0)
                     (when (> (count remaining-text) 0)
-                      (swap! spans conj (m/TextSpan .text remaining-text)))
+                      (swap! spans conj (mgl/MongolTextSpan .text remaining-text .style (style-fn))))
                     
                     ;; Found <em> tag
                     (and (>= em-start 0) em-end)
@@ -26,12 +28,12 @@
                       (when (> em-start 0)
                         (let [before (subs remaining-text 0 em-start)]
                           (when (> (count before) 0)
-                            (swap! spans conj (m/TextSpan .text before)))))
+                            (swap! spans conj (mgl/MongolTextSpan .text before .style (style-fn))))))
                       ;; Add highlighted text
                       (let [highlighted (subs remaining-text (+ em-start 4) em-end)]
-                        (swap! spans conj (m/TextSpan
+                        (swap! spans conj (mgl/MongolTextSpan
                                            .text highlighted
-                                           .style (m/TextStyle .fontWeight m.FontWeight/bold))))
+                                           .style (style-fn :fontWeight m.FontWeight/bold))))
                       ;; Continue parsing after </em>
                       (let [after (subs remaining-text (+ em-end 5))]
                         (when (> (count after) 0)
@@ -39,23 +41,25 @@
                     
                     ;; Malformed <em> tag (no closing tag)
                     :else
-                    (swap! spans conj (m/TextSpan .text remaining-text)))))]
+                    (swap! spans conj (mgl/MongolTextSpan .text remaining-text .style (style-fn))))))]
         (parse-recursive text)
         (if (empty? @spans)
-          [(m/TextSpan .text text)]
+          [(mgl/MongolTextSpan .text text .style (style-fn))]
           @spans)))))
 
-(defn get-highlighted-text [item field]
+(defn get-highlighted-text
   "Get highlighted text from item, falling back to original field if highlight not available.
    Returns the HTML text string (not parsed)."
+  [item field]
   (let [highlight (get item "highlight")]
     (if (and highlight (get highlight field))
       (get highlight field)
       (get item field))))
 
-(defn strip-html-tags [html-text]
+(defn strip-html-tags
   "Remove HTML tags from text, keeping only the text content.
    Example: '<em>test</em> 001' -> 'test 001'"
+  [html-text]
   (if (or (nil? html-text) (empty? html-text))
     ""
     (let [text (str html-text)
