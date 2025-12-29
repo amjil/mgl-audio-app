@@ -1,0 +1,105 @@
+(ns audio-platform.utils.toast
+ (:require
+  ["package:flutter/material.dart" :as m]
+  ["package:mongol/mongol.dart" :as mgl]
+  [audio-platform.utils.navigator :as nav]
+  ["package:flutter_styled_toast/flutter_styled_toast.dart" :as styled-toast]))
+
+;; Toast Utilities
+;; Provides common toast notification functions for the application
+
+(defn- get-context [ctx]
+  (or ctx (.-currentContext nav/navigator-key)))
+
+;; Show error toast
+(defn show-error-toast [ctx msg]
+ (let [context (get-context ctx)]
+  (styled-toast/showToastWidget
+   (m/Container
+    .padding (m/EdgeInsets.all 18)
+    .decoration (m/BoxDecoration
+                 .borderRadius (.all m/BorderRadius (.circular m/Radius 20))
+                 .color m/Colors.redAccent)
+    .child
+    (mgl/MongolText msg))
+   .context context
+   .reverseAnimation styled-toast/StyledToastAnimation.fade
+   .animation styled-toast/StyledToastAnimation.fade
+   .position styled-toast/StyledToastPosition.center)))
+
+;; Show success toast
+(defn show-success-toast [ctx msg]
+ (let [context (get-context ctx)]
+  (styled-toast/showToastWidget
+   (m/Container
+    .padding (m/EdgeInsets.all 18)
+    .decoration (m/BoxDecoration
+                 .borderRadius (.all m/BorderRadius (.circular m/Radius 20))
+                 .color m/Colors.greenAccent)
+    .child
+    (mgl/MongolText msg))
+   .context context
+   .reverseAnimation styled-toast/StyledToastAnimation.fade
+   .animation styled-toast/StyledToastAnimation.fade
+   .position styled-toast/StyledToastPosition.center)))
+
+;; Show info toast
+(defn show-info-toast [ctx msg]
+ (let [context (get-context ctx)]
+  (styled-toast/showToastWidget
+   (m/Container
+    .padding (m/EdgeInsets.all 18)
+    .decoration (m/BoxDecoration
+                 .borderRadius (.all m/BorderRadius (.circular m/Radius 20))
+                 .color m/Colors.blueAccent)
+    .child
+    (mgl/MongolText msg))
+   .context context
+   .reverseAnimation styled-toast/StyledToastAnimation.fade
+   .animation styled-toast/StyledToastAnimation.fade
+   .position styled-toast/StyledToastPosition.center)))
+
+;; Show warning toast
+(defn show-warning-toast [ctx msg]
+ (let [context (get-context ctx)]
+  (styled-toast/showToastWidget
+   (m/Container
+    .padding (m/EdgeInsets.all 18)
+    .decoration (m/BoxDecoration
+                 .borderRadius (.all m/BorderRadius (.circular m/Radius 20))
+                 .color m/Colors.orangeAccent)
+    .child
+    (mgl/MongolText msg))
+   .context context
+   .reverseAnimation styled-toast/StyledToastAnimation.fade
+   .animation styled-toast/StyledToastAnimation.fade
+   .position styled-toast/StyledToastPosition.center)))
+
+;; Generic toast function
+(defn show-toast [ctx msg & [type]]
+ (let [toast-fn (case type
+                  :error show-error-toast
+                  :success show-success-toast
+                  :warning show-warning-toast
+                  show-info-toast)]
+   (toast-fn ctx msg)))
+
+;; Handle error with toast
+(defn handle-error-with-toast [ctx error & [fallback-msg]]
+ (let [error-msg (if (string? error)
+                   error
+                   (or fallback-msg "Алдаа гарлаа"))]
+   (show-error-toast ctx error-msg)))
+
+;; Handle success with toast
+(defn handle-success-with-toast [ctx msg]
+ (show-success-toast ctx msg))
+
+;; Handle info with toast
+(defn handle-info-with-toast [ctx msg]
+ (show-info-toast ctx msg))
+
+;; Handle warning with toast
+(defn handle-warning-with-toast [ctx msg]
+ (show-warning-toast ctx msg))
+

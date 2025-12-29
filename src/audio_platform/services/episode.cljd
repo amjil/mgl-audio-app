@@ -4,6 +4,7 @@
    [audio-platform.services.media :as media]
    [audio-platform.state :as state]
    [audio-platform.states.episode :as episode-state]
+   [audio-platform.utils.toast :as toast]
    [audio-platform.utils.navigator :as nav]))
 
 (defn get-episodes [& {:keys [album-id page per-page]}]
@@ -35,22 +36,26 @@
                (nav/navigator-pop navigator)
                ;; Reload episodes for the album
                (get-episodes :album-id album-id)
+               (toast/handle-success-with-toast nil "Дугаар амжилттай үүслээ")
                (swap! episode-state/episode-state assoc :loading false)))
       (.catchError (fn [err]
                      (dart:core/print (str "Error creating episode: " err))
+                     (toast/handle-error-with-toast nil err "Дугаар үүсгэхэд алдаа гарлаа")
                      (swap! episode-state/episode-state assoc :error (str "Failed to create episode: " err))
                      (swap! episode-state/episode-state assoc :loading false)))))
 
-(defn delete-episode [navigator episode-id album-id]
+(defn delete-episode [_navigator episode-id album-id]
   (swap! episode-state/episode-state assoc :loading true :error nil)
   (-> (api/delete-episode (state/get-token) episode-id)
       (.then (fn [_]
                (dart:core/print "Episode deleted successfully")
                ;; Reload episodes for the album
                (get-episodes :album-id album-id)
+               (toast/handle-success-with-toast nil "Дугаар амжилттай устгагдлаа")
                (swap! episode-state/episode-state assoc :loading false)))
       (.catchError (fn [err]
                      (dart:core/print (str "Error deleting episode: " err))
+                     (toast/handle-error-with-toast nil err "Дугаар устгахад алдаа гарлаа")
                      (swap! episode-state/episode-state assoc :error (str "Failed to delete episode: " err))
                      (swap! episode-state/episode-state assoc :loading false)))))
 

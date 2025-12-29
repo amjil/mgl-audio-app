@@ -1,61 +1,67 @@
 (ns audio-platform.main
-  (:require
-   ["package:flutter/material.dart" :as m]
-   [cljd.flutter :as f]
-   [virtual-keyboard.zip-utils :as zip-utils]
-   [virtual-keyboard.fst-reader :as fst-reader]
-   [virtual-keyboard.keyboard-candidates :as kc]
-   [virtual-keyboard.options :as keyboard-options]
-   [virtual-keyboard.input-control :as control]
+ (:require
+  ["package:flutter/material.dart" :as m]
+  [cljd.flutter :as f]
+  [virtual-keyboard.zip-utils :as zip-utils]
+  [virtual-keyboard.fst-reader :as fst-reader]
+  [virtual-keyboard.keyboard-candidates :as kc]
+  [virtual-keyboard.options :as keyboard-options]
+  [virtual-keyboard.input-control :as control]
   [audio-platform.auth :as auth]
-   [audio-platform.state :as state]
-   [audio-platform.services.audio-player :as audio-player]
-   [audio-platform.theme :as theme]
-   [audio-platform.states.font :as font-state]
-   [audio-platform.screens.navigation :as navigation]
-   [audio-platform.screens.login :as login]
-   [audio-platform.screens.profile :as profile]
-   [audio-platform.screens.search :as search]
-   [audio-platform.screens.register :as register]
-   [audio-platform.screens.album-detail :as album-detail]
-   [audio-platform.screens.episode-detail :as episode-detail]
-   [audio-platform.screens.album-form :as album-form]
-   [audio-platform.screens.episode-form :as episode-form]
-   [audio-platform.screens.favorites :as favorites]
-   [audio-platform.screens.history :as history]
-   [audio-platform.screens.playlists :as playlists]))
+  [audio-platform.state :as state]
+  [audio-platform.services.audio-player :as audio-player]
+  [audio-platform.theme :as theme]
+  [audio-platform.states.font :as font-state]
+  [audio-platform.utils.navigator :as nav]
+  ["package:flutter_styled_toast/flutter_styled_toast.dart" :as styled-toast]
+  [audio-platform.screens.navigation :as navigation]
+  [audio-platform.screens.login :as login]
+  [audio-platform.screens.profile :as profile]
+  [audio-platform.screens.search :as search]
+  [audio-platform.screens.register :as register]
+  [audio-platform.screens.album-detail :as album-detail]
+  [audio-platform.screens.episode-detail :as episode-detail]
+  [audio-platform.screens.album-form :as album-form]
+  [audio-platform.screens.episode-form :as episode-form]
+  [audio-platform.screens.favorites :as favorites]
+  [audio-platform.screens.history :as history]
+  [audio-platform.screens.playlists :as playlists]))
 
-(defn ^:async main []
-  ;; Ensure Flutter binding is initialized
-  (m.WidgetsFlutterBinding/ensureInitialized)
+(defn main []
+ ;; Ensure Flutter binding is initialized
+ (m.WidgetsFlutterBinding/ensureInitialized)
 
-  ;; Load saved tokens
-  (auth/load-session!)
-  
-  ;; Initialize audio player
-  (await (audio-player/init!))
-  
-  ;; Initialize font settings from preferences
-  (await (font-state/init-app-font-settings!))
+ ;; Load saved tokens
+ (auth/load-session!)
+ 
+ ;; Initialize audio player
+ (await (audio-player/init!))
+ 
+ ;; Initialize font settings from preferences
+ (await (font-state/init-app-font-settings!))
 
-  ;; Set up input control
-  (control/set-control)
-  
-  ;; load the data.zip & next.zip
-  (zip-utils/load-assets-parallel
-    [[kc/next "assets/next.zip"]])
-  (fst-reader/ensure-loaded)
+ ;; Set up input control
+ (control/set-control)
+ 
+ ;; load the data.zip & next.zip
+ (zip-utils/load-assets-parallel
+   [[kc/next "assets/next.zip"]])
+ (fst-reader/ensure-loaded)
 
-  ;; Start Flutter application
-  (f/run
-   (f/widget
-    :let [info (merge keyboard-options/keyboard-option
-                      {:keyboard/key-cap-border-radius 6
-                       :keyboard/font-size 18
-                       :keyboard/key-container-color m/Colors.grey.shade500
-                       :keyboard/mongol-font-family "OnonSoninSans"})]
-    :bind {:info info}
+ ;; Start Flutter application
+ (f/run
+  (f/widget
+   :let [info (merge keyboard-options/keyboard-option
+                     {:keyboard/key-cap-border-radius 6
+                      :keyboard/font-size 18
+                      :keyboard/key-container-color m/Colors.grey.shade500
+                      :keyboard/mongol-font-family "OnonSoninSans"})]
+   :bind {:info info}
+   (styled-toast/StyledToast
+    .locale (m/Locale "mn" "MN")
+    .child
     (m/MaterialApp
+     .navigatorKey nav/navigator-key
      .title "Mongol Audio Platform"
      .debugShowCheckedModeBanner false
      .theme (theme/get-light-theme)
@@ -75,5 +81,4 @@
               "/episode-form" episode-form/episode-form-page
               "/favorites" favorites/favorites-page
               "/history" history/history-page
-              "/playlists" playlists/playlists-page}))))
-    
+              "/playlists" playlists/playlists-page})))))

@@ -1,4 +1,8 @@
-(ns audio-platform.utils.navigator)
+(ns audio-platform.utils.navigator
+ (:require
+  ["package:flutter/material.dart" :as m]))
+
+(def navigator-key (m/GlobalKey .debugLabel "NavigatorKey"))
 
 (defn push-named
   "Navigate to the specified route"

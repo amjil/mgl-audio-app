@@ -8,6 +8,7 @@
    [audio-platform.states.font :as font-state]
    [audio-platform.states.category :as category-state]
    [audio-platform.states.album :as album-state]
+   [audio-platform.utils.toast :as toast]
    [audio-platform.utils.navigator :as nav]))
 
 (defn ^m/Widget album-form-page [_context]
@@ -15,8 +16,7 @@
         is-edit (some? album)]
     (f/widget
      :watch [_font-state font-state/font-state
-             {error-msg :error
-              loading :loading} album-state/album-state
+             {loading :loading} album-state/album-state
              {category-name :selected-category-name} category-state/category-state]
      :context ctx
      :get [m/Navigator]
@@ -30,159 +30,98 @@
       .appBar (m/AppBar
                .leading (m/IconButton
                          .icon (m/Icon m.Icons/arrow_back)
-                         .onPressed (fn []
-                                      (nav/navigator-pop navigator)))))
-     .body
-     (m/SafeArea)
-     (m/SingleChildScrollView
-      .scrollDirection m.Axis/horizontal)
-     (m/Padding
-      .padding (m.EdgeInsets/all 16))
-     (m/Row
-      .crossAxisAlignment m.CrossAxisAlignment/start
-      .children
-      [(if (not (empty? error-msg))
-         (m/Container
-          .padding (m.EdgeInsets/all 12)
-          .margin (m.EdgeInsets/only .bottom 16)
-          .decoration (m/BoxDecoration
-                       .color m/Colors.red.shade50
-                       .borderRadius (m.BorderRadius/circular 8))
-          .child (m/Column
-                  .children
-                  [(m/Icon m.Icons/error_outline
-                           .color m/Colors.red)
-                   (m/SizedBox .width 8)
-                   (m/Expanded
-                    .child (mgl/MongolText
-                            error-msg
-                            .style (m/TextStyle
-                                    .fontFamily font-family
-                                    .color m/Colors.red)))]))
-         (m/SizedBox))
-       (mgl/MongolText
-        "Title *"
-        .style (m/TextStyle
-                .fontFamily font-family
-                .fontSize 14
-                .fontWeight m.FontWeight/bold))
-       (m/SizedBox .width 8)
-       (mgl/MongolTextField
-        .controller title-controller
-        .decoration (m/InputDecoration
-                     .hintText "Enter album title"
-                     .border (m/OutlineInputBorder))
-        .style (m/TextStyle
-                .fontFamily font-family))
-       (m/SizedBox .width 16)
-       (mgl/MongolText
-        "Description"
-        .style (m/TextStyle
-                .fontFamily font-family
-                .fontSize 14
-                .fontWeight m.FontWeight/bold))
-       (m/SizedBox .width 8)
-       (mgl/MongolTextField
-        .controller description-controller
-        .maxLines 5
-        .decoration (m/InputDecoration
-                     .hintText "Enter album description"
-                     .border (m/OutlineInputBorder)
-                     .alignLabelWithHint true)
-        .style (m/TextStyle
-                .fontFamily font-family))
-       (m/SizedBox .width 16)
-       (mgl/MongolText
-        "Cover URL"
-        .style (m/TextStyle
-                .fontFamily font-family
-                .fontSize 14
-                .fontWeight m.FontWeight/bold))
-       (m/SizedBox .width 8)
-       (m/Row
-        .crossAxisAlignment m.CrossAxisAlignment/start
-        .children
-        [(mgl/MongolTextField
-          .controller cover-url-controller
-          .decoration (m/InputDecoration
-                       .hintText "Enter cover image URL"
-                       .border (m/OutlineInputBorder))
-          .style (m/TextStyle
-                  .fontFamily font-family))
-         (m/SizedBox .width 8)
-         (mgl/MongolElevatedButton
-          .child (mgl/MongolText (if @uploading-cover
-                                   (str "Uploading... " (int (* @upload-progress 100)) "%")
-                                   "Upload Image"))
-          .onPressed (fn []
-                       (when (not @uploading-cover)
-                         (reset! uploading-cover true)
-                         (reset! upload-progress 0.0)
-                         (-> (album-service/upload-cover-image :on-progress (fn [p] (reset! upload-progress p)))
-                             (.then (fn [result]
-                                      (set! (.-text cover-url-controller) (:url result))
-                                      (reset! uploading-cover false)))
-                             (.catchError (fn [err]
-                                            (reset! uploading-cover false)
-                                            (swap! album-state/album-state assoc :error (str "Image upload failed: " err))))))))])
-       (m/SizedBox .width 16)
-       (mgl/MongolText
-        "Category"
-        .style (m/TextStyle
-                .fontFamily font-family
-                .fontSize 14
-                .fontWeight m.FontWeight/bold))
-       (m/SizedBox .width 8)
-       (m/InkWell
-        .onTap (fn []
-                 (category-tree/show-dialog ctx))
-        .child (m/Container
-                .padding (m.EdgeInsets/all 12)
-                .decoration (m/BoxDecoration
-                             .border (m/Border.all .color m/Colors.grey.shade400)
-                             .borderRadius (m.BorderRadius/circular 4))
-                .child (mgl/MongolText
-                        (if (empty? category-name) "Select category" category-name)
-                        .style (m/TextStyle
-                                .fontFamily font-family
-                                .color (if category-name m/Colors.blue m/Colors.grey.shade600)))))
-       (m/SizedBox .width 32)
-       (m/Row
-        .mainAxisAlignment m.MainAxisAlignment/end
-        .children
-        [(mgl/MongolTextButton
-          .child (mgl/MongolText "Cancel")
-          .onPressed (fn []
-                       (nav/navigator-pop navigator)))
-         (m/SizedBox .width 16)
-         (mgl/MongolElevatedButton
-          .child (if loading
-                   (m/SizedBox
-                    .width 20
-                    .height 20
-                    .child (m/CircularProgressIndicator
-                            .strokeWidth 2
-                            .valueColor (m/AlwaysStoppedAnimation m/Colors.white)))
-                   (mgl/MongolText (if is-edit "Save" "Create")))
-          .onPressed (fn []
-                       (when (not loading)
-                         (let [title (.-text title-controller)
-                               description (.-text description-controller)
-                               cover-url (.-text cover-url-controller)]
-                           (if (empty? title)
-                             (swap! album-state/album-state assoc :error "Title is required")
-                             (do
-                               (swap! album-state/album-state assoc :loading true)
-                               (swap! album-state/album-state assoc :error nil)
-                               (let [album-data (cond-> {"title" title
-                                                         "description" description}
-                                                  (not (empty? cover-url)) (assoc "cover_url" cover-url)
-                                                  (some? (category-state/get-selected-category))
-                                                  (assoc "category_id" (category-state/get-selected-category)))]
-
-                                 (dart:core/print (str "Album data: " album-data))
-                                 (dart:core/print (str "Is edit: " is-edit))
-                                 (if is-edit
-                                   (album-service/update-album navigator (get album "id") album-data)
-                                   (album-service/create-album navigator album-data)))))))))])]))))
-  
+                         .onPressed (fn [] (nav/navigator-pop navigator))))
+      .body
+      (m/SafeArea
+       .child
+       (m/SingleChildScrollView
+        .scrollDirection m.Axis/horizontal
+        .child
+        (m/Padding
+         .padding (m.EdgeInsets/all 16)
+         .child
+         (m/Row
+          .crossAxisAlignment m.CrossAxisAlignment/start
+          .children
+          [(mgl/MongolText "Title *"
+                           .style (m/TextStyle .fontFamily font-family .fontSize 14 .fontWeight m.FontWeight/bold))
+           (m/SizedBox .width 8)
+           (mgl/MongolTextField
+            .controller title-controller
+            .decoration (m/InputDecoration .hintText "Enter album title" .border (m/OutlineInputBorder))
+            .style (m/TextStyle .fontFamily font-family))
+           (m/SizedBox .width 16)
+           (mgl/MongolText "Description"
+                           .style (m/TextStyle .fontFamily font-family .fontSize 14 .fontWeight m.FontWeight/bold))
+           (m/SizedBox .width 8)
+           (mgl/MongolTextField
+            .controller description-controller
+            .maxLines 5
+            .decoration (m/InputDecoration .hintText "Enter album description" .border (m/OutlineInputBorder) .alignLabelWithHint true)
+            .style (m/TextStyle .fontFamily font-family))
+           (m/SizedBox .width 16)
+           (mgl/MongolText "Cover URL"
+                           .style (m/TextStyle .fontFamily font-family .fontSize 14 .fontWeight m.FontWeight/bold))
+           (m/SizedBox .width 8)
+           (m/Row
+            .crossAxisAlignment m.CrossAxisAlignment/start
+            .children
+            [(mgl/MongolTextField
+              .controller cover-url-controller
+              .decoration (m/InputDecoration .hintText "Enter cover image URL" .border (m/OutlineInputBorder))
+              .style (m/TextStyle .fontFamily font-family))
+             (m/SizedBox .width 8)
+             (mgl/MongolElevatedButton
+              .child (mgl/MongolText (if @uploading-cover (str "Uploading... " (int (* @upload-progress 100)) "%") "Upload Image"))
+              .onPressed
+              (fn []
+                (when (not @uploading-cover)
+                  (reset! uploading-cover true)
+                  (reset! upload-progress 0.0)
+                  (-> (album-service/upload-cover-image :on-progress (fn [p] (reset! upload-progress p)))
+                      (.then (fn [result]
+                               (set! (.-text cover-url-controller) (:url result))
+                               (reset! uploading-cover false)))
+                      (.catchError (fn [err]
+                                     (reset! uploading-cover false)
+                                     (toast/handle-error-with-toast ctx err "Зураг хуулахад алдаа гарлаа")))))))])
+           (m/SizedBox .width 16)
+           (mgl/MongolText "Category"
+                           .style (m/TextStyle .fontFamily font-family .fontSize 14 .fontWeight m.FontWeight/bold))
+           (m/SizedBox .width 8)
+           (m/InkWell
+            .onTap (fn [] (category-tree/show-dialog ctx))
+            .child (m/Container
+                    .padding (m.EdgeInsets/all 12)
+                    .decoration (m/BoxDecoration .border (m/Border.all .color m/Colors.grey.shade400) .borderRadius (m.BorderRadius/circular 4))
+                    .child (mgl/MongolText (if (empty? category-name) "Select category" category-name)
+                                           .style (m/TextStyle .fontFamily font-family .color (if category-name m/Colors.blue m/Colors.grey.shade600)))))
+           (m/SizedBox .width 32)
+           (m/Row
+            .mainAxisAlignment m.MainAxisAlignment/end
+            .children
+            [(mgl/MongolTextButton
+              .child (mgl/MongolText "Cancel")
+              .onPressed (fn [] (nav/navigator-pop navigator)))
+             (m/SizedBox .width 16)
+             (mgl/MongolElevatedButton
+              .child (if loading
+                       (m/SizedBox .width 20 .height 20 .child (m/CircularProgressIndicator .strokeWidth 2 .valueColor (m/AlwaysStoppedAnimation m/Colors.white)))
+                       (mgl/MongolText (if is-edit "Save" "Create")))
+              .onPressed
+              (fn []
+                (when (not loading)
+                  (let [title (.-text title-controller)
+                        description (.-text description-controller)
+                        cover-url (.-text cover-url-controller)]
+                    (if (empty? title)
+                      (toast/show-error-toast ctx "Гарчиг заавал байх ёстой")
+                      (do
+                        (swap! album-state/album-state assoc :loading true)
+                        (swap! album-state/album-state assoc :error nil)
+                        (let [album-data (cond-> {"title" title "description" description}
+                                           (not (empty? cover-url)) (assoc "cover_url" cover-url)
+                                           (some? (category-state/get-selected-category)) (assoc "category_id" (category-state/get-selected-category)))]
+                          (if is-edit
+                            (album-service/update-album navigator (get album "id") album-data)
+                            (album-service/create-album navigator album-data)))))))))])]))))))))
