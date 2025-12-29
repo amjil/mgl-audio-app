@@ -119,10 +119,9 @@
                                                                .foregroundColor m/Colors.red)
                                                        .onPressed (fn []
                                                                     (nav/navigator-pop navigator)
-                                                                    (album-service/delete-album navigator album-id)))]))))
-                         
-                         )]
-                         [nil]))
+                                                                    (album-service/delete-album navigator album-id)))])))
+                                        nil))]
+                         nil))
      .body
      (m/SafeArea
       .child (if loading

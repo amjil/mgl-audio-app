@@ -1,6 +1,9 @@
 (ns audio-platform.states.search)
 
-(def search-state (atom {:results []
+(def search-state (atom {:albums []
+                         :episodes []
+                         :creators []
+                         :selected-type "albums"
                          :query ""
                          :pending-query nil
                          :loading false
@@ -9,8 +12,23 @@
 (defn get-search-results []
   (:results @search-state))
 
-(defn set-search-results [results]
-  (swap! search-state assoc :results results))
+(defn get-albums []
+  (:albums @search-state))
+
+(defn get-episodes []
+  (:episodes @search-state))
+
+(defn get-creators []
+  (:creators @search-state))
+
+(defn get-selected-type []
+  (:selected-type @search-state))
+
+(defn set-selected-type [type]
+  (swap! search-state assoc :selected-type type))
+
+(defn set-search-results [albums episodes creators]
+  (swap! search-state assoc :albums albums :episodes episodes :creators creators))
 
 (defn set-loading [loading]
   (swap! search-state assoc :loading loading))

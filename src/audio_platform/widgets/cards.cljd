@@ -4,7 +4,8 @@
     ["package:mongol/mongol.dart" :as mgl]
     [cljd.flutter :as f]
     [audio-platform.states.font :as font-state]
-    [audio-platform.utils.format :as format]))
+    [audio-platform.utils.format :as format]
+    [audio-platform.utils.highlight :as highlight]))
 
 (defn feed-card [item on-tap]
   (f/widget
@@ -58,7 +59,8 @@
           .crossAxisAlignment m.CrossAxisAlignment/start
           .children
           [(mgl/MongolText
-            (get item "title" "Unknown")
+            (let [title-text (highlight/get-highlighted-text item "title")]
+              (or (highlight/strip-html-tags title-text) "Unknown"))
             .style (m/TextStyle
                     .fontFamily font-family
                     .fontSize 16
@@ -111,7 +113,8 @@
                                       .crossAxisAlignment m.CrossAxisAlignment/start
                                       .children
                                       [(mgl/MongolText
-                                        (get episode "title" "Unknown Title")
+                                        (let [title-text (highlight/get-highlighted-text episode "title")]
+                                          (or (highlight/strip-html-tags title-text) "Unknown Title"))
                                         .style (m/TextStyle
                                                 .fontFamily font-family
                                                 .fontSize 16
@@ -130,40 +133,40 @@
 (defn album-card [album on-tap]
   (f/widget
    :watch [_font-state font-state/font-state]
-   :let [font-family (font-state/get-app-font-family)]
+   :let [font-family (font-state/get-app-font-family)
+         description-text (highlight/get-highlighted-text album "description")]
    (m/Card
     .margin (m.EdgeInsets/all 8)
     .child (m/InkWell
             .onTap on-tap
-            .child (m/Row
-                    .crossAxisAlignment m.CrossAxisAlignment/start
+            .child (m/Column
+                    .mainAxisSize m.MainAxisSize/max
                     .children
                     [(m/Padding
                       .padding (m.EdgeInsets/all 12)
                       .child (m/Row
+                              .mainAxisSize m.MainAxisSize/min
+                              .mainAxisAlignment m.MainAxisAlignment/start
                               .crossAxisAlignment m.CrossAxisAlignment/start
                               .children
                               [(m/Column
                                 .children
-                                [(m/SizedBox
-                                  .width 80
-                                  .child (m/AspectRatio
-                                          .aspectRatio 1.0
-                                          .child (m/Container
-                                                  .decoration (m/BoxDecoration
-                                                               .color m/Colors.grey.shade300
-                                                               .borderRadius (m.BorderRadius/only
-                                                                              .topLeft (m.Radius/circular 4)
-                                                                              .topRight (m.Radius/circular 4)))
-                                                  .child (if (get album "cover_url")
-                                                           (m/Image.network (get album "cover_url")
-                                                                            .fit m.BoxFit/cover)
-                                                           (m/Icon m.Icons/album
-                                                                   .size 32
-                                                                   .color m/Colors.grey.shade600)))))
+                                [(m/Container
+                                  .decoration (m/BoxDecoration
+                                               .color m/Colors.grey.shade300
+                                               .borderRadius (m.BorderRadius/only
+                                                              .topLeft (m.Radius/circular 4)
+                                                              .topRight (m.Radius/circular 4)))
+                                  .child (if (get album "cover_url")
+                                           (m/Image.network (get album "cover_url")
+                                                            .fit m.BoxFit/cover)
+                                           (m/Icon m.Icons/album
+                                                   .size 32
+                                                   .color m/Colors.grey.shade600)))
                                  (m/SizedBox .height 10)
                                  (mgl/MongolText
-                                  (get album "title" "Unknown Album")
+                                  (let [title-text (highlight/get-highlighted-text album "title")]
+                                    (or (highlight/strip-html-tags title-text) "Unknown Album"))
                                   .style (m/TextStyle
                                           .fontFamily font-family
                                           .fontSize 16
@@ -172,10 +175,77 @@
                                   .overflow m.TextOverflow/ellipsis)])
                                (m/SizedBox .width 4)
                                (mgl/MongolText
-                                (get album "description" "")
+                                (or (highlight/strip-html-tags description-text) "")
                                 .style (m/TextStyle
                                         .fontFamily font-family
                                         .color m/Colors.grey.shade600
                                         .fontSize 12)
                                 .maxLines 2
                                 .overflow m.TextOverflow/ellipsis)]))])))))
+
+(defn creator-card [creator on-tap]
+  (f/widget
+   :watch [_font-state font-state/font-state]
+   :let [font-family (font-state/get-app-font-family)
+         description-text (highlight/get-highlighted-text creator "description")]
+   (m/Card
+    .margin (m.EdgeInsets/symmetric .horizontal 8 .vertical 4)
+    .child (m/InkWell
+            .onTap on-tap
+            .child (m/Padding
+                    .padding (m.EdgeInsets/all 12)
+                    .child (m/Row
+                            .children
+                            [(m/Container
+                              .width 64
+                              .height 64
+                              .clipBehavior m.Clip/antiAlias
+                              .decoration (m/BoxDecoration
+                                           .color m/Colors.grey.shade200
+                                           .borderRadius (m.BorderRadius/circular 32))
+                              .child (if-let [avatar (or (get creator "cover_url")
+                                                         (get creator "avatar_url"))]
+                                       (m/Image.network avatar .fit m.BoxFit/cover)
+                                       (m/Icon m.Icons/person
+                                               .size 32
+                                               .color m/Colors.grey.shade500)))
+                             (m/SizedBox .width 12)
+                             (m/Expanded
+                              .child (m/Column
+                                      .crossAxisAlignment m.CrossAxisAlignment/start
+                                      .mainAxisSize m.MainAxisSize/min
+                                      .children
+                                      [(m/Container
+                                        .padding (m.EdgeInsets/symmetric .horizontal 8 .vertical 2)
+                                        .decoration (m/BoxDecoration
+                                                     .color m/Colors.purple.shade50
+                                                     .borderRadius (m.BorderRadius/circular 4))
+                                        .child (mgl/MongolText
+                                                "Creator"
+                                                .style (m/TextStyle
+                                                        .fontFamily font-family
+                                                        .fontSize 10
+                                                        .color m/Colors.purple)))
+                                       (m/SizedBox .height 8)
+                                       (mgl/MongolText
+                                        (let [title-text (highlight/get-highlighted-text creator "title")]
+                                          (or (highlight/strip-html-tags title-text) "Unknown Creator"))
+                                        .style (m/TextStyle
+                                                .fontFamily font-family
+                                                .fontSize 16
+                                                .fontWeight m.FontWeight/bold)
+                                        .maxLines 2
+                                        .overflow m.TextOverflow/ellipsis)
+                                       (if (and description-text (not= (highlight/strip-html-tags description-text) ""))
+                                         (m/Column
+                                          .children
+                                          [(m/SizedBox .height 4)
+                                           (mgl/MongolText
+                                            (highlight/strip-html-tags description-text)
+                                            .style (m/TextStyle
+                                                    .fontFamily font-family
+                                                    .color m/Colors.grey.shade600
+                                                    .fontSize 12)
+                                            .maxLines 2
+                                            .overflow m.TextOverflow/ellipsis)])
+                                         (m/SizedBox))]))]))))))

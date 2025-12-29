@@ -1,0 +1,65 @@
+(ns audio-platform.utils.highlight
+  (:require
+   ["package:flutter/material.dart" :as m]))
+
+(defn parse-html-highlight [html-text]
+  "Parse HTML text with <em> tags and return a list of TextSpan widgets.
+   Example: '<em>test</em> 001' -> [TextSpan(text: 'test', style: bold), TextSpan(text: ' 001')]"
+  (if (or (nil? html-text) (empty? html-text))
+    [(m/TextSpan .text "")]
+    (let [text (str html-text)
+          spans (atom [])]
+      (letfn [(parse-recursive [remaining-text]
+                (let [em-start (.indexOf remaining-text "<em>")
+                      em-end (when (>= em-start 0)
+                               (.indexOf remaining-text "</em>" em-start))]
+                  (cond
+                    ;; No more <em> tags
+                    (< em-start 0)
+                    (when (> (count remaining-text) 0)
+                      (swap! spans conj (m/TextSpan .text remaining-text)))
+                    
+                    ;; Found <em> tag
+                    (and (>= em-start 0) em-end)
+                    (do
+                      ;; Add text before <em>
+                      (when (> em-start 0)
+                        (let [before (subs remaining-text 0 em-start)]
+                          (when (> (count before) 0)
+                            (swap! spans conj (m/TextSpan .text before)))))
+                      ;; Add highlighted text
+                      (let [highlighted (subs remaining-text (+ em-start 4) em-end)]
+                        (swap! spans conj (m/TextSpan
+                                           .text highlighted
+                                           .style (m/TextStyle .fontWeight m.FontWeight/bold))))
+                      ;; Continue parsing after </em>
+                      (let [after (subs remaining-text (+ em-end 5))]
+                        (when (> (count after) 0)
+                          (parse-recursive after))))
+                    
+                    ;; Malformed <em> tag (no closing tag)
+                    :else
+                    (swap! spans conj (m/TextSpan .text remaining-text)))))]
+        (parse-recursive text)
+        (if (empty? @spans)
+          [(m/TextSpan .text text)]
+          @spans)))))
+
+(defn get-highlighted-text [item field]
+  "Get highlighted text from item, falling back to original field if highlight not available.
+   Returns the HTML text string (not parsed)."
+  (let [highlight (get item "highlight")]
+    (if (and highlight (get highlight field))
+      (get highlight field)
+      (get item field))))
+
+(defn strip-html-tags [html-text]
+  "Remove HTML tags from text, keeping only the text content.
+   Example: '<em>test</em> 001' -> 'test 001'"
+  (if (or (nil? html-text) (empty? html-text))
+    ""
+    (let [text (str html-text)
+          ;; Remove <em> and </em> tags
+          text (.replaceAll text "<em>" "")
+          text (.replaceAll text "</em>" "")]
+      text)))
