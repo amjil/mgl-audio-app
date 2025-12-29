@@ -1,0 +1,178 @@
+(ns audio-platform.screens.episode-detail
+  (:require
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [cljd.flutter :as f]
+   [audio-platform.state :as state]
+   [audio-platform.states.episode :as episode-state]
+   [audio-platform.states.comment :as comment-state]
+   [audio-platform.states.font :as font-state]
+   [audio-platform.services.episode :as episode-service]
+   [audio-platform.services.comment :as comment-service]
+   [audio-platform.services.api :as api]
+   [audio-platform.services.audio-player :as audio-player]
+   [audio-platform.utils.format :as format]
+   [audio-platform.utils.navigator :as nav]))
+
+(defn- comment-item [comment font-family current-user-id]
+  (let [is-author (= (get comment "user_id") current-user-id)]
+    (m/Padding
+     .padding (m.EdgeInsets/symmetric .vertical 8)
+     .child
+     (m/Row
+      .crossAxisAlignment m.CrossAxisAlignment/start
+      .children
+      [(m/CircleAvatar
+        .radius 16
+        .backgroundColor m/Colors.blue.shade100
+        .child (m/Icon m/Icons.person .size 20))
+       (m/SizedBox .width 12)
+       (m/Expanded
+        .child
+        (m/Column
+         .crossAxisAlignment m.CrossAxisAlignment/start
+         .children
+         [(m/Row
+           .children
+           [(mgl/MongolText (str "User " (subs (get comment "user_id") 0 4))
+                           .style (m/TextStyle .fontWeight m/FontWeight.bold .fontSize 12 .fontFamily font-family))
+            (m/SizedBox .width 8)
+            (mgl/MongolText (format/format-duration (get comment "timestamp_seconds" 0))
+                           .style (m/TextStyle .fontSize 10 .color m/Colors.blue .fontFamily font-family))])
+          (m/SizedBox .height 4)
+          (mgl/MongolText (get comment "content")
+                          .style (m/TextStyle .fontSize 14 .fontFamily font-family))
+          (m/Row
+           .children
+           [(m/IconButton
+             .icon (m/Icon (if (get comment "is_liked") m/Icons.thumb_up m/Icons.thumb_up_outlined) .size 16)
+             .onPressed (fn [] 
+                          (if (get comment "is_liked")
+                            (comment-service/unlike-comment (get comment "id"))
+                            (comment-service/like-comment (get comment "id")))))
+            (mgl/MongolText (str (get comment "likes" 0)) .style (m/TextStyle .fontSize 12 .fontFamily font-family))
+            (if is-author
+              (m/IconButton
+               .icon (m/Icon m/Icons.delete_outline .size 16)
+               .onPressed (fn [] (comment-service/delete-comment (get comment "id"))))
+              (m/SizedBox))])]))]))))
+
+(defn- episode-info-column [ep font-family]
+  (m/Container
+   .width 300
+   .padding (m.EdgeInsets/all 16)
+   .child
+   (m/Column
+    .crossAxisAlignment m.CrossAxisAlignment/start
+    .children
+    [(mgl/MongolText (get ep "title" "Unknown Episode")
+                    .style (m/TextStyle .fontSize 24 .fontWeight m/FontWeight.bold .fontFamily font-family))
+     (m/SizedBox .height 16)
+     (m/Row
+      .children
+      [(m/Icon m/Icons.access_time .size 16 .color m/Colors.grey)
+       (m/SizedBox .width 4)
+       (mgl/MongolText (format/format-duration (get ep "duration" 0))
+                      .style (m/TextStyle .fontSize 14 .color m/Colors.grey.shade600 .fontFamily font-family))])
+     (m/SizedBox .height 20)
+     (m/ElevatedButton.icon
+      .icon (m/Icon m/Icons.play_arrow)
+      .label (mgl/MongolText "Play Now")
+      .onPressed (fn [] (audio-player/play-episode ep)))
+     (m/SizedBox .height 30)
+     (mgl/MongolText "Description"
+                    .style (m/TextStyle .fontSize 18 .fontWeight m/FontWeight.bold .fontFamily font-family))
+     (m/SizedBox .height 8)
+     (m/Expanded
+      .child (m/SingleChildScrollView
+              .child (mgl/MongolText (get ep "description" "No description available.")
+                                     .style (m/TextStyle .fontSize 14 .fontFamily font-family))))])))
+
+(defn- comments-column [ep comments comments-loading font-family current-user-id controller]
+  (m/Container
+   .width 350
+   .padding (m.EdgeInsets/all 16)
+   .decoration (m/BoxDecoration .border (m/Border .left (m/BorderSide .color m/Colors.grey.shade300)))
+   .child
+   (m/Column
+    .crossAxisAlignment m.CrossAxisAlignment/start
+    .children
+    [(mgl/MongolText (str "Comments (" (count comments) ")")
+                    .style (m/TextStyle .fontSize 18 .fontWeight m/FontWeight.bold .fontFamily font-family))
+     (m/SizedBox .height 16)
+     (m/Row
+      .children
+      [(m/Expanded
+        .child (m/TextField
+                .controller controller
+                .decoration (m/InputDecoration .hintText "Write a comment...")))
+       (m/IconButton
+        .icon (m/Icon m/Icons.send)
+        .onPressed (fn []
+                     (let [content (.-text controller)]
+                       (when-not (empty? content)
+                         (comment-service/create-comment 
+                          {"episode_id" (get ep "id")
+                           "content" content
+                           "timestamp_seconds" 0})
+                         (.clear controller)))))])
+     (m/SizedBox .height 16)
+     (m/Expanded
+      .child (if comments-loading
+               (m/Center .child (m/CircularProgressIndicator))
+               (m/ListView.builder
+                .itemCount (count comments)
+                .itemBuilder (fn [_ idx]
+                               (comment-item (nth comments idx) font-family current-user-id)))))])))
+
+(defn ^m/Widget episode-detail-page [_context]
+  (f/widget
+   :context ctx
+   :get [m/Navigator]
+   :managed [comment-controller (m/TextEditingController.)]
+   :let [font-family (font-state/get-app-font-family)
+         current-user (state/get-user)
+         current-user-id (get current-user "id")]
+   :watch [{loading :loading
+            error :error
+            ep :episode} episode-state/episode-state
+           {comments :comments
+            comments-loading :loading} comment-state/comment-state]
+   :init (when ep 
+           (comment-service/get-comments (get ep "id"))
+           (episode-service/check-favorite (get ep "id")))
+   (m/Scaffold
+    .appBar (m/AppBar
+             .leading (m/IconButton
+                       .icon (m/Icon m/Icons.arrow_back)
+                       .onPressed (fn [] (nav/navigator-pop navigator)))
+             .actions [(m/IconButton
+                        .icon (m/Icon (if (get ep "is_favorite") m/Icons.favorite m/Icons.favorite_border))
+                        .color (if (get ep "is_favorite") m/Colors.red nil)
+                        .onPressed (fn [] 
+                                     (if (get ep "is_favorite")
+                                       (episode-service/remove-favorite (get ep "id"))
+                                       (episode-service/add-favorite (get ep "id")))))
+                       (m/IconButton
+                        .icon (m/Icon m/Icons.share)
+                        .onPressed (fn [] 
+                                     (-> (api/create-share (state/get-token) "episode" (get ep "id"))
+                                         (.then (fn [data]
+                                                  (let [url (get data "share_url")
+                                                        snack (m/SnackBar .content (m/Text (str "Share link created: " url)))]
+                                                    (-> (m.ScaffoldMessenger/of ctx)
+                                                        (.showSnackBar snack))))))))])
+    .body
+    (m/SafeArea
+     .child (if loading
+              (m/Center .child (m/CircularProgressIndicator))
+              (if (some? error)
+                (m/Center .child (mgl/MongolText (str "Error: " error)
+                                                 .style (m/TextStyle .color m/Colors.red .fontFamily font-family)))
+                (if (nil? ep)
+                  (m/Center .child (mgl/MongolText "No episode data" .style (m/TextStyle .fontFamily font-family)))
+                  (m/ListView
+                   .scrollDirection m.Axis/horizontal
+                   .children
+                   [(episode-info-column ep font-family)
+                    (comments-column ep comments comments-loading font-family current-user-id comment-controller)]))))))))

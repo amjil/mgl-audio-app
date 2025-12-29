@@ -1,0 +1,34 @@
+(ns audio-platform.states.comment)
+
+(def comment-state (atom {:comments []
+                          :total 0
+                          :loading false
+                          :error nil}))
+
+(defn get-comments []
+  (:comments @comment-state))
+
+(defn set-comments [comments total]
+  (swap! comment-state assoc :comments comments :total total))
+
+(defn add-comment [comment]
+  (swap! comment-state update :comments conj comment)
+  (swap! comment-state update :total inc))
+
+(defn remove-comment [comment-id]
+  (swap! comment-state update :comments (fn [comments] (remove #(= (get % "id") comment-id) comments)))
+  (swap! comment-state update :total dec))
+
+(defn update-comment [updated-comment]
+  (swap! comment-state update :comments (fn [comments] 
+                                           (map #(if (= (get % "id") (get updated-comment "id"))
+                                                   updated-comment
+                                                   %) 
+                                                comments))))
+
+(defn reset-state []
+  (reset! comment-state {:comments []
+                         :total 0
+                         :loading false
+                         :error nil}))
+

@@ -141,6 +141,33 @@
                (nav/navigator-pop navigator)
                (swap! album-state/album-state assoc :album album-data)
                (swap! album-state/album-state assoc :loading false)))))
+
+(defn add-favorite [album-id]
+  (-> (api/add-album-favorite (state/get-token) album-id)
+      (.then (fn [_]
+               (let [album (album-state/get-album)]
+                 (when (and album (= (get album "id") album-id))
+                   (album-state/set-album (assoc album "is_favorite" true))))))
+      (.catchError (fn [err]
+                     (dart:core/print (str "Error adding album favorite: " err))))))
+
+(defn remove-favorite [album-id]
+  (-> (api/remove-album-favorite (state/get-token) album-id)
+      (.then (fn [_]
+               (let [album (album-state/get-album)]
+                 (when (and album (= (get album "id") album-id))
+                   (album-state/set-album (assoc album "is_favorite" false))))))
+      (.catchError (fn [err]
+                     (dart:core/print (str "Error removing album favorite: " err))))))
+
+(defn check-favorite [album-id]
+  (-> (api/check-album-favorite (state/get-token) album-id)
+      (.then (fn [data]
+               (let [album (album-state/get-album)]
+                 (when (and album (= (get album "id") album-id))
+                   (album-state/set-album (assoc album "is_favorite" (get data "is_favorite")))))))
+      (.catchError (fn [err]
+                     (dart:core/print (str "Error checking album favorite: " err))))))
                
                
 (defn delete-album [navigator album-id]

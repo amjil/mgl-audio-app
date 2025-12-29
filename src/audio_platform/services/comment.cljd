@@ -1,0 +1,63 @@
+(ns audio-platform.services.comment
+  (:require
+   [audio-platform.services.api :as api]
+   [audio-platform.state :as state]
+   [audio-platform.states.comment :as comment-state]
+   [audio-platform.utils.navigator :as nav]))
+
+(defn get-comments [episode-id & {:keys [page per-page sort parent-id]}]
+  (swap! comment-state/comment-state assoc :loading true :error nil)
+  (-> (api/get-comments (state/get-token) episode-id :page page :per-page per-page :sort sort :parent-id parent-id)
+      (.catchError (fn [err]
+                     (swap! comment-state/comment-state assoc :error (str "Failed to load comments: " err))
+                     (swap! comment-state/comment-state assoc :loading false)))
+      (.then (fn [data]
+               (comment-state/set-comments (get data "items" []) (get data "total" 0))
+               (swap! comment-state/comment-state assoc :loading false)))))
+
+(defn create-comment [comment-data]
+  (swap! comment-state/comment-state assoc :loading true :error nil)
+  (-> (api/create-comment (state/get-token) comment-data)
+      (.then (fn [comment]
+               (comment-state/add-comment comment)
+               (swap! comment-state/comment-state assoc :loading false)
+               comment))
+      (.catchError (fn [err]
+                     (swap! comment-state/comment-state assoc :error (str "Failed to post comment: " err))
+                     (swap! comment-state/comment-state assoc :loading false)))))
+
+(defn delete-comment [comment-id]
+  (-> (api/delete-comment (state/get-token) comment-id)
+      (.then (fn [_]
+               (comment-state/remove-comment comment-id)))
+      (.catchError (fn [err]
+                     (swap! comment-state/comment-state assoc :error (str "Failed to delete comment: " err))))))
+
+(defn like-comment [comment-id]
+  (-> (api/like-comment (state/get-token) comment-id)
+      (.then (fn [data]
+               ;; We might want to update the comment in state with the new likes count
+               ;; Since the API returns {liked: true, likes: N}
+               (let [comments (comment-state/get-comments)
+                     updated-comments (map (fn [c]
+                                            (if (= (get c "id") comment-id)
+                                              (assoc c "likes" (get data "likes") "is_liked" true)
+                                              c))
+                                          comments)]
+                 (swap! comment-state/comment-state assoc :comments updated-comments))))
+      (.catchError (fn [err]
+                     (swap! comment-state/comment-state assoc :error (str "Failed to like comment: " err))))))
+
+(defn unlike-comment [comment-id]
+  (-> (api/unlike-comment (state/get-token) comment-id)
+      (.then (fn [data]
+               (let [comments (comment-state/get-comments)
+                     updated-comments (map (fn [c]
+                                            (if (= (get c "id") comment-id)
+                                              (assoc c "likes" (get data "likes") "is_liked" false)
+                                              c))
+                                          comments)]
+                 (swap! comment-state/comment-state assoc :comments updated-comments))))
+      (.catchError (fn [err]
+                     (swap! comment-state/comment-state assoc :error (str "Failed to unlike comment: " err))))))
+

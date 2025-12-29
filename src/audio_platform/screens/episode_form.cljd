@@ -21,10 +21,9 @@
               loading :loading} episode-state/episode-state]
      :get [m/Navigator]
      :let [font-family (font-state/get-app-font-family)]
-     :managed [title-controller (m/TextEditingController .text (if (some? episode) (get episode "title") ""))
-               media-id-controller (m/TextEditingController .text "")
-               sequence-controller (m/TextEditingController .text (if (some? episode) (str (or (get episode "sequence") "")) ""))
-               price-controller (m/TextEditingController .text (if (some? episode) (str (or (get episode "price") "")) ""))]
+    :managed [title-controller (m/TextEditingController .text (if (some? episode) (get episode "title") ""))
+              media-id-controller (m/TextEditingController .text "")
+              sequence-controller (m/TextEditingController .text (if (some? episode) (str (or (get episode "sequence") "")) ""))]
      (m/Scaffold
       .appBar (m/AppBar
                .leading (m/IconButton
@@ -136,22 +135,6 @@
                       .border (m/OutlineInputBorder))
          .style (m/TextStyle
                  .fontFamily font-family))
-        (m/SizedBox .width 16)
-        (mgl/MongolText
-         "Price"
-         .style (m/TextStyle
-                 .fontFamily font-family
-                 .fontSize 14
-                 .fontWeight m.FontWeight/bold))
-        (m/SizedBox .width 8)
-        (mgl/MongolTextField
-         .controller price-controller
-        ;;  .keyboardType m.TextInputType/numberWithOptions .decimal true
-         .decoration (m/InputDecoration
-                      .hintText "Enter price"
-                      .border (m/OutlineInputBorder))
-         .style (m/TextStyle
-                 .fontFamily font-family))
         (m/SizedBox .width 32)
         (m/Row
          .mainAxisAlignment m.MainAxisAlignment/end
@@ -175,8 +158,7 @@
                         (when (and (not loading) (not @uploading))
                           (let [title (.-text title-controller)
                                 media-id (.-text media-id-controller)
-                                sequence-str (.-text sequence-controller)
-                                price-str (.-text price-controller)]
+                                sequence-str (.-text sequence-controller)]
                             (cond
                               (empty? title)
                               (swap! episode-state/episode-state assoc :error "Title is required")
@@ -191,8 +173,6 @@
                                 (let [episode-data (cond-> {"title" title
                                                             "media_id" media-id}
                                                      (not (empty? sequence-str))
-                                                     (assoc "sequence" (dart:core/int.parse sequence-str))
-                                                     (not (empty? price-str))
-                                                     (assoc "price" (dart:core/double.parse price-str)))]
+                                                     (assoc "sequence" (dart:core/int.parse sequence-str)))]
                                   (dart:core/print (str "Episode data: " episode-data))
                                   (episode-service/create-episode navigator album-id episode-data))))))))])]))))

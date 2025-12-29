@@ -57,6 +57,33 @@
                      (swap! episode-state/episode-state assoc :error (str "Failed to delete episode: " err))
                      (swap! episode-state/episode-state assoc :loading false)))))
 
+(defn add-favorite [episode-id]
+  (-> (api/add-favorite (state/get-token) episode-id)
+      (.then (fn [_]
+               (let [episode (episode-state/get-episode)]
+                 (when (and episode (= (get episode "id") episode-id))
+                   (episode-state/set-episode (assoc episode "is_favorite" true))))))
+      (.catchError (fn [err]
+                     (dart:core/print (str "Error adding favorite: " err))))))
+
+(defn remove-favorite [episode-id]
+  (-> (api/remove-favorite (state/get-token) episode-id)
+      (.then (fn [_]
+               (let [episode (episode-state/get-episode)]
+                 (when (and episode (= (get episode "id") episode-id))
+                   (episode-state/set-episode (assoc episode "is_favorite" false))))))
+      (.catchError (fn [err]
+                     (dart:core/print (str "Error removing favorite: " err))))))
+
+(defn check-favorite [episode-id]
+  (-> (api/check-favorite (state/get-token) episode-id)
+      (.then (fn [data]
+               (let [episode (episode-state/get-episode)]
+                 (when (and episode (= (get episode "id") episode-id))
+                   (episode-state/set-episode (assoc episode "is_favorite" (get data "is_favorite")))))))
+      (.catchError (fn [err]
+                     (dart:core/print (str "Error checking favorite: " err))))))
+
 ;; Upload an audio file. Returns a Promise that resolves with {:media-id media-id :file-info {:path path :name name :size size}} or rejects with an error.
 (defn upload-audio-file []
   (-> (file-picker/FilePicker.platform.pickFiles

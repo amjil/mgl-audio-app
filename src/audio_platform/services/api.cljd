@@ -400,6 +400,48 @@
                           .headers (get-auth-header token))]
     (handle-response response)))
 
+(defn add-favorite [token episode-id]
+  (let [url (str base-url "/users/me/favorites/" episode-id)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn remove-favorite [token episode-id]
+  (let [url (str base-url "/users/me/favorites/" episode-id)
+        response (http/delete (dart:core/Uri.parse url)
+                             .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn check-favorite [token episode-id]
+  (let [url (str base-url "/users/me/favorites/" episode-id "/check")
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn add-album-favorite [token album-id]
+  (let [url (str base-url "/users/me/album_favorites/" album-id)
+        response (http/post (dart:core/Uri.parse url)
+                           .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn remove-album-favorite [token album-id]
+  (let [url (str base-url "/users/me/album_favorites/" album-id)
+        response (http/delete (dart:core/Uri.parse url)
+                             .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn check-album-favorite [token album-id]
+  (let [url (str base-url "/users/me/album_favorites/" album-id "/check")
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
+(defn get-album-favorites [token]
+  (let [url (str base-url "/users/me/album_favorites")
+        response (http/get (dart:core/Uri.parse url)
+                          .headers (get-auth-header token))]
+    (handle-response response)))
+
 ;; History
 (defn get-history [token & {:keys [page per-page]}]
   (let [params (cond-> {}
