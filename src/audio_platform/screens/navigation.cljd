@@ -4,7 +4,7 @@
    [cljd.flutter :as f]
    [audio-platform.screens.home :as home]
    [audio-platform.screens.profile :as profile]
-   [audio-platform.screens.player :as player]
+   [audio-platform.widgets.player :as player-widget]
    [audio-platform.utils.navigator :as nav]))
 
 (defn ^m/Widget main-navigation [_context]
@@ -23,7 +23,7 @@
                .left 0
                .right 0
                .bottom 56
-               .child (player/player-widget))])
+               .child (player-widget/player-widget))])
       .bottomNavigationBar
       (m/BottomNavigationBar
        .currentIndex _current-index

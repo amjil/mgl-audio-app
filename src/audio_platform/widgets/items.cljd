@@ -1,0 +1,95 @@
+(ns audio-platform.widgets.items
+  (:require
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [cljd.flutter :as f]
+   [audio-platform.utils.format :as format]
+   [audio-platform.widgets.common :as common]))
+
+(defn episode-item [episode is-creator {:keys [on-edit on-delete on-play on-tap]}]
+  (mgl/MongolListTile
+   .leading (m/Icon m/Icons.play_circle_outline)
+   .title (mgl/MongolText
+           (get episode "title" "Unknown Episode")
+           .style (common/m-style .fontSize 16 .fontWeight m/FontWeight.normal))
+   .subtitle (mgl/MongolText
+              (format/format-duration (get episode "duration" 0))
+              .style (common/m-style .color m/Colors.grey.shade600 .fontSize 12))
+   .trailing (m/Row
+              .mainAxisSize m/MainAxisSize.min
+              .children
+              (if is-creator
+                [(m/IconButton
+                  .icon (m/Icon m/Icons.edit)
+                  .onPressed (fn [] (when on-edit (on-edit episode))))
+                 (m/IconButton
+                  .icon (m/Icon m/Icons.delete)
+                  .color m/Colors.red
+                  .onPressed (fn [] (when on-delete (on-delete episode))))
+                 (m/IconButton
+                  .icon (m/Icon m/Icons.play_arrow)
+                  .onPressed (fn [] (when on-play (on-play episode))))]
+                [(m/IconButton
+                  .icon (m/Icon m/Icons.play_arrow)
+                  .onPressed (fn [] (when on-play (on-play episode))))]))
+   .onTap (fn [] (when on-tap (on-tap episode)))))
+
+(defn album-info-item [album episodes]
+  (m/Padding
+   .padding (m.EdgeInsets/all 16)
+   .child
+   (m/Column
+    .crossAxisAlignment m.CrossAxisAlignment/start
+    .children
+    [(m/Container
+      .height 160
+      .decoration (m/BoxDecoration .color m/Colors.grey.shade300)
+      .child (if (get album "cover_url")
+               (m/Image.network (get album "cover_url") .fit m/BoxFit.cover)
+               (m/Center .child (m/Icon m/Icons.album .size 64 .color m/Colors.grey.shade600))))
+     (m/SizedBox .height 20)
+     (m/Row
+      .children
+      [(mgl/MongolText (get album "title" "Unknown Album")
+                      .style (common/m-style .fontSize 24 .fontWeight m/FontWeight.bold))
+       (m/SizedBox .width 4)
+       (mgl/MongolText (get album "description" "")
+                      .style (common/m-style .fontSize 14 .color m/Colors.grey.shade700))
+       (m/SizedBox .width 4)
+       (m/VerticalDivider)
+       (m/SizedBox .width 4)
+       (mgl/MongolText (str "Episodes (" (count episodes) ")")
+                      .style (common/m-style .fontSize 18 .fontWeight m/FontWeight.bold))])])))
+
+(defn category-tab-item [label count selected? on-tap]
+  (f/widget
+   :context _context
+   (m/InkWell
+    .onTap on-tap
+    .child (m/Container
+            .padding (m.EdgeInsets/all 4)
+            .decoration (m/BoxDecoration
+                         .color (if selected?
+                                  (-> m/Theme (.of _context) .-colorScheme .-primaryContainer)
+                                  m/Colors.transparent)
+                         .borderRadius (m.BorderRadius/circular 8))
+            .child (m/Column
+                    .crossAxisAlignment m.CrossAxisAlignment/start
+                    .children
+                    [(mgl/MongolText
+                      label
+                      .style (common/m-style
+                              .fontSize 16
+                              .fontWeight (if selected? m.FontWeight/bold m.FontWeight/normal)
+                              .color (if selected?
+                                       (-> m/Theme (.of _context) .-colorScheme .-onPrimaryContainer)
+                                       (-> m/Theme (.of _context) .-colorScheme .-onSurface))))
+                     (m/SizedBox .height 4)
+                     (mgl/MongolText
+                      (str "(" count ")")
+                      .style (common/m-style
+                              .fontSize 12
+                              .color (if selected?
+                                       (-> m/Theme (.of _context) .-colorScheme .-onPrimaryContainer)
+                                       m/Colors.grey.shade600)))])))))
+

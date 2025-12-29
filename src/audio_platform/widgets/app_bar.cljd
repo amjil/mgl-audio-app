@@ -1,33 +1,46 @@
 (ns audio-platform.widgets.app-bar
- (:require 
-  ["package:flutter/material.dart" :as m]
-  ["package:mongol/mongol.dart" :as mgl]
-  [audio-platform.utils.navigator :as nav]
-  [audio-platform.services.album :as album-service]
-  [audio-platform.states.album :as album-state]
-  [audio-platform.widgets.common :as common]))
-  
+  (:require
+   ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
+   [audio-platform.utils.navigator :as nav]
+   [audio-platform.services.album :as album-service]
+   [audio-platform.states.episode :as episode-state]
+   [audio-platform.widgets.common :as common]))
 
 (defn app-bar []
   (m/AppBar
    .title (mgl/MongolText "App Bar" .style (common/m-style))))
-   
-(defn album-detail [ctx navigator current-user]
-  (let [album (album-state/get-album)]
-    (m/AppBar
-     .leading (m/IconButton
-               .icon (m/Icon m/Icons.arrow_back)
-               .onPressed (fn [] (nav/navigator-pop navigator)))
-     .actions (if (= (get album "creator_id") (get current-user "id"))
-                [(m/IconButton
-                  .icon (m/Icon m.Icons/edit)
+
+(defn album-detail-app-bar [{:keys [album album-id is-creator navigator ctx]}]
+  (m/AppBar
+   .leading (m/IconButton
+             .icon (m/Icon m/Icons.arrow_back)
+             .onPressed (fn [] (nav/navigator-pop navigator)))
+   .actions (let [favorite-btn (m/IconButton
+                                .icon (m/Icon (if (get album "is_favorite") m/Icons.favorite m/Icons.favorite_border))
+                                .color (if (get album "is_favorite") m/Colors.red nil)
+                                .onPressed (fn []
+                                             (if (get album "is_favorite")
+                                               (album-service/remove-favorite album-id)
+                                               (album-service/add-favorite album-id))))]
+              (if is-creator
+                [favorite-btn
+                 (m/IconButton
+                  .icon (m/Icon m/Icons.add)
+                  .tooltip "Add Episode"
+                  .onPressed (fn []
+                               (episode-state/reset-state)
+                               (episode-state/set-episode nil)
+                               (nav/push-route navigator :episode-form)))
+                 (m/IconButton
+                  .icon (m/Icon m/Icons.edit)
                   .onPressed (fn []
                                (nav/push-route navigator :album-form)))
                  (m/IconButton
-                  .icon (m/Icon m.Icons/delete)
+                  .icon (m/Icon m/Icons.delete)
                   .onPressed (fn []
                                (common/show-confirmation-dialog
                                 ctx
                                 {:message "Are you sure you want to delete this album? This action cannot be undone."
-                                 :on-confirm #(album-service/delete-album navigator (get album "id"))})))]
-                []))))
+                                 :on-confirm #(album-service/delete-album navigator album-id)})))]
+                [favorite-btn]))))

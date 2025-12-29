@@ -1,7 +1,6 @@
 (ns audio-platform.screens.search
   (:require
    ["package:flutter/material.dart" :as m]
-   ["package:mongol/mongol.dart" :as mgl]
    [cljd.flutter :as f]
    [virtual-keyboard.keyboard :as keyboard]
    [audio-platform.state :as state]
@@ -10,39 +9,9 @@
    [audio-platform.utils.navigator :as nav]
    [audio-platform.widgets.cards :as cards]
    [audio-platform.services.album :as album-service]
-   [audio-platform.widgets.common :as common]))
-
-(defn category-item [_type label count selected? on-tap]
-  (f/widget
-   :context _context
-   (m/InkWell
-    .onTap on-tap
-    .child (m/Container
-            .padding (m.EdgeInsets/all 4)
-            .decoration (m/BoxDecoration
-                         .color (if selected?
-                                  (-> m/Theme (.of _context) .-colorScheme .-primaryContainer)
-                                  m/Colors.transparent)
-                         .borderRadius (m.BorderRadius/circular 8))
-            .child (m/Column
-                    .crossAxisAlignment m.CrossAxisAlignment/start
-                    .children
-                    [(mgl/MongolText
-                      label
-                      .style (common/m-style
-                              .fontSize 16
-                              .fontWeight (if selected? m.FontWeight/bold m.FontWeight/normal)
-                              .color (if selected?
-                                       (-> m/Theme (.of _context) .-colorScheme .-onPrimaryContainer)
-                                       (-> m/Theme (.of _context) .-colorScheme .-onSurface))))
-                     (m/SizedBox .height 4)
-                     (mgl/MongolText
-                      (str "(" count ")")
-                      .style (common/m-style
-                              .fontSize 12
-                              .color (if selected?
-                                       (-> m/Theme (.of _context) .-colorScheme .-onPrimaryContainer)
-                                       m/Colors.grey.shade600)))])))))
+   [audio-platform.widgets.common :as common]
+   [audio-platform.widgets.items :as items]
+   [audio-platform.widgets.forms :as forms]))
 
 (defn search-results-list [results _selected-type]
   (f/widget
@@ -90,12 +59,12 @@
                                  .width 1)))
    .child (m/Column
            .children
-           [(category-item "albums" "Albums" (count albums) (= selected-type "albums")
-                           (fn [] (search-state/set-selected-type "albums")))
-            (category-item "episodes" "Episodes" (count episodes) (= selected-type "episodes")
-                           (fn [] (search-state/set-selected-type "episodes")))
-            (category-item "creators" "Creators" (count creators) (= selected-type "creators")
-                           (fn [] (search-state/set-selected-type "creators")))])))
+           [(items/category-tab-item "Albums" (count albums) (= selected-type "albums")
+                                     (fn [] (search-state/set-selected-type "albums")))
+            (items/category-tab-item "Episodes" (count episodes) (= selected-type "episodes")
+                                     (fn [] (search-state/set-selected-type "episodes")))
+            (items/category-tab-item "Creators" (count creators) (= selected-type "creators")
+                                     (fn [] (search-state/set-selected-type "creators")))])))
 
 (defn search-results-panel []
   (f/widget
@@ -127,26 +96,6 @@
        (m/Expanded
         .child (search-results-list current-results selected-type))]))))
 
-(defn- search-input-field [search-controller context]
-  (m/Container
-   .margin (m.EdgeInsets/only .right 4 .bottom 12)
-   .padding (m.EdgeInsets/all 12)
-   .decoration (m/BoxDecoration
-                .border (m.Border/all)
-                .borderRadius (m.BorderRadius/circular 12))
-   .child (mgl/MongolTextField
-           .controller search-controller
-           .maxLines 1
-           .autofocus true
-           .onChanged (fn [query]
-                        (search-service/search query))
-           .onTap (fn []
-                    (dart:core/print "onTap MongolTextField"))
-           .style (common/m-style
-                   .fontSize 20
-                   .color (-> m/Theme (.of context) .-colorScheme .-onSurface))
-           .decoration nil)))
-
 (defn ^m/Widget search-page [_context]
   (f/widget
    :get [m/Navigator]
@@ -169,7 +118,9 @@
                 [(m/Row
                   .crossAxisAlignment m.CrossAxisAlignment/stretch
                   .children
-                  [(search-input-field search-controller _context)
+                  [(forms/search-input-field {:controller search-controller
+                                              :context _context
+                                              :on-changed (fn [query] (search-service/search query))})
                    (m/Expanded
                     .child (search-results-panel))])
                  (keyboard/candidates nil)]))
