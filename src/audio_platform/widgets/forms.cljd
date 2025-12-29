@@ -7,38 +7,70 @@
 
 (defn field-label [label]
   (f/widget
-   (mgl/MongolText label
-                    .style (common/m-style :fontSize 14 :fontWeight m.FontWeight/bold))))
+   :get [m/Theme]
+   (m/Padding
+    .padding (m/EdgeInsets.only .top 8 .bottom 12 .left 12)
+    .child
+    (mgl/MongolText label
+                    .style (common/m-style :fontSize 14 :fontWeight m/FontWeight.w800 :color (.-primaryColor theme))))))
 
 (defn form-actions [{:keys [loading submit-label on-submit on-cancel]}]
-  (m/Row
-   .mainAxisAlignment m.MainAxisAlignment/end
-   .children
-   [(mgl/MongolTextButton
-     .child (mgl/MongolText "Cancel" .style (common/m-style))
-     .onPressed on-cancel)
-    (m/SizedBox .width 16)
-    (mgl/MongolElevatedButton
-     .child (if loading
-              (m/SizedBox .width 20 .height 20 .child (m/CircularProgressIndicator .strokeWidth 2 .valueColor (m/AlwaysStoppedAnimation m/Colors.white)))
-              (mgl/MongolText (or submit-label "Submit") .style (common/m-style)))
-     .onPressed (if loading nil on-submit))]))
+  (f/widget
+   :get [m/Theme]
+   (m/Row
+    .mainAxisAlignment m/MainAxisAlignment.end
+    .children
+    [(m/OutlinedButton
+      .style (m/OutlinedButton.styleFrom
+              .padding (m/EdgeInsets.symmetric .vertical 20)
+              .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 16)))
+      .child (mgl/MongolText "Cancel" .style (common/m-style :fontWeight m/FontWeight.w600))
+      .onPressed on-cancel)
+     (m/SizedBox .width 20)
+     (m/ElevatedButton
+      .style (m/ElevatedButton.styleFrom
+              .backgroundColor (.-primaryColor theme)
+              .foregroundColor (.-onPrimary (.-colorScheme theme))
+              .padding (m/EdgeInsets.symmetric .vertical 20)
+              .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 16)))
+      .child (if loading
+               (m/SizedBox .width 24 .height 24 .child (m/CircularProgressIndicator .strokeWidth 2 .color (.-onPrimary (.-colorScheme theme))))
+               (mgl/MongolText (or submit-label "Submit") .style (common/m-style :fontWeight m/FontWeight.bold)))
+      .onPressed (if loading nil on-submit))])))
 
 (defn search-input-field [{:keys [controller context on-changed]}]
-  (m/Container
-   .margin (m.EdgeInsets/only .right 4 .bottom 12)
-   .padding (m.EdgeInsets/all 12)
-   .decoration (m/BoxDecoration
-                .border (m.Border/all)
-                .borderRadius (m.BorderRadius/circular 12))
-   .child (mgl/MongolTextField
-           .controller controller
-           .maxLines 1
-           .autofocus true
-          .onChanged (fn [query]
-                       (when on-changed (on-changed query)))
-          .style (common/m-style
-                  :fontSize 20
-                  :color (-> m/Theme (.of context) .-colorScheme .-onSurface))
-          .decoration nil)))
+  (let [theme (m/Theme.of context)]
+    (m/Container
+     .margin (m/EdgeInsets.only .right 16 .bottom 12 .top 12 .left 12)
+     .padding (m/EdgeInsets.symmetric .horizontal 16 .vertical 8)
+     .decoration (m/BoxDecoration
+                  .color (.-cardColor theme)
+                  .borderRadius (m/BorderRadius.circular 24)
+                  .boxShadow [(m/BoxShadow
+                               .color (if (= (.-brightness theme) m/Brightness.light)
+                                        (m/Color.fromRGBO 0 0 0 0.05)
+                                        (m/Color.fromRGBO 0 0 0 0.2))
+                               .blurRadius 10
+                               .offset (m/Offset 0 4))])
+     .child (m/Row
+             .mainAxisSize m/MainAxisSize.min
+             .children
+             [(m/Icon m/Icons.search_rounded .color (.-primaryColor theme))
+              (m/SizedBox .width 12)
+              (m/SizedBox
+               .width 60
+               .height 200
+               .child
+               (mgl/MongolTextField
+                .controller controller
+                .maxLines 1
+                .autofocus true
+                .onChanged (fn [query]
+                             (when on-changed (on-changed query)))
+                .style (common/m-style
+                        :fontSize 18
+                        :color (.-onSurface (.-colorScheme theme)))
+                .decoration (m/InputDecoration
+                             .hintText "Search..."
+                             .border m/InputBorder.none)))]))))
 

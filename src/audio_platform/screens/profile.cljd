@@ -14,87 +14,147 @@
   (let [user (state/get-user)
         loading (atom false)]
     (f/widget
-     :get [m/Navigator]
-     (m/Scaffold)
-     .body 
-     (m/SafeArea)
-     (m/ListView
-      .scrollDirection m.Axis/horizontal
-      .children
-      [(m/Container
-        .padding (m/EdgeInsets.all 16)
-        .child (m/Column
-                .children
-                [(m/CircleAvatar
-                  .radius 40
-                  .backgroundImage (when (get user "avatar_url")
-                                     (m/NetworkImage (get user "avatar_url")))
-                  .child (when (not (get user "avatar_url"))
-                           (m/Icon m.Icons/person
-                                   .size 40)))
-                 (m/SizedBox .height 16)
-                 (m/Column
-                  .crossAxisAlignment m.CrossAxisAlignment/start
-                  .children
-                  [(mgl/MongolText
-                    (or (get user "display_name")
-                        (get user "username")
-                        "User")
-                    .style (common/m-style
-                            :fontSize 20
-                            :fontWeight m.FontWeight/bold))
-                   (m/SizedBox .height 4)
-                   (mgl/MongolText
-                    (get user "email" "")
-                    .style (common/m-style
-                            :color m/Colors.grey.shade600))])]))
-       (m/Divider)
-       (mgl/MongolListTile
-        .leading (m/Icon m.Icons/favorite)
-        .title (mgl/MongolText "Favorites" .style (common/m-style))
-        .trailing (m/Icon m.Icons/chevron_right)
-        .onTap (fn []
-                 (favorites-service/fetch-favorites)
-                 (nav/push-route navigator :favorites)))
-       (mgl/MongolListTile
-        .leading (m/Icon m.Icons/history)
-        .title (mgl/MongolText "History" .style (common/m-style))
-        .trailing (m/Icon m.Icons/chevron_right)
-        .onTap (fn []
-                 (history-service/fetch-history)
-                 (nav/push-route navigator :history)))
-       (mgl/MongolListTile
-        .leading (m/Icon m.Icons/add_circle)
-        .title (mgl/MongolText "Create Album" .style (common/m-style))
-        .trailing (m/Icon m.Icons/chevron_right)
-        .onTap (fn []
-                 (nav/push-route navigator :album-form)))
-       (mgl/MongolListTile
-        .leading (m/Icon m.Icons/playlist_play)
-        .title (mgl/MongolText "My Playlists" .style (common/m-style))
-        .trailing (m/Icon m.Icons/chevron_right)
-        .onTap (fn []
-                 (playlists-service/fetch-playlists)
-                 (nav/push-route navigator :playlists)))
-       (mgl/MongolListTile
-        .leading (m/Icon m.Icons/notifications)
-        .title (mgl/MongolText "Notifications" .style (common/m-style))
-        .trailing (m/Icon m.Icons/chevron_right)
-        .onTap (fn []
-                 (dart:core/print "Notifications")))
-       (m/Divider)
-       (mgl/MongolListTile
-        .leading (m/Icon m.Icons/settings)
-        .title (mgl/MongolText "Settings" .style (common/m-style))
-        .trailing (m/Icon m.Icons/chevron_right)
-        .onTap (fn []
-                 (dart:core/print "Settings")))
-       (mgl/MongolListTile
-        .leading (m/Icon m.Icons/logout)
-        .title (mgl/MongolText "Logout" .style (common/m-style))
-        .onTap (fn []
-                 (reset! loading true)
-                 (state/clear-auth)
-                 (reset! loading false)
-                 (nav/push-route-and-remove-until navigator :login (fn [_route] false))))]))))
-
+     :get [m/Navigator m/Theme]
+     (m/Scaffold
+      .body
+      (m/Container
+       .decoration (m/BoxDecoration
+                    .color (.-scaffoldBackgroundColor theme))
+       .child
+       (m/SafeArea
+        .child
+        (m/ListView
+         .scrollDirection m/Axis.horizontal
+         .padding (m/EdgeInsets.all 24)
+         .children
+         [(m/Container
+           .width 320
+           .padding (m/EdgeInsets.only .right 40)
+           .child (m/Column
+                   .mainAxisAlignment m/MainAxisAlignment.center
+                   .children
+                   [(m/Container
+                     .width 160
+                     .height 160
+                     .decoration (m/BoxDecoration
+                                  .shape m/BoxShape.circle
+                                  .border (m/Border.all .color (.-primaryColor theme) .width 4)
+                                  .boxShadow [(m/BoxShadow
+                                               .color (m/Color.fromRGBO 0 0 0 0.1)
+                                               .blurRadius 20
+                                               .offset (m/Offset 0 10))])
+                     .child (m/CircleAvatar
+                             .radius 76
+                             .backgroundColor (if (= (.-brightness theme) m/Brightness.light)
+                                                m/Colors.white
+                                                (m/Color. 0xFF1E293B))
+                             .backgroundImage (when (get user "avatar_url")
+                                                (m/NetworkImage (get user "avatar_url")))
+                             .child (when (not (get user "avatar_url"))
+                                      (m/Icon m/Icons.person_rounded
+                                              .size 80
+                                              .color (if (= (.-brightness theme) m/Brightness.light)
+                                                       m/Colors.grey.shade300
+                                                       m/Colors.grey.shade700)))))
+                    (m/SizedBox .height 32)
+                    (mgl/MongolText
+                     (or (get user "display_name")
+                         (get user "username")
+                         "User")
+                     .style (common/m-style
+                             :fontSize 28
+                             :fontWeight m/FontWeight.w900))
+                    (m/SizedBox .height 12)
+                    (m/Container
+                     .padding (m/EdgeInsets.symmetric .horizontal 16 .vertical 8)
+                     .decoration (m/BoxDecoration
+                                  .color (.-secondaryContainer (.-colorScheme theme))
+                                  .borderRadius (m/BorderRadius.circular 20))
+                     .child (mgl/MongolText
+                             (get user "email" "No email")
+                             .style (common/m-style
+                                     :color (.-onSecondaryContainer (.-colorScheme theme))
+                                     :fontSize 14
+                                     :fontWeight m/FontWeight.w600)))
+                    (m/SizedBox .height 40)
+                    (m/SizedBox
+                     .width 60
+                     .child
+                     (m/OutlinedButton
+                      .style (m/OutlinedButton.styleFrom
+                              .foregroundColor m/Colors.red
+                              .side (m/BorderSide .color m/Colors.red .width 1.5)
+                              .padding (m/EdgeInsets.symmetric .vertical 20)
+                              .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 20)))
+                      .onPressed (fn []
+                                   (reset! loading true)
+                                   (state/clear-auth)
+                                   (reset! loading false)
+                                   (nav/push-route-and-remove-until navigator :login (fn [_route] false)))
+                      .child (mgl/MongolText "ᠭᠠᠷᠬᠤ" .style (common/m-style :color m/Colors.red :fontWeight m/FontWeight.bold))))]))
+          (m/Container
+           .width 400
+           .child
+           (m/ListView
+            .scrollDirection m/Axis.horizontal
+            .children
+            [(m/Padding
+              .padding (m/EdgeInsets.symmetric .horizontal 8)
+              .child
+              (m/Card
+               .child
+               (m/Container
+                .width 350
+                .child
+                (m/ListView
+                 .scrollDirection m/Axis.horizontal
+                 .padding (m/EdgeInsets.all 16)
+                 .children
+                 [(mgl/MongolListTile
+                   .leading (m/Container
+                             .padding (m/EdgeInsets.all 10)
+                             .decoration (m/BoxDecoration .color (m/Color.fromRGBO 244 67 54 0.1) .borderRadius (m/BorderRadius.circular 14))
+                             .child (m/Icon m/Icons.favorite_rounded .color m/Colors.red.shade400))
+                   .title (mgl/MongolText "ᠲᠠᠭᠠᠯᠠᠭᠳᠠᠭᠰᠠᠨ" .style (common/m-style :fontWeight m/FontWeight.w600))
+                   .trailing (m/Icon m/Icons.chevron_right_rounded .size 20)
+                   .onTap (fn []
+                            (favorites-service/fetch-favorites)
+                            (nav/push-route navigator :favorites)))
+                  (mgl/MongolListTile
+                   .leading (m/Container
+                             .padding (m/EdgeInsets.all 10)
+                             .decoration (m/BoxDecoration .color (m/Color.fromRGBO 33 150 243 0.1) .borderRadius (m/BorderRadius.circular 14))
+                             .child (m/Icon m/Icons.history_rounded .color m/Colors.blue.shade400))
+                   .title (mgl/MongolText "ᠲᠡᠦᠬᠡ" .style (common/m-style :fontWeight m/FontWeight.w600))
+                   .trailing (m/Icon m/Icons.chevron_right_rounded .size 20)
+                   .onTap (fn []
+                            (history-service/fetch-history)
+                            (nav/push-route navigator :history)))
+                  (mgl/MongolListTile
+                   .leading (m/Container
+                             .padding (m/EdgeInsets.all 10)
+                             .decoration (m/BoxDecoration .color (m/Color.fromRGBO 156 39 176 0.1) .borderRadius (m/BorderRadius.circular 14))
+                             .child (m/Icon m/Icons.playlist_play_rounded .color m/Colors.purple.shade400))
+                   .title (mgl/MongolText "ᠮᠢᠨᠦ ᠵᠢᠭᠰᠠᠭᠠᠯᠲᠠ" .style (common/m-style :fontWeight m/FontWeight.w600))
+                   .trailing (m/Icon m/Icons.chevron_right_rounded .size 20)
+                   .onTap (fn []
+                            (playlists-service/fetch-playlists)
+                            (nav/push-route navigator :playlists)))
+                  (mgl/MongolListTile
+                   .leading (m/Container
+                             .padding (m/EdgeInsets.all 10)
+                             .decoration (m/BoxDecoration .color (m/Color.fromRGBO 76 175 80 0.1) .borderRadius (m/BorderRadius.circular 14))
+                             .child (m/Icon m/Icons.add_circle_outline_rounded .color m/Colors.green.shade400))
+                   .title (mgl/MongolText "ᠴᠤᠪᠤᠷᠠᠯ ᠡᠭᠦᠰᠬᠡᠬᠦ" .style (common/m-style :fontWeight m/FontWeight.w600))
+                   .trailing (m/Icon m/Icons.chevron_right_rounded .size 20)
+                   .onTap (fn []
+                            (nav/push-route navigator :album-form)))
+                  (mgl/MongolListTile
+                   .leading (m/Container
+                             .padding (m/EdgeInsets.all 10)
+                             .decoration (m/BoxDecoration .color (m/Color.fromRGBO 158 158 158 0.1) .borderRadius (m/BorderRadius.circular 14))
+                             .child (m/Icon m/Icons.settings_rounded .color m/Colors.grey.shade600))
+                   .title (mgl/MongolText "ᠲᠣᠬᠢᠷᠠᠭᠤᠯᠭᠠ" .style (common/m-style :fontWeight m/FontWeight.w600))
+                   .trailing (m/Icon m/Icons.chevron_right_rounded .size 20)
+                   .onTap (fn []
+                            (dart:core/print "Settings")))]))))]))])))))))

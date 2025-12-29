@@ -18,7 +18,7 @@
     .appBar (m/AppBar
              .title (mgl/MongolText "History" .style (common/m-style))
              .leading (m/IconButton
-                       .icon (m/Icon m.Icons/arrow_back)
+                       .icon (m/Icon m/Icons.arrow_back)
                        .onPressed (fn [] (nav/navigator-pop navigator))))
     .body
     (common/async-view
@@ -28,7 +28,7 @@
       :content-fn
       (fn []
         (m/ListView.builder
-         .scrollDirection m.Axis/horizontal
+         .scrollDirection m/Axis.horizontal
          .itemCount (count history)
          .itemBuilder (fn [_ index]
                         (let [item (nth history index)

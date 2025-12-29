@@ -14,71 +14,92 @@
             is-playing :is-playing
             is-buffering :is-buffering
             position :play-position} state/app-state]
-   (if episode
-     (m/Container
-      .height 80
-      .decoration (m/BoxDecoration
-                   .color m/Colors.white
-                   .boxShadow [(m/BoxShadow
-                                .color m/Colors.black12
-                                .blurRadius 4
-                                .offset (m/Offset 0 -2))])
-      .child (m/Row
-              .children
-              [(m/Container
-                .width 80
-                .height 80
+   :get [m/Theme]
+    (if episode
+    (m/Container
+     .height 72
+     .margin (m/EdgeInsets.only .left 12 .right 12 .bottom 12)
+     .decoration (m/BoxDecoration
+                  .color (.-surfaceContainerHigh (.-colorScheme theme))
+                  .borderRadius (m/BorderRadius.circular 24)
+                  .boxShadow [(m/BoxShadow
+                               .color (if (= (.-brightness theme) m/Brightness.light)
+                                        (m/Color.fromRGBO 0 0 0 0.1)
+                                        (m/Color.fromRGBO 0 0 0 0.3))
+                               .blurRadius 15
+                               .offset (m/Offset 0 6))])
+     .child (m/Row
+             .children
+             [(m/Padding
+               .padding (m/EdgeInsets.all 8)
+               .child
+               (m/Container
+                .width 56
+                .height 56
                 .decoration (m/BoxDecoration
-                             .color m/Colors.grey.shade300)
-                .child (if (get episode "cover_url")
-                         (m/Image.network (get episode "cover_url")
-                                          .fit m/BoxFit.cover)
-                         (m/Icon m/Icons.music_note
-                                 .size 40
-                                 .color m/Colors.grey.shade600)))
-               (m/Expanded
-                .child (m/Padding
-                        .padding (m/EdgeInsets.all 12)
-                        .child (m/Row
-                                .mainAxisAlignment m/MainAxisAlignment.center
-                                .crossAxisAlignment m/MainAxisAlignment.start
-                                .children
-                                [                                 (mgl/MongolText
-                                  (get episode "title" "Unknown Title")
-                                  .style (common/m-style
-                                          :fontSize 14
-                                          :fontWeight m/FontWeight.bold)
-                                  .maxLines 1
-                                  .overflow m/TextOverflow.ellipsis)
-                                 (m/SizedBox .width 4)
-                                 (m/Column
-                                  .children
-                                  [(m/Expanded
-                                    .child (if is-buffering
-                                             (m/LinearProgressIndicator .minHeight 2)
-                                             (m/LinearProgressIndicator
-                                              .value (if (> (get episode "duration" 0) 0)
-                                                       (/ position (get episode "duration" 0))
-                                                       0)
-                                              .minHeight 2)))
-                                   (m/SizedBox .width 8)
-                                   (mgl/MongolText
-                                    (str (format/format-duration position) " / "
-                                         (format/format-duration (get episode "duration" 0)))
-                                    .style (common/m-style
-                                            :fontSize 10
-                                            :color m/Colors.grey.shade600))])])))
+                             .borderRadius (m/BorderRadius.circular 18))
+                .clipBehavior m/Clip.antiAlias
+                .child (if-let [cover (get episode "cover_url")]
+                         (m/Image.network cover .fit m/BoxFit.cover)
+                         (m/Container
+                          .color (if (= (.-brightness theme) m/Brightness.light)
+                                   m/Colors.grey.shade100
+                                   (m/Color. 0xFF334155))
+                          .child (m/Icon m/Icons.music_note
+                                         .size 28
+                                         .color m/Colors.grey.shade500)))))
+              (m/Expanded
+               .child (m/Padding
+                       .padding (m/EdgeInsets.symmetric .horizontal 8)
+                       .child (m/Column
+                               .mainAxisAlignment m/MainAxisAlignment.center
+                               .crossAxisAlignment m/MainAxisAlignment.start
+                               .children
+                               [(mgl/MongolText
+                                 (get episode "title" "Unknown Title")
+                                 .style (common/m-style
+                                         :fontSize 14
+                                         :fontWeight m/FontWeight.w700)
+                                 .maxLines 1
+                                 .overflow m/TextOverflow.ellipsis)
+                                (m/SizedBox .height 8)
+                                (m/Row
+                                 .children
+                                 [(m/Expanded
+                                   .child (m/ClipRRect
+                                           .borderRadius (m/BorderRadius.circular 4)
+                                           .child (if is-buffering
+                                                    (m/LinearProgressIndicator .minHeight 3)
+                                                    (m/LinearProgressIndicator
+                                                     .value (if (> (get episode "duration" 0) 0)
+                                                              (/ position (get episode "duration" 0))
+                                                              0)
+                                                     .minHeight 3
+                                                     .backgroundColor (.-surfaceContainerLow (.-colorScheme theme))
+                                                     .valueColor (m/AlwaysStoppedAnimation. (.-primaryColor theme))))))
+                                  (m/SizedBox .width 10)
+                                  (mgl/MongolText
+                                   (format/format-duration position)
+                                   .style (common/m-style
+                                           :fontSize 10
+                                           :color (if (= (.-brightness theme) m/Brightness.light)
+                                                    m/Colors.grey.shade600
+                                                    m/Colors.grey.shade400)))])])))
+              (m/Padding
+               .padding (m/EdgeInsets.only .right 4)
+               .child
                (m/IconButton
                 .icon (if is-buffering
                         (m/SizedBox .width 24 .height 24 .child (m/CircularProgressIndicator .strokeWidth 2))
                         (m/Icon (if is-playing
-                                  m/Icons.pause_circle_filled
-                                  m/Icons.play_circle_filled)))
-                .iconSize 40
+                                  m/Icons.pause_rounded
+                                  m/Icons.play_arrow_rounded)))
+                .iconSize 32
+                .style (m/IconButton.styleFrom .backgroundColor (.-primaryColorContainer theme) .foregroundColor (.-onPrimaryContainer theme))
                 .onPressed (fn []
-                             (audio-player/toggle-play)))
+                             (audio-player/toggle-play))))
                (m/IconButton
-                .icon (m/Icon m/Icons.close)
+                .icon (m/Icon m/Icons.close_rounded .size 20)
                 .onPressed (fn []
                              (audio-player/stop)
                              (state/set-current-episode nil)

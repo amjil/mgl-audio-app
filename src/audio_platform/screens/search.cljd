@@ -17,58 +17,66 @@
   (f/widget
    :get [m/Navigator]
    (cond
-     (empty? results)
-     (common/empty-state-view
-      {:icon m.Icons/search_off
-       :message "No results found"})
-     
-     :else
-     (m/ListView.builder
-      .itemCount (count results)
-      .itemBuilder (fn [_ index]
-                     (let [item (nth results index)
-                           item-type (get item "type")
-                           on-tap (fn []
-                                    (case item-type
-                                      "album"
-                                      (let [album-id (get item "id")]
-                                        (album-service/prefill-category-from-album-id album-id)
-                                        (album-service/check-favorite album-id)
-                                        (nav/push-route-with-arguments navigator
-                                                                       :album-detail
-                                                                       {"album_id" album-id}))
-                                      "episode"
-                                      (state/set-current-episode item)
-                                      "creator"
-                                      (dart:core/print (str "Creator tapped:" (get item "id")))
-                                      (dart:core/print (str "Unknown type:" item-type))))]
-                       (case item-type
-                         "album"
-                         (cards/album-card item on-tap)
-                         "episode"
-                         (cards/episode-card item on-tap)
-                         "creator"
-                         (cards/creator-card item on-tap)
-                         (cards/feed-card item on-tap))))))))
+    (empty? results)
+    (common/empty-state-view
+     {:icon m/Icons.search_off
+      :message "No results found"})
 
-(defn- search-categories [albums episodes creators selected-type]
+    :else
+    (m/ListView.builder
+     .itemCount (count results)
+     .itemBuilder (fn [_ index]
+                    (let [item (nth results index)
+                          item-type (get item "type")
+                          on-tap (fn []
+                                   (case item-type
+                                     "album"
+                                     (let [album-id (get item "id")]
+                                       (album-service/prefill-category-from-album-id album-id)
+                                       (album-service/check-favorite album-id)
+                                       (nav/push-route-with-arguments navigator
+                                                                      :album-detail
+                                                                      {"album_id" album-id}))
+                                     "episode"
+                                     (state/set-current-episode item)
+                                     "creator"
+                                     (dart:core/print (str "Creator tapped:" (get item "id")))
+                                     (dart:core/print (str "Unknown type:" item-type))))]
+                      (case item-type
+                        "album"
+                        (cards/album-card item on-tap)
+                        "episode"
+                        (cards/episode-card item on-tap)
+                        "creator"
+                        (cards/creator-card item on-tap)
+                        (cards/feed-card item on-tap))))))))
+
+(defn- search-categories [albums episodes creators selected-type theme]
   (m/Container
+   .width 80
+   .padding (m/EdgeInsets.symmetric .vertical 12 .horizontal 8)
    .decoration (m/BoxDecoration
+                .color (if (= (.-brightness theme) m/Brightness.light)
+                         (m/Color. 0xFFF8FAFC)
+                         (m/Color. 0xFF0F172A))
                 .border (m/Border
                          .right (m/BorderSide
-                                 .color m/Colors.grey.shade300
+                                 .color (.-dividerColor theme)
                                  .width 1)))
-   .child (m/Column
+   .child (m/ListView
            .children
            [(items/category-tab-item "Albums" (count albums) (= selected-type "albums")
                                      (fn [] (search-state/set-selected-type "albums")))
+            (m/SizedBox .height 8)
             (items/category-tab-item "Episodes" (count episodes) (= selected-type "episodes")
                                      (fn [] (search-state/set-selected-type "episodes")))
+            (m/SizedBox .height 8)
             (items/category-tab-item "Creators" (count creators) (= selected-type "creators")
                                      (fn [] (search-state/set-selected-type "creators")))])))
 
 (defn search-results-panel []
   (f/widget
+   :get [m/Theme]
    :watch [{loading :loading
             albums :albums
             episodes :episodes
@@ -81,21 +89,21 @@
                            "creators" creators
                            albums)]
    (cond
-     loading
-     (common/loading-view)
-     
-     (empty? query)
-     (common/empty-state-view
-      {:icon m.Icons/search
-       :message "Enter keywords to search audio content"})
-     
-     :else
-     (m/Row
-      .crossAxisAlignment m.CrossAxisAlignment/stretch
-      .children
-      [(search-categories albums episodes creators selected-type)
-       (m/Expanded
-        .child (search-results-list current-results selected-type))]))))
+    loading
+    (common/loading-view)
+
+    (empty? query)
+    (common/empty-state-view
+     {:icon m/Icons.search_rounded
+      :message "Enter keywords to search audio content"})
+
+    :else
+    (m/Row
+     .crossAxisAlignment m/CrossAxisAlignment.stretch
+     .children
+     [(search-categories albums episodes creators selected-type theme)
+      (m/Expanded
+       .child (search-results-list current-results selected-type))]))))
 
 (defn ^m/Widget search-page [_context]
   (f/widget
@@ -106,7 +114,7 @@
     .appBar (m/AppBar
              .backgroundColor m/Colors.transparent
              .leading (m/IconButton
-                       .icon (m/Icon m.Icons/arrow_back)
+                       .icon (m/Icon m/Icons.arrow_back)
                        .onPressed (fn [] (nav/navigator-pop navigator))))
     .body
     (m/SafeArea
@@ -117,7 +125,7 @@
         .child (m/Stack
                 .children
                 [(m/Row
-                  .crossAxisAlignment m.CrossAxisAlignment/stretch
+                  .crossAxisAlignment m/CrossAxisAlignment.stretch
                   .children
                   [(forms/search-input-field {:controller search-controller
                                               :context _context

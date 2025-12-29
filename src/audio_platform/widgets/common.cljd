@@ -32,7 +32,7 @@
                             .mainAxisSize m/MainAxisSize.min
                             .mainAxisAlignment m/MainAxisAlignment.center
                             .children
-                            [(m/Icon m.Icons/error_outline .size 64 .color m/Colors.red)
+                            [(m/Icon m/Icons.error_outline .size 64 .color m/Colors.red)
                              (m/SizedBox .height 16)
                              (mgl/MongolText error-message
                                              .style (m-style :color m/Colors.red))]))))))

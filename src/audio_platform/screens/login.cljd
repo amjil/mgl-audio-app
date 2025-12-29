@@ -9,79 +9,140 @@
    [audio-platform.utils.navigator :as nav]
    [audio-platform.widgets.common :as common]))
 
-(defn- login-form [username-controller password-controller loading-val navigator context loading]
-  (m/Row
-   .mainAxisAlignment m.MainAxisAlignment/center
-   .crossAxisAlignment m.CrossAxisAlignment/stretch
-   .children
-   [(mgl/MongolTextField
-     .controller username-controller
-     .decoration (m/InputDecoration .labelText "Username" .border (m/OutlineInputBorder))
-     .enabled (not loading-val)
-     .style (common/m-style))
-    (m/SizedBox .width 16)
-    (mgl/MongolTextField
-     .controller password-controller
-     .decoration (m/InputDecoration .labelText "Password" .border (m/OutlineInputBorder))
-     .obscureText true
-     .enabled (not loading-val)
-     .style (common/m-style))
-    (m/SizedBox .width 24)
-    (mgl/MongolElevatedButton
-     .onPressed
-     (when (not loading-val)
-       (fn []
-         (reset! loading true)
-         (let [username (.-text username-controller)
-               password (.-text password-controller)]
-           (-> (api/login username password)
-               (.then
-                (fn [response]
-                  (let [token (get response "access_token")
-                        refresh-token (get response "refresh_token")]
-                    (state/set-token token refresh-token)
-                    (-> (api/get-current-user token)
-                        (.then
-                         (fn [user]
-                           (state/set-user user)
-                           (reset! loading false)
-                           (nav/push-replacement-route navigator :home)))
-                        (.catchError
-                         (fn [err]
-                           (reset! loading false)
-                           (toast/handle-error-with-toast context err "Хэрэглэгчийн мэдээлэл авахад алдаа гарлаа")))))))
-               (.catchError
-                (fn [err]
-                  (reset! loading false)
-                  (toast/handle-error-with-toast context err "Нэвтрэхэд алдаа гарлаа")))))))
-     .child
-     (if loading-val
-       (m/Padding
-        .padding (m.EdgeInsets/all 8)
-        .child (m/SizedBox .width 20 .height 20 .child (m/CircularProgressIndicator .strokeWidth 2 .color m.Colors/white)))
-       (m/Padding
-        .padding (m.EdgeInsets/symmetric .horizontal 0 .vertical 8)
-        .child (mgl/MongolText "Login" .style (common/m-style)))))
-    (m/SizedBox .width 16)
-    (mgl/MongolTextButton
-     .onPressed (fn [] (nav/push-route navigator :register))
-     .child (mgl/MongolText "Don't have an account? Register now" .style (common/m-style)))]))
+(defn- login-form [username-controller password-controller loading-val navigator context loading theme]
+  (m/Container
+   .padding (m/EdgeInsets.all 32)
+   .child
+   (m/Row
+    .mainAxisAlignment m/MainAxisAlignment.center
+    .crossAxisAlignment m/CrossAxisAlignment.center
+    .children
+    [(m/Column
+      .mainAxisAlignment m/MainAxisAlignment.center
+      .children
+      [(m/Container
+        .width 100
+        .height 100
+        .decoration (m/BoxDecoration
+                     .color (.-primaryColor theme)
+                     .borderRadius (m/BorderRadius.circular 30))
+        .child (m/Icon m/Icons.headset_rounded .size 50 .color (.-onPrimary (.-colorScheme theme))))
+       (m/SizedBox .height 40)
+       (mgl/MongolText "ᠮᠣᠩᠭᠣᠯ ᠠᠤᠳᠢᠣ"
+                      .style (common/m-style :fontSize 28 :fontWeight m/FontWeight.w900 :color (.-primaryColor theme)))
+       (m/SizedBox .height 12)
+       (mgl/MongolText "ᠪᠤᠭᠤᠳᠡ ᠬᠡᠪᠲᠡᠭᠡ ᠮᠣᠩᠭᠣᠯ ᠪᠢᠴᠢᠭ ᠢᠶᠡᠷ"
+                      .style (common/m-style :fontSize 14 :color m/Colors.grey.shade500))])
+     (m/SizedBox .width 60)
+     (m/Container
+      .padding (m/EdgeInsets.all 24)
+      .decoration (m/BoxDecoration
+                   .color (.-cardColor theme)
+                   .borderRadius (m/BorderRadius.circular 32)
+                   .boxShadow [(m/BoxShadow
+                                .color (m/Color.fromRGBO 0 0 0 0.05)
+                                .blurRadius 20
+                                .offset (m/Offset 0 10))])
+      .child
+      (m/Row
+       .mainAxisAlignment m/MainAxisAlignment.center
+       .mainAxisSize m/MainAxisSize.min
+       .children
+       [(m/SizedBox
+         .width 70
+         .height 300
+         .child
+         (mgl/MongolTextField
+          .controller username-controller
+          .decoration (m/InputDecoration
+                       .labelText "Username"
+                       .prefixIcon (m/Icon m/Icons.person_outline)
+                       .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 20)))
+          .enabled (not loading-val)
+          .style (common/m-style)))
+        (m/SizedBox .width 20)
+        (m/SizedBox
+         .width 70
+         .height 300
+         .child
+         (mgl/MongolTextField
+          .controller password-controller
+          .decoration (m/InputDecoration
+                       .labelText "Password"
+                       .prefixIcon (m/Icon m/Icons.lock_outline)
+                       .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 20)))
+          .obscureText true
+          .enabled (not loading-val)
+          .style (common/m-style)))
+        (m/SizedBox .width 32)
+        (m/SizedBox
+         .width 64
+         .child
+         (m/ElevatedButton
+          .onPressed
+          (when (not loading-val)
+            (fn []
+              (reset! loading true)
+              (let [username (.-text username-controller)
+                    password (.-text password-controller)]
+                (-> (api/login username password)
+                    (.then
+                     (fn [response]
+                       (let [token (get response "access_token")
+                             refresh-token (get response "refresh_token")]
+                         (state/set-token token refresh-token)
+                         (-> (api/get-current-user token)
+                             (.then
+                              (fn [user]
+                                (state/set-user user)
+                                (reset! loading false)
+                                (nav/push-replacement-route navigator :home)))
+                             (.catchError
+                              (fn [err]
+                                (reset! loading false)
+                                (toast/handle-error-with-toast context err "Хэрэглэгчийн мэдээлэл авахад алдаа гарлаа")))))))
+                    (.catchError
+                     (fn [err]
+                       (reset! loading false)
+                       (toast/handle-error-with-toast context err "Нэвтрэхэд алдаа гарлаа")))))))
+          .style (m/ElevatedButton.styleFrom
+                  .backgroundColor (.-primaryColor theme)
+                  .foregroundColor (.-onPrimary (.-colorScheme theme))
+                  .padding (m/EdgeInsets.symmetric .vertical 20)
+                  .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 20)))
+          .child
+          (if loading-val
+            (m/SizedBox .width 24 .height 24 .child (m/CircularProgressIndicator .strokeWidth 2 .color (.-onPrimary (.-colorScheme theme))))
+            (mgl/MongolText "Login" .style (common/m-style :fontWeight m/FontWeight.bold)))))
+        (m/SizedBox .width 24)
+        (mgl/MongolTextButton
+         .onPressed (fn [] (nav/push-route navigator :register))
+         .child (mgl/MongolText "Don't have an account? Register now"
+                                .style (common/m-style :color (.-primaryColor theme) :fontWeight m/FontWeight.w600)))]))])))
 
 (defn ^m/Widget login-page [context]
   (let [loading (atom false)]
     (f/widget
      :watch [loading-val loading]
-     :get [m/Navigator]
+     :get [m/Navigator m/Theme]
      :managed [username-controller (m/TextEditingController.)
                password-controller (m/TextEditingController.)]
      (m/Scaffold
       .body
-      (m/SafeArea
+      (m/Container
+       .decoration (m/BoxDecoration
+                    .gradient (m/LinearGradient
+                               .begin m/Alignment.topLeft
+                               .end m/Alignment.bottomRight
+                               .colors (if (= (.-brightness theme) m/Brightness.light)
+                                         [(m/Color. 0xFFF0F2F5) (m/Color. 0xFFFFFFFF)]
+                                         [(m/Color. 0xFF0F172A) (m/Color. 0xFF1E293B)])))
        .child
-       (m/Padding
-        .padding (m.EdgeInsets/all 16)
+       (m/SafeArea
         .child
-        (m/SingleChildScrollView
-         .scrollDirection m.Axis/horizontal
+        (m/Center
          .child
-         (login-form username-controller password-controller loading-val navigator context loading))))))))
+         (m/SingleChildScrollView
+          .scrollDirection m/Axis.horizontal
+          .child
+          (login-form username-controller password-controller loading-val navigator context loading theme)))))))))

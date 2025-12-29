@@ -35,22 +35,31 @@
                        :content-fn
                        (fn []
                          (m/ListView.separated
-                          .scrollDirection m.Axis/horizontal
+                          .scrollDirection m/Axis.horizontal
+                          .padding (m/EdgeInsets.symmetric .horizontal 16)
                           .itemCount (+ 1 (if (empty? episodes) 1 (count episodes)))
                           .itemBuilder (fn [_ index]
                                          (if (= index 0)
                                            (items/album-info-item album episodes)
-                                           (if (empty? episodes)
-                                             (common/empty-state-view
-                                              {:icon m/Icons.queue_music
-                                               :message "No episodes yet"
-                                               :action-child (when is-creator
-                                                               (mgl/MongolElevatedButton
-                                                                .child (mgl/MongolText "Add First Episode" .style (common/m-style))
-                                                                .onPressed (fn []
-                                                                             (episode-state/reset-state)
-                                                                             (episode-state/set-episode nil)
-                                                                             (nav/push-route navigator :episode-form))))})
+                                            (if (empty? episodes)
+                                              (m/Center
+                                               .child
+                                               (m/Container
+                                                .width 300
+                                                .child
+                                                (common/empty-state-view
+                                                 {:icon m/Icons.queue_music_rounded
+                                                  :message "ᠣᠩᠭᠤᠴᠠ ᠪᠠᠶᠢᠬᠤ ᠦᠭᠡᠢ" ;; No episodes yet
+                                                  :action-child (when is-creator
+                                                                  (m/ElevatedButton
+                                                                   .style (m/ElevatedButton.styleFrom
+                                                                           .padding (m/EdgeInsets.symmetric .vertical 20)
+                                                                           .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 16)))
+                                                                   .child (mgl/MongolText "ᠰᠢᠨᠡ ᠠᠩᠭᠢ ᠨᠢᠮᠡᠬᠦ" .style (common/m-style)) ;; Add New Episode
+                                                                   .onPressed (fn []
+                                                                                (episode-state/reset-state)
+                                                                                (episode-state/set-episode nil)
+                                                                                (nav/push-route navigator :episode-form))))})))
                                              (items/episode-item (nth episodes (- index 1)) is-creator
                                                                  {:on-edit (fn [episode]
                                                                              (episode-state/set-episode episode)
@@ -68,4 +77,4 @@
                                                                               (comment-service/get-comments ep-id)
                                                                               (episode-service/check-favorite ep-id)
                                                                               (nav/push-route navigator :episode-detail)))}))))
-                          .separatorBuilder (fn [_ _] (m/VerticalDivider .width 1 .thickness 0))))}))))))
+                          .separatorBuilder (fn [_ _] (m/SizedBox .width 8))))}))))))

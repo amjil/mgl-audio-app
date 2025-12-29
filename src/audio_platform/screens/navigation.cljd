@@ -5,6 +5,7 @@
    [audio-platform.screens.home :as home]
    [audio-platform.screens.profile :as profile]
    [audio-platform.widgets.player :as player-widget]
+   [audio-platform.state :as state]
    [audio-platform.utils.navigator :as nav]))
 
 (defn ^m/Widget main-navigation [_context]
@@ -12,6 +13,7 @@
     (f/widget
      :get [m/Navigator]
      :watch [_current-index current-index]
+     :watch [{episode :current-episode} state/app-state]
      :let [active-page (case _current-index
                          2 (profile/profile-page _context)
                           (home/home-page _context))]
@@ -19,26 +21,30 @@
       .body (m/Stack
              .children
              [active-page
-              (m/Positioned
-               .left 0
-               .right 0
-               .bottom 56
-               .child (player-widget/player-widget))])
+              (if episode
+                (m/Positioned
+                 .left 0
+                 .right 0
+                 .bottom 0
+                 .child (player-widget/player-widget))
+                (m/SizedBox))])
       .bottomNavigationBar
-      (m/BottomNavigationBar
-       .currentIndex _current-index
-       .onTap (fn [index]
-                (case index
-                  1 (nav/push-route navigator :search)
-                  (reset! current-index index)))
-       .items
-       [(m/BottomNavigationBarItem
-         .icon (m/Icon m.Icons/home)
+      (m/NavigationBar
+       .selectedIndex _current-index
+       .onDestinationSelected (fn [index]
+                                (case index
+                                  1 (nav/push-route navigator :search)
+                                  (reset! current-index index)))
+       .destinations
+       [(m/NavigationDestination
+         .icon (m/Icon m/Icons.home_outlined)
+         .selectedIcon (m/Icon m/Icons.home_rounded)
          .label "Home")
-        (m/BottomNavigationBarItem
-         .icon (m/Icon m.Icons/search)
+        (m/NavigationDestination
+         .icon (m/Icon m/Icons.search_rounded)
          .label "Search")
-        (m/BottomNavigationBarItem
-         .icon (m/Icon m.Icons/person)
+        (m/NavigationDestination
+         .icon (m/Icon m/Icons.person_outline_rounded)
+         .selectedIcon (m/Icon m/Icons.person_rounded)
          .label "Profile")])))))
 

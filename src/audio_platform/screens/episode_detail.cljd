@@ -14,146 +14,221 @@
    [audio-platform.utils.navigator :as nav]
    [audio-platform.widgets.common :as common]))
 
-(defn- comment-item [comment current-user-id]
+(defn- comment-item [comment current-user-id theme]
   (let [is-author (= (get comment "user_id") current-user-id)]
-    (m/Padding
-     .padding (m.EdgeInsets/symmetric .vertical 8)
+    (m/Container
+     .margin (m/EdgeInsets.symmetric .vertical 8 .horizontal 4)
+     .decoration (m/BoxDecoration
+                  .color (if (= (.-brightness theme) m/Brightness.light)
+                           (m/Color. 0xFFF8FAFC)
+                           (m/Color. 0xFF1E293B))
+                  .borderRadius (m/BorderRadius.circular 16))
      .child
-     (m/Row
-      .crossAxisAlignment m.CrossAxisAlignment/start
-      .children
-      [(m/CircleAvatar
-        .radius 16
-        .backgroundColor m/Colors.blue.shade100
-        .child (m/Icon m/Icons.person .size 20))
-       (m/SizedBox .width 12)
-       (m/Expanded
-        .child
-        (m/Column
-         .crossAxisAlignment m.CrossAxisAlignment/start
-         .children
-         [(m/Row
-           .children
-          [(mgl/MongolText (str "User " (subs (get comment "user_id") 0 4))
-                          .style (common/m-style :fontWeight m/FontWeight.bold :fontSize 12))
-           (m/SizedBox .width 8)
-           (mgl/MongolText (format/format-duration (get comment "timestamp_seconds" 0))
-                          .style (common/m-style :fontSize 10 :color m/Colors.blue))])
-         (m/SizedBox .height 4)
-         (mgl/MongolText (get comment "content")
-                         .style (common/m-style :fontSize 14))
-         (m/Row
+     (m/Padding
+      .padding (m/EdgeInsets.all 12)
+      .child
+      (m/Row
+       .crossAxisAlignment m/CrossAxisAlignment.start
+       .children
+       [(m/CircleAvatar
+         .radius 18
+         .backgroundColor (.-primaryColorContainer (.-colorScheme theme))
+         .child (m/Icon m/Icons.person_rounded .size 20 .color (.-onPrimaryContainer (.-colorScheme theme))))
+        (m/SizedBox .width 12)
+        (m/Expanded
+         .child
+         (m/Column
+          .crossAxisAlignment m/CrossAxisAlignment.start
           .children
-          [(m/IconButton
-            .icon (m/Icon (if (get comment "is_liked") m/Icons.thumb_up m/Icons.thumb_up_outlined) .size 16)
-            .onPressed (fn [] 
-                         (if (get comment "is_liked")
-                           (comment-service/unlike-comment (get comment "id"))
-                           (comment-service/like-comment (get comment "id")))))
-           (mgl/MongolText (str (get comment "likes" 0)) .style (common/m-style :fontSize 12))
-            (if is-author
-              (m/IconButton
-               .icon (m/Icon m/Icons.delete_outline .size 16)
-               .onPressed (fn [] (comment-service/delete-comment (get comment "id"))))
-              (m/SizedBox))])]))]))))
+          [(m/Row
+            .mainAxisAlignment m/MainAxisAlignment.spaceBetween
+            .children
+            [(m/Row
+              .children
+              [(mgl/MongolText (str "User " (subs (get comment "user_id") 0 4))
+                              .style (common/m-style :fontWeight m/FontWeight.bold :fontSize 13))
+               (m/SizedBox .width 10)
+               (mgl/MongolText (format/format-duration (get comment "timestamp_seconds" 0))
+                              .style (common/m-style :fontSize 10 :color (.-primaryColor theme) :fontWeight m/FontWeight.bold))])
+             (if is-author
+               (m/IconButton
+                .constraints (m/BoxConstraints .maxWidth 32 .maxHeight 32)
+                .padding m/EdgeInsets.zero
+                .icon (m/Icon m/Icons.delete_outline_rounded .size 18 .color m/Colors.red.shade300)
+                .onPressed (fn [] (comment-service/delete-comment (get comment "id"))))
+               (m/SizedBox))])
+           (m/SizedBox .height 8)
+           (mgl/MongolText (get comment "content")
+                           .style (common/m-style :fontSize 14 :height 1.4))
+           (m/SizedBox .height 8)
+           (m/Row
+            .children
+            [(m/InkWell
+              .onTap (fn []
+                       (if (get comment "is_liked")
+                         (comment-service/unlike-comment (get comment "id"))
+                         (comment-service/like-comment (get comment "id"))))
+              .child (m/Row
+                      .children
+                      [(m/Icon (if (get comment "is_liked") m/Icons.thumb_up_rounded m/Icons.thumb_up_outlined)
+                               .size 14
+                               .color (if (get comment "is_liked") (.-primaryColor theme) m/Colors.grey))
+                       (m/SizedBox .width 6)
+                       (mgl/MongolText (str (get comment "likes" 0))
+                                      .style (common/m-style :fontSize 12 :color (if (get comment "is_liked") (.-primaryColor theme) m/Colors.grey)))]))])]))])))))
 
-(defn- episode-info-column [ep]
+(defn- episode-info-column [ep theme]
   (m/Container
-   .width 300
-   .padding (m.EdgeInsets/all 16)
+   .width 320
+   .padding (m/EdgeInsets.all 24)
    .child
    (m/Column
-    .crossAxisAlignment m.CrossAxisAlignment/start
+    .crossAxisAlignment m/CrossAxisAlignment.start
     .children
-    [(mgl/MongolText (get ep "title" "Unknown Episode")
-                   .style (common/m-style :fontSize 24 :fontWeight m/FontWeight.bold))
+    [(m/Container
+      .height 240
+      .width 240
+      .decoration (m/BoxDecoration
+                   .borderRadius (m/BorderRadius.circular 32)
+                   .boxShadow [(m/BoxShadow
+                                .color (m/Color.fromRGBO 0 0 0 0.1)
+                                .blurRadius 20
+                                .offset (m/Offset 0 10))])
+      .clipBehavior m/Clip.antiAlias
+      .child (if-let [cover (get ep "cover_url")]
+               (m/Image.network cover .fit m/BoxFit.cover)
+               (m/Container .color m/Colors.grey.shade200 .child (m/Icon m/Icons.music_note_rounded .size 80 .color m/Colors.grey.shade400))))
+     (m/SizedBox .height 32)
+     (mgl/MongolText (get ep "title" "Unknown Episode")
+                   .style (common/m-style :fontSize 26 :fontWeight m/FontWeight.w900))
      (m/SizedBox .height 16)
      (m/Row
       .children
-      [(m/Icon m/Icons.access_time .size 16 .color m/Colors.grey)
-       (m/SizedBox .width 4)
+      [(m/Icon m/Icons.access_time_rounded .size 16 .color m/Colors.grey)
+       (m/SizedBox .width 8)
        (mgl/MongolText (format/format-duration (get ep "duration" 0))
-                     .style (common/m-style :fontSize 14 :color m/Colors.grey.shade600))])
-     (m/SizedBox .height 20)
-     (mgl/MongolElevatedButton.icon
-      .icon (m/Icon m/Icons.play_arrow)
-      .label (mgl/MongolText "Play Now" .style (common/m-style))
-      .onPressed (fn [] (audio-player/play-episode ep)))
-     (m/SizedBox .height 30)
-     (mgl/MongolText "Description"
-                   .style (common/m-style :fontSize 18 :fontWeight m/FontWeight.bold))
-     (m/SizedBox .height 8)
+                     .style (common/m-style :fontSize 14 :color m/Colors.grey.shade600 :fontWeight m/FontWeight.w600))])
+     (m/SizedBox .height 32)
+     (m/SizedBox
+      .width 60
+      .child
+      (m/ElevatedButton.icon
+       .style (m/ElevatedButton.styleFrom
+               .backgroundColor (.-primaryColor theme)
+               .foregroundColor (.-onPrimary (.-colorScheme theme))
+               .padding (m/EdgeInsets.symmetric .vertical 20)
+               .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 20)))
+       .icon (m/Icon m/Icons.play_arrow_rounded)
+       .label (mgl/MongolText "Play Now" .style (common/m-style :fontWeight m/FontWeight.bold))
+       .onPressed (fn [] (audio-player/play-episode ep))))
+     (m/SizedBox .height 40)
+     (m/Row
+      .children
+      [(m/Container .width 4 .height 24 .decoration (m/BoxDecoration .color (.-primaryColor theme) .borderRadius (m/BorderRadius.circular 2)))
+       (m/SizedBox .width 12)
+       (mgl/MongolText "Description"
+                      .style (common/m-style :fontSize 18 :fontWeight m/FontWeight.w800))])
+     (m/SizedBox .height 16)
      (m/Expanded
       .child (m/SingleChildScrollView
               .child (mgl/MongolText (get ep "description" "No description available.")
-                                    .style (common/m-style :fontSize 14))))])))
+                                    .style (common/m-style :fontSize 15 :height 1.5 :color (if (= (.-brightness theme) m/Brightness.light) m/Colors.black87 m/Colors.white70)))))])))
 
-(defn- comments-column [ep comments comments-loading current-user-id controller]
+(defn- comments-column [ep comments comments-loading current-user-id controller theme]
   (m/Container
-   .width 350
-   .padding (m.EdgeInsets/all 16)
-   .decoration (m/BoxDecoration .border (m/Border .left (m/BorderSide .color m/Colors.grey.shade300)))
+   .width 380
+   .padding (m/EdgeInsets.all 24)
+   .decoration (m/BoxDecoration
+                .color (if (= (.-brightness theme) m/Brightness.light) (m/Color. 0xFFF1F5F9) (m/Color. 0xFF0F172A))
+                .borderRadius (m/BorderRadius.only .topLeft (m/Radius.circular 40) .bottomLeft (m/Radius.circular 40)))
    .child
    (m/Column
-    .crossAxisAlignment m.CrossAxisAlignment/start
+    .crossAxisAlignment m/CrossAxisAlignment.start
     .children
-    [(mgl/MongolText (str "Comments (" (count comments) ")")
-                   .style (common/m-style :fontSize 18 :fontWeight m/FontWeight.bold))
-     (m/SizedBox .height 16)
-     (m/Row
+    [(m/Row
+      .mainAxisAlignment m/MainAxisAlignment.spaceBetween
       .children
-      [(m/Expanded
-        .child (mgl/MongolTextField
-                .controller controller
-                .style (common/m-style)
-                .decoration (m/InputDecoration .hintText "Write a comment...")))
-       (m/IconButton
-        .icon (m/Icon m/Icons.send)
-        .onPressed (fn []
-                     (let [content (.-text controller)]
-                       (when-not (empty? content)
-                         (comment-service/create-comment 
-                          {"episode_id" (get ep "id")
-                           "content" content
-                           "timestamp_seconds" 0})
-                         (.clear controller)))))])
-     (m/SizedBox .height 16)
+      [(mgl/MongolText (str "Comments (" (count comments) ")")
+                      .style (common/m-style :fontSize 20 :fontWeight m/FontWeight.w800))
+       (m/Icon m/Icons.comment_rounded .color (.-primaryColor theme))])
+     (m/SizedBox .height 24)
+     (m/SizedBox
+      .height 200
+      .child
+      (m/Container
+       .padding (m/EdgeInsets.all 12)
+       .decoration (m/BoxDecoration
+                    .color (.-cardColor theme)
+                    .borderRadius (m/BorderRadius.circular 24))
+       .child
+       (m/Row
+        .children
+        [(m/Expanded
+          .child (mgl/MongolTextField
+                  .controller controller
+                  .style (common/m-style)
+                  .maxLines nil
+                  .decoration (m/InputDecoration
+                               .hintText "Write a comment..."
+                               .border m/InputBorder.none
+                               .contentPadding (m/EdgeInsets.symmetric .horizontal 12 .vertical 8))))
+         (m/Container
+          .decoration (m/BoxDecoration .color (.-primaryColor theme) .shape m/BoxShape.circle)
+          .child (m/IconButton
+                  .icon (m/Icon m/Icons.send_rounded .size 20)
+                  .color (.-onPrimary (.-colorScheme theme))
+                  .onPressed (fn []
+                               (let [content (.-text controller)]
+                                 (when-not (empty? content)
+                                   (comment-service/create-comment
+                                    {"episode_id" (get ep "id")
+                                     "content" content
+                                     "timestamp_seconds" 0})
+                                   (.clear controller)))))) ])))
+     (m/SizedBox .height 24)
      (m/Expanded
       .child (common/async-view
               {:loading comments-loading
                :content-fn
                (fn []
                  (m/ListView.builder
+                  .padding (m/EdgeInsets.only .bottom 20)
                   .itemCount (count comments)
                   .itemBuilder (fn [_ idx]
-                                 (comment-item (nth comments idx) current-user-id))))}))])))
+                                 (comment-item (nth comments idx) current-user-id theme))))}))])))
 
-(defn- episode-app-bar [ep ctx navigator]
+(defn- episode-app-bar [ep ctx navigator theme]
   (m/AppBar
+   .backgroundColor m/Colors.transparent
+   .elevation 0
    .leading (m/IconButton
-             .icon (m/Icon m/Icons.arrow_back)
+             .icon (m/Icon m/Icons.arrow_back_ios_new_rounded .size 20)
              .onPressed (fn [] (nav/navigator-pop navigator)))
    .actions [(m/IconButton
-              .icon (m/Icon (if (get ep "is_favorite") m/Icons.favorite m/Icons.favorite_border))
-              .color (if (get ep "is_favorite") m/Colors.red nil)
+              .icon (m/Icon (if (get ep "is_favorite") m/Icons.favorite_rounded m/Icons.favorite_outline_rounded))
+              .color (if (get ep "is_favorite") m/Colors.red (.-primaryColor theme))
               .onPressed (fn []
                            (if (get ep "is_favorite")
                              (episode-service/remove-favorite (get ep "id"))
                              (episode-service/add-favorite (get ep "id")))))
              (m/IconButton
-              .icon (m/Icon m/Icons.share)
+              .icon (m/Icon m/Icons.ios_share_rounded .size 22)
+              .color (.-primaryColor theme)
               .onPressed (fn []
                                (-> (api/create-share (state/get-token) "episode" (get ep "id"))
                                    (.then (fn [data]
                                             (let [url (get data "share_url")
-                                                  snack (m/SnackBar .content (mgl/MongolText (str "Share link created: " url) .style (common/m-style)))]
-                                              (-> (m.ScaffoldMessenger/of ctx)
+                                                  snack (m/SnackBar
+                                                         .behavior m/SnackBarBehavior.floating
+                                                         .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 12))
+                                                         .content (mgl/MongolText (str "Share link created: " url) .style (common/m-style :color m/Colors.white)))]
+                                              (-> (m/ScaffoldMessenger.of ctx)
                                                   (.showSnackBar snack))))))))]))
 
 (defn ^m/Widget episode-detail-page [_context]
   (f/widget
    :context ctx
-   :get [m/Navigator]
+   :get [m/Navigator m/Theme]
    :managed [comment-controller (m/TextEditingController.)]
    :let [current-user (state/get-user)
          current-user-id (get current-user "id")]
@@ -163,18 +238,22 @@
            {comments :comments
             comments-loading :loading} comment-state/comment-state]
    (m/Scaffold
-    .appBar (if ep (episode-app-bar ep ctx navigator) (m/AppBar))
+    .appBar (if ep (episode-app-bar ep ctx navigator theme) (m/AppBar .elevation 0 .backgroundColor m/Colors.transparent))
+    .extendBodyBehindAppBar true
     .body
-    (m/SafeArea
-     .child (common/async-view
-             {:loading loading
-              :error error
-              :is-empty? (nil? ep)
-              :empty-view (common/empty-state-view {:message "No episode data"})
-              :content-fn
-              (fn []
-                (m/ListView
-                 .scrollDirection m.Axis/horizontal
-                 .children
-                 [(episode-info-column ep)
-                  (comments-column ep comments comments-loading current-user-id comment-controller)]))})))))
+    (m/Container
+     .decoration (m/BoxDecoration .color (.-scaffoldBackgroundColor theme))
+     .child
+     (m/SafeArea
+      .child (common/async-view
+              {:loading loading
+               :error error
+               :is-empty? (nil? ep)
+               :empty-view (common/empty-state-view {:message "No episode data"})
+               :content-fn
+               (fn []
+                 (m/ListView
+                  .scrollDirection m/Axis.horizontal
+                  .children
+                  [(episode-info-column ep theme)
+                   (comments-column ep comments comments-loading current-user-id comment-controller theme)]))}))))))

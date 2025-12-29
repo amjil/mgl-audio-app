@@ -33,7 +33,7 @@
                       (let [highlighted (subs remaining-text (+ em-start 4) em-end)]
                         (swap! spans conj (m/TextSpan
                                            .text highlighted
-                                           .style (style-fn :fontWeight m.FontWeight/bold))))
+                                           .style (style-fn :fontWeight m/FontWeight.bold))))
                       ;; Continue parsing after </em>
                       (let [after (subs remaining-text (+ em-end 5))]
                         (when (> (count after) 0)

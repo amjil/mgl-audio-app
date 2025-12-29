@@ -29,7 +29,7 @@
 
 (defn main []
  ;; Ensure Flutter binding is initialized
- (m.WidgetsFlutterBinding/ensureInitialized)
+ (m/WidgetsFlutterBinding.ensureInitialized)
 
  ;; Load saved tokens
  (auth/load-session!)

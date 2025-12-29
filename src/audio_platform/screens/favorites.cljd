@@ -10,73 +10,94 @@
    [audio-platform.services.album :as album-service]
    [audio-platform.widgets.common :as common]))
 
-(defn- tab-item [label selected? on-tap]
+(defn- tab-item [label selected? on-tap theme]
   (f/widget
    (m/InkWell
     .onTap on-tap
-    .child (m/Container
-            .padding (m.EdgeInsets/all 12)
+    .borderRadius (m/BorderRadius.circular 12)
+    .child (m/AnimatedContainer
+            .duration (dart:core/Duration .milliseconds 200)
+            .padding (m/EdgeInsets.symmetric .horizontal 12 .vertical 16)
             .decoration (m/BoxDecoration
-                         .border (when selected?
-                                   (m/Border .right (m/BorderSide .color m/Colors.blue .width 2))))
+                         .color (if selected?
+                                  (.-primaryColor theme)
+                                  m/Colors.transparent)
+                         .borderRadius (m/BorderRadius.circular 12)
+                         .boxShadow (if selected?
+                                      [(m/BoxShadow .color (.withOpacity (.-primaryColor theme) 0.3) .blurRadius 8 .offset (m/Offset 0 4))]
+                                      []))
             .child (mgl/MongolText
                     label
                     .style (common/m-style
-                            :fontSize 18
-                            :fontWeight (if selected? m.FontWeight/bold m.FontWeight/normal)
-                            :color (if selected? m/Colors.blue m/Colors.grey)))))))
+                            :fontSize 16
+                            :fontWeight (if selected? m/FontWeight.bold m/FontWeight.w500)
+                            :color (if selected?
+                                     (.-onPrimary (.-colorScheme theme))
+                                     (.-onSurface (.-colorScheme theme)))))))))
 
 (defn ^m/Widget favorites-page [_context]
   (f/widget
-   :get [m/Navigator]
+   :get [m/Navigator m/Theme]
    :watch [{loading :loading
             episodes :episodes
             albums :albums
             selected-tab :selected-tab} favorites-state/favorites-state]
    (m/Scaffold
     .appBar (m/AppBar
+             .title (mgl/MongolText "ᠲᠠᠭᠠᠯᠠᠭᠳᠠᠭᠰᠠᠨ" .style (common/m-style :fontSize 20 :fontWeight m/FontWeight.bold))
              .leading (m/IconButton
-                       .icon (m/Icon m.Icons/arrow_back)
+                       .icon (m/Icon m/Icons.arrow_back_ios_new_rounded .size 20)
                        .onPressed (fn [] (nav/navigator-pop navigator))))
     .body
-    (common/async-view
-     {:loading loading
-      :content-fn
-      (fn []
-        (m/Row
-         .children
-         [(m/Container
-           .width 60
-           .decoration (m/BoxDecoration
-                        .border (m/Border .right (m/BorderSide .color m/Colors.grey.shade300)))
-           .child (m/Column
-                   .children
-                   [(tab-item "Episodes" (= selected-tab :episodes)
-                              (fn [] (favorites-state/set-selected-tab :episodes)))
-                    (tab-item "Albums" (= selected-tab :albums)
-                              (fn [] (favorites-state/set-selected-tab :albums)))]))
-          (m/Expanded
-           .child
-           (let [items (if (= selected-tab :episodes) episodes albums)]
-             (if (empty? items)
-               (common/empty-state-view {:message "No favorites yet"})
-               (m/ListView.builder
-                .scrollDirection m.Axis/horizontal
-                .itemCount (count items)
-                .itemBuilder (fn [_ index]
-                               (let [item (nth items index)]
-                                 (if (= selected-tab :episodes)
-                                   (cards/episode-card item
+    (m/Container
+     .decoration (m/BoxDecoration .color (.-scaffoldBackgroundColor theme))
+     .child
+     (m/SafeArea
+      .child
+      (common/async-view
+       {:loading loading
+        :content-fn
+        (fn []
+          (m/Row
+           .children
+           [(m/Container
+             .width 80
+             .padding (m/EdgeInsets.all 12)
+             .decoration (m/BoxDecoration
+                          .color (if (= (.-brightness theme) m/Brightness.light)
+                                   (m/Color. 0xFFF8FAFC)
+                                   (m/Color. 0xFF0F172A))
+                          .border (m/Border .right (m/BorderSide .color (.-dividerColor theme) .width 1)))
+             .child (m/ListView
+                     .children
+                     [(tab-item "Episodes" (= selected-tab :episodes)
+                                (fn [] (favorites-state/set-selected-tab :episodes)) theme)
+                      (m/SizedBox .height 12)
+                      (tab-item "Albums" (= selected-tab :albums)
+                                (fn [] (favorites-state/set-selected-tab :albums)) theme)]))
+            (m/Expanded
+             .child
+             (let [items (if (= selected-tab :episodes) episodes albums)]
+               (if (empty? items)
+                 (common/empty-state-view {:icon m/Icons.favorite_border_rounded :message "No favorites yet"})
+                 (m/ListView.builder
+                  .scrollDirection m/Axis.horizontal
+                  .padding (m/EdgeInsets.symmetric .horizontal 16 .vertical 16)
+                  .itemCount (count items)
+                  .itemBuilder (fn [_ index]
+                                 (let [item (nth items index)]
+                                   (if (= selected-tab :episodes)
+                                     (cards/episode-card item
+                                                         (fn []
+                                                           (state/set-current-episode item)
+                                                           (nav/push-route navigator :player)))
+                                     (cards/album-card item
                                                        (fn []
-                                                         (state/set-current-episode item)
-                                                         (nav/push-route navigator :player)))
-                                   (cards/album-card item
-                                                     (fn []
-                                                       (let [album-id (get item "id")]
-                                                         (album-service/prefill-category-from-album-id album-id)
-                                                         (album-service/check-favorite album-id)
-                                                         (nav/push-route-with-arguments navigator
-                                                                                        :album-detail
-                                                                                        {"album_id" album-id}))))))
-                               )))))]))}))))
+                                                         (let [album-id (get item "id")]
+                                                           (album-service/prefill-category-from-album-id album-id)
+                                                           (album-service/check-favorite album-id)
+                                                           (nav/push-route-with-arguments navigator
+                                                                                          :album-detail
+                                                                                          {"album_id" album-id}))))))
+                                 )))))]))}))))))
 

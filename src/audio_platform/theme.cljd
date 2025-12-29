@@ -20,64 +20,64 @@
         base-label-large (.-labelLarge base-text-theme)
         base-label-medium (.-labelMedium base-text-theme)
         base-label-small (.-labelSmall base-text-theme)]
-    (m/TextTheme
-     .displayLarge (m/TextStyle
+    (m/TextTheme.
+     .displayLarge (m/TextStyle.
                     .fontFamily font-family
                     .fontSize (if base-display-large (.-fontSize base-display-large) (+ font-size 8))
                     .color (if base-display-large (.-color base-display-large) nil))
-     .displayMedium (m/TextStyle
+     .displayMedium (m/TextStyle.
                      .fontFamily font-family
                      .fontSize (if base-display-medium (.-fontSize base-display-medium) (+ font-size 6))
                      .color (if base-display-medium (.-color base-display-medium) nil))
-     .displaySmall (m/TextStyle
+     .displaySmall (m/TextStyle.
                     .fontFamily font-family
                     .fontSize (if base-display-small (.-fontSize base-display-small) (+ font-size 4))
                     .color (if base-display-small (.-color base-display-small) nil))
-     .headlineLarge (m/TextStyle
+     .headlineLarge (m/TextStyle.
                      .fontFamily font-family
                      .fontSize (if base-headline-large (.-fontSize base-headline-large) (+ font-size 6))
                      .color (if base-headline-large (.-color base-headline-large) nil))
-     .headlineMedium (m/TextStyle
+     .headlineMedium (m/TextStyle.
                       .fontFamily font-family
                       .fontSize (if base-headline-medium (.-fontSize base-headline-medium) (+ font-size 4))
                       .color (if base-headline-medium (.-color base-headline-medium) nil))
-     .headlineSmall (m/TextStyle
+     .headlineSmall (m/TextStyle.
                      .fontFamily font-family
                      .fontSize (if base-headline-small (.-fontSize base-headline-small) (+ font-size 2))
                      .color (if base-headline-small (.-color base-headline-small) nil))
-     .titleLarge (m/TextStyle
+     .titleLarge (m/TextStyle.
                   .fontFamily font-family
                   .fontSize (+ font-size 4)
                   .color (if base-title-large (.-color base-title-large) nil))
-     .titleMedium (m/TextStyle
+     .titleMedium (m/TextStyle.
                    .fontFamily font-family
                    .fontSize (+ font-size 2)
                    .color (if base-title-medium (.-color base-title-medium) nil))
-     .titleSmall (m/TextStyle
+     .titleSmall (m/TextStyle.
                   .fontFamily font-family
                   .fontSize font-size
                   .color (if base-title-small (.-color base-title-small) nil))
-     .bodyLarge (m/TextStyle
+     .bodyLarge (m/TextStyle.
                  .fontFamily font-family
                  .fontSize font-size
                  .color (if base-body-large (.-color base-body-large) nil))
-     .bodyMedium (m/TextStyle
+     .bodyMedium (m/TextStyle.
                   .fontFamily font-family
                   .fontSize (- font-size 2)
                   .color (if base-body-medium (.-color base-body-medium) nil))
-     .bodySmall (m/TextStyle
+     .bodySmall (m/TextStyle.
                  .fontFamily font-family
                  .fontSize (- font-size 4)
                  .color (if base-body-small (.-color base-body-small) nil))
-     .labelLarge (m/TextStyle
+     .labelLarge (m/TextStyle.
                   .fontFamily font-family
                   .fontSize font-size
                   .color (if base-label-large (.-color base-label-large) nil))
-     .labelMedium (m/TextStyle
+     .labelMedium (m/TextStyle.
                    .fontFamily font-family
                    .fontSize (- font-size 2)
                    .color (if base-label-medium (.-color base-label-medium) nil))
-     .labelSmall (m/TextStyle
+     .labelSmall (m/TextStyle.
                   .fontFamily font-family
                   .fontSize (- font-size 4)
                   .color (if base-label-small (.-color base-label-small) nil)))))
@@ -86,38 +86,84 @@
 (defn get-light-theme []
   (let [font-family (font-state/get-app-font-family)
         font-size (font-state/get-app-font-size)
-        base-theme (-> m/ThemeData .light)
+        base-theme (m/ThemeData.light)
         text-theme (create-text-theme (.-textTheme base-theme) font-family font-size)]
     (m/ThemeData
      .brightness m/Brightness.light
-     .scaffoldBackgroundColor (m/Color. 0xFFFAFAFA)
-     .cardColor (m/Colors.white)
-     .primaryColor (m/Color. 0xFF4CAF50)
-     .dividerColor (m/Color. 0xFFDDDDDD)
+     .colorScheme (m/ColorScheme.fromSeed
+                   .seedColor (m/Color. 0xFF6C63FF)
+                   .brightness m/Brightness.light)
+     .scaffoldBackgroundColor (m/Color. 0xFFFDFDFD)
+     .cardColor m/Colors.white
+     .dividerColor (m/Color. 0xFFEEEEEE)
      .textTheme text-theme
      .useMaterial3 true
+     .cardTheme (m/CardThemeData.
+                 .elevation 0
+                 .margin (m/EdgeInsets.all 0)
+                 .shape (m/RoundedRectangleBorder.
+                         .borderRadius (m/BorderRadius.circular 20))
+                 .color m/Colors.white)
+     .appBarTheme (m/AppBarTheme.
+                   .backgroundColor (m/Color. 0xFFFDFDFD)
+                   .foregroundColor (m/Color. 0xFF1A1A1A)
+                   .elevation 0
+                   .centerTitle false
+                   .titleTextStyle (m/TextStyle.
+                                    .fontFamily font-family
+                                    .fontSize 20
+                                    .fontWeight m/FontWeight.bold
+                                    .color (m/Color. 0xFF1A1A1A)))
+     .bottomNavigationBarTheme (m/BottomNavigationBarThemeData.
+                                .backgroundColor m/Colors.white
+                                .selectedItemColor (m/Color. 0xFF6C63FF)
+                                .unselectedItemColor m/Colors.grey.shade400
+                                .elevation 8)
      .floatingActionButtonTheme
      (m/FloatingActionButtonThemeData.
-      .backgroundColor (m/Color. 0xFF4CAF50)
+      .backgroundColor (m/Color. 0xFF6C63FF)
       .foregroundColor m/Colors.white))))
 
 ;; Get dark theme with font settings
 (defn get-dark-theme []
   (let [font-family (font-state/get-app-font-family)
         font-size (font-state/get-app-font-size)
-        base-theme (-> m/ThemeData .dark)
+        base-theme (m/ThemeData.dark)
         text-theme (create-text-theme (.-textTheme base-theme) font-family font-size)]
     (m/ThemeData
      .brightness m/Brightness.dark
-     .scaffoldBackgroundColor (m/Color. 0xFF121212)
-     .cardColor (m/Color. 0xFF1E1E1E)
-     .primaryColor (m/Color. 0xFF81C784)
-     .dividerColor (m/Color. 0xFF333333)
+     .colorScheme (m/ColorScheme.fromSeed
+                   .seedColor (m/Color. 0xFF818CF8)
+                   .brightness m/Brightness.dark)
+     .scaffoldBackgroundColor (m/Color. 0xFF0F172A)
+     .cardColor (m/Color. 0xFF1E293B)
+     .dividerColor (m/Color. 0xFF334155)
      .textTheme text-theme
      .useMaterial3 true
+     .cardTheme (m/CardThemeData.
+                 .elevation 0
+                 .margin (m/EdgeInsets.all 0)
+                 .shape (m/RoundedRectangleBorder.
+                         .borderRadius (m/BorderRadius.circular 20))
+                 .color (m/Color. 0xFF1E293B))
+     .appBarTheme (m/AppBarTheme.
+                   .backgroundColor (m/Color. 0xFF0F172A)
+                   .foregroundColor (m/Color. 0xFFF8FAFC)
+                   .elevation 0
+                   .centerTitle false
+                   .titleTextStyle (m/TextStyle.
+                                    .fontFamily font-family
+                                    .fontSize 20
+                                    .fontWeight m/FontWeight.bold
+                                    .color (m/Color. 0xFFF8FAFC)))
+     .bottomNavigationBarTheme (m/BottomNavigationBarThemeData.
+                                .backgroundColor (m/Color. 0xFF0F172A)
+                                .selectedItemColor (m/Color. 0xFF818CF8)
+                                .unselectedItemColor (m/Color. 0xFF64748B)
+                                .elevation 0)
      .floatingActionButtonTheme
      (m/FloatingActionButtonThemeData.
-      .backgroundColor (m/Color. 0xFF81C784)
+      .backgroundColor (m/Color. 0xFF818CF8)
       .foregroundColor m/Colors.white))))
 
 ;; Get current theme (based on system settings)

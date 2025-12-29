@@ -12,17 +12,30 @@
    [audio-platform.widgets.forms :as forms]
    [audio-platform.widgets.common :as common]))
 
-(defn- cover-upload-section [uploading-cover upload-progress cover-url-controller ctx]
+(defn- cover-upload-section [uploading-cover upload-progress cover-url-controller ctx theme]
   (m/Row
-   .crossAxisAlignment m.CrossAxisAlignment/start
+   .crossAxisAlignment m/CrossAxisAlignment.start
    .children
-   [(mgl/MongolTextField
-     .controller cover-url-controller
-     .decoration (m/InputDecoration .hintText "Enter cover image URL" .border (m/OutlineInputBorder))
-     .style (common/m-style))
-    (m/SizedBox .width 8)
-    (mgl/MongolElevatedButton
-     .child (mgl/MongolText (if @uploading-cover (str "Uploading... " (int (* @upload-progress 100)) "%") "Upload Image") .style (common/m-style))
+   [(m/SizedBox
+     .width 350
+     .height 300
+     .child
+     (mgl/MongolTextField
+      .controller cover-url-controller
+      .decoration (m/InputDecoration
+                   .hintText "Enter cover image URL"
+                   .prefixIcon (m/Icon m/Icons.link_rounded)
+                   .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 20)))
+      .style (common/m-style)))
+    (m/SizedBox .width 16)
+    (m/ElevatedButton
+     .style (m/ElevatedButton.styleFrom
+             .backgroundColor (.-secondaryContainer (.-colorScheme theme))
+             .foregroundColor (.-onSecondaryContainer (.-colorScheme theme))
+             .padding (m/EdgeInsets.symmetric .vertical 20)
+             .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 20)))
+     .child (mgl/MongolText (if @uploading-cover (str "Uploading... " (int (* @upload-progress 100)) "%") "Upload Image")
+                            .style (common/m-style :fontWeight m/FontWeight.w600))
      .onPressed
      (fn []
        (when (not @uploading-cover)
@@ -36,84 +49,118 @@
                             (reset! uploading-cover false)
                             (toast/handle-error-with-toast ctx err "Зураг хуулахад алдаа гарлаа")))))))]))
 
-(defn- category-selector [category-name ctx]
+(defn- category-selector [category-name ctx theme]
   (m/InkWell
    .onTap (fn [] (category-tree/show-dialog ctx))
+   .borderRadius (m/BorderRadius.circular 20)
    .child (m/Container
-           .padding (m.EdgeInsets/all 12)
-           .decoration (m/BoxDecoration .border (m/Border.all .color m/Colors.grey.shade400) .borderRadius (m.BorderRadius/circular 4))
-           .child (mgl/MongolText (if (empty? category-name) "Select category" category-name)
-                                  .style (common/m-style :color (if category-name m/Colors.blue m/Colors.grey.shade600))))))
+           .padding (m/EdgeInsets.symmetric .horizontal 16 .vertical 20)
+           .decoration (m/BoxDecoration
+                        .border (m/Border.all .color (.-dividerColor theme) .width 1)
+                        .borderRadius (m/BorderRadius.circular 20))
+           .child (m/Row
+                   .mainAxisSize m/MainAxisSize.min
+                   .children
+                   [(m/Icon m/Icons.category_outlined .size 20 .color (if category-name (.-primaryColor theme) m/Colors.grey))
+                    (m/SizedBox .width 12)
+                    (mgl/MongolText (if (empty? category-name) "Select category" category-name)
+                                  .style (common/m-style :color (if category-name (.-primaryColor theme) m/Colors.grey.shade600)
+                                                         :fontWeight (if category-name m/FontWeight.bold m/FontWeight.normal)))]))))
 
 (defn ^m/Widget album-form-page [_context]
   (let [album (album-state/get-album)
-        is-edit (some? album)]
+        is-edit (some? album)
+        uploading-cover (atom false)
+        upload-progress (atom 0.0)]
     (f/widget
      :watch [{loading :loading} album-state/album-state
              {category-name :selected-category-name} category-state/category-state]
      :context ctx
-     :get [m/Navigator]
+     :get [m/Navigator m/Theme]
      :managed [title-controller (m/TextEditingController .text (if (some? album) (get album "title") ""))
                description-controller (m/TextEditingController .text (if (some? album) (get album "description") ""))
-               cover-url-controller (m/TextEditingController .text (if (some? album) (get album "cover_url") ""))
-               uploading-cover (atom false)
-               upload-progress (atom 0.0)]
+               cover-url-controller (m/TextEditingController .text (if (some? album) (get album "cover_url") ""))]
      (m/Scaffold
       .appBar (m/AppBar
                .leading (m/IconButton
-                         .icon (m/Icon m.Icons/arrow_back)
+                         .icon (m/Icon m/Icons.arrow_back_ios_new_rounded .size 20)
                          .onPressed (fn [] (nav/navigator-pop navigator))))
       .body
-      (m/SafeArea
+      (m/Container
+       .decoration (m/BoxDecoration .color (.-scaffoldBackgroundColor theme))
        .child
-       (m/SingleChildScrollView
-        .scrollDirection m.Axis/horizontal
+       (m/SafeArea
         .child
-        (m/Padding
-         .padding (m.EdgeInsets/all 16)
+        (m/SingleChildScrollView
+         .scrollDirection m/Axis.horizontal
          .child
-         (m/Row
-          .crossAxisAlignment m.CrossAxisAlignment/start
-          .children
-          [(forms/field-label "Title *")
-           (m/SizedBox .width 8)
-           (mgl/MongolTextField
-            .controller title-controller
-            .decoration (m/InputDecoration .hintText "Enter album title" .border (m/OutlineInputBorder))
-            .style (common/m-style))
-           (m/SizedBox .width 16)
-           (forms/field-label "Description")
-           (m/SizedBox .width 8)
-           (mgl/MongolTextField
-            .controller description-controller
-            .maxLines 5
-            .decoration (m/InputDecoration .hintText "Enter album description" .border (m/OutlineInputBorder) .alignLabelWithHint true)
-            .style (common/m-style))
-           (m/SizedBox .width 16)
-           (forms/field-label "Cover URL")
-           (m/SizedBox .width 8)
-           (cover-upload-section uploading-cover upload-progress cover-url-controller ctx)
-           (m/SizedBox .width 16)
-           (forms/field-label "Category")
-           (m/SizedBox .width 8)
-           (category-selector category-name ctx)
-           (m/SizedBox .width 32)
-           (forms/form-actions
-            {:loading loading
-             :submit-label (if is-edit "Save" "Create")
-             :on-cancel (fn [] (nav/navigator-pop navigator))
-             :on-submit (fn []
-                          (let [title (.-text title-controller)
-                                description (.-text description-controller)
-                                cover-url (.-text cover-url-controller)]
-                            (if (empty? title)
-                              (toast/show-error-toast ctx "Гарчиг заавал байх ёстой")
-                              (do
-                                (swap! album-state/album-state assoc :loading true)
-                                (swap! album-state/album-state assoc :error nil)
-                                (let [album-data (cond-> {"title" title "description" description}
-                                                   (not (empty? cover-url)) (assoc "cover_url" cover-url)
-                                                   (some? (category-state/get-selected-category)) (assoc "category_id" (category-state/get-selected-category)))]
-                                  (if is-edit
-                                    (album-service/update-album navigator (get album "id") album-data)
-                                    (album-service/create-album navigator album-data)))))))})]))))))))
+         (m/Padding
+          .padding (m/EdgeInsets.all 32)
+          .child
+          (m/Row
+           .crossAxisAlignment m/CrossAxisAlignment.start
+           .children
+           [(m/Column
+             .crossAxisAlignment m/CrossAxisAlignment.start
+             .children
+             [(forms/field-label "Title *")
+              (m/SizedBox .height 300
+                          .child
+                          (mgl/MongolTextField
+                           .controller title-controller
+                           .decoration (m/InputDecoration
+                                        .hintText "Enter album title"
+                                        .prefixIcon (m/Icon m/Icons.title_rounded)
+                                        .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 20)))
+                           .style (common/m-style)))])
+            (m/SizedBox .width 32)
+            (m/Column
+             .crossAxisAlignment m/CrossAxisAlignment.start
+             .children
+             [(forms/field-label "Description")
+              (m/SizedBox .height 500
+                          .child
+                          (mgl/MongolTextField
+                           .controller description-controller
+                           .maxLines 8
+                           .decoration (m/InputDecoration
+                                        .hintText "Enter album description"
+                                        .prefixIcon (m/Icon m/Icons.description_outlined)
+                                        .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 20))
+                                        .alignLabelWithHint true)
+                           .style (common/m-style)))])
+            (m/SizedBox .width 32)
+            (m/Column
+             .crossAxisAlignment m/CrossAxisAlignment.start
+             .children
+             [(forms/field-label "Cover Image")
+              (cover-upload-section uploading-cover upload-progress cover-url-controller ctx theme)])
+            (m/SizedBox .width 32)
+            (m/Column
+             .crossAxisAlignment m/CrossAxisAlignment.start
+             .children
+             [(forms/field-label "Category")
+              (category-selector category-name ctx theme)])
+            (m/SizedBox .width 48)
+            (m/Column
+             .mainAxisAlignment m/MainAxisAlignment.end
+             .children
+             [(forms/form-actions
+               {:loading loading
+                :submit-label (if is-edit "Save" "Create")
+                :on-cancel (fn [] (nav/navigator-pop navigator))
+                :on-submit (fn []
+                             (let [title (.-text title-controller)
+                                   description (.-text description-controller)
+                                   cover-url (.-text cover-url-controller)]
+                               (if (empty? title)
+                                 (toast/show-error-toast ctx "Гарчиг заавал байх ёстой")
+                                 (do
+                                   (swap! album-state/album-state assoc :loading true)
+                                   (swap! album-state/album-state assoc :error nil)
+                                   (let [album-data (cond-> {"title" title "description" description}
+                                                      (not (empty? cover-url)) (assoc "cover_url" cover-url)
+                                                      (some? (category-state/get-selected-category)) (assoc "category_id" (category-state/get-selected-category)))]
+                                     (if is-edit
+                                       (album-service/update-album navigator (get album "id") album-data)
+                                       (album-service/create-album navigator album-data)))))))})])])))))))))

@@ -11,19 +11,24 @@
    [audio-platform.widgets.forms :as forms]
    [audio-platform.widgets.common :as common]))
 
-(defn- audio-upload-section [uploading-atom progress-atom selected-atom lock-atom media-id-controller ctx]
+(defn- audio-upload-section [uploading-atom progress-atom selected-atom lock-atom media-id-controller ctx theme]
   (f/widget
    :watch [uploading uploading-atom
            progress progress-atom
            selected selected-atom]
    (m/Row
-    .crossAxisAlignment m.CrossAxisAlignment/start
+    .crossAxisAlignment m/CrossAxisAlignment.start
     .children
-    [(mgl/MongolElevatedButton
+    [(m/ElevatedButton
+      .style (m/ElevatedButton.styleFrom
+              .backgroundColor (.-secondaryContainer (.-colorScheme theme))
+              .foregroundColor (.-onSecondaryContainer (.-colorScheme theme))
+              .padding (m/EdgeInsets.symmetric .vertical 20)
+              .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 20)))
       .child (mgl/MongolText (if uploading
                                (str "Uploading... " (int (* progress 100)) "%")
                                "Select Audio File")
-                             .style (common/m-style))
+                             .style (common/m-style :fontWeight m/FontWeight.w600))
       .onPressed
       (when (not (or uploading @lock-atom))
         (fn []
@@ -43,14 +48,20 @@
                                (reset! uploading-atom false)
                                (reset! lock-atom false)
                                (toast/handle-error-with-toast ctx err "Файл хуулахад алдаа гарлаа")))))))
-     (m/SizedBox .width 8)
+     (m/SizedBox .width 16)
      (if uploading
-       (m/SizedBox .width 100 .child (m/LinearProgressIndicator .value progress))
+       (m/Container
+        .width 4
+        .height 100
+        .child (m/LinearProgressIndicator .value progress .minHeight 4 .borderRadius (m/BorderRadius.circular 2)))
        (m/SizedBox))
-     (m/SizedBox .width 8)
+     (m/SizedBox .width 16)
      (if (some? selected)
-       (mgl/MongolText (str "Selected: " (:name selected))
-                       .style (common/m-style :fontSize 12 :color m/Colors.green))
+       (m/Container
+        .padding (m/EdgeInsets.symmetric .horizontal 12 .vertical 16)
+        .decoration (m/BoxDecoration .color (m/Color.fromRGBO 76 175 80 0.1) .borderRadius (m/BorderRadius.circular 12))
+        .child (mgl/MongolText (str "Selected: " (:name selected))
+                              .style (common/m-style :fontSize 12 :color m/Colors.green :fontWeight m/FontWeight.w600)))
        (m/SizedBox)) ])))
 
 (defn ^m/Widget episode-form-page [_context]
@@ -65,65 +76,97 @@
      :watch [{loading :loading} episode-state/episode-state
              is-uploading uploading]
      :context ctx
-     :get [m/Navigator]
+     :get [m/Navigator m/Theme]
      :managed [title-controller (m/TextEditingController .text (if (some? episode) (get episode "title") ""))
                media-id-controller (m/TextEditingController .text "")
                sequence-controller (m/TextEditingController .text (if (some? episode) (str (or (get episode "sequence") "")) ""))]
      (m/Scaffold
       .appBar (m/AppBar
                .leading (m/IconButton
-                         .icon (m/Icon m.Icons/arrow_back)
+                         .icon (m/Icon m/Icons.arrow_back_ios_new_rounded .size 20)
                          .onPressed (fn [] (episode-state/reset-state) (nav/navigator-pop navigator))))
       .body
-      (m/SafeArea
+      (m/Container
+       .decoration (m/BoxDecoration .color (.-scaffoldBackgroundColor theme))
        .child
-       (m/SingleChildScrollView
-        .scrollDirection m.Axis/horizontal
+       (m/SafeArea
         .child
-        (m/Padding
-         .padding (m.EdgeInsets/all 16)
+        (m/SingleChildScrollView
+         .scrollDirection m/Axis.horizontal
          .child
-         (m/Row
-          .crossAxisAlignment m.CrossAxisAlignment/start
-          .children
-          [(forms/field-label "Title *")
-           (m/SizedBox .width 8)
-           (mgl/MongolTextField
-            .controller title-controller
-            .decoration (m/InputDecoration .hintText "Enter episode title" .border (m/OutlineInputBorder))
-            .style (common/m-style))
-           (m/SizedBox .width 16)
-           (forms/field-label "Audio File *")
-           (m/SizedBox .width 8)
-           (audio-upload-section uploading upload-progress selected-file picker-lock media-id-controller ctx)
-           (m/SizedBox .width 8)
-           (mgl/MongolTextField
-            .controller media-id-controller
-            .decoration (m/InputDecoration .hintText "Media ID (auto-filled after upload)" .border (m/OutlineInputBorder) .enabled (not is-uploading))
-            .style (common/m-style))
-           (m/SizedBox .width 16)
-           (forms/field-label "Sequence")
-           (m/SizedBox .width 8)
-           (mgl/MongolTextField
-            .controller sequence-controller
-            .keyboardType m.TextInputType/number
-            .decoration (m/InputDecoration .hintText "Enter sequence number" .border (m/OutlineInputBorder))
-            .style (common/m-style))
-           (m/SizedBox .width 32)
-           (forms/form-actions
-            {:loading loading
-             :on-cancel (fn [] (episode-state/reset-state) (nav/navigator-pop navigator))
-             :on-submit (fn []
-                          (when (and (not loading) (not is-uploading))
-                            (let [title (.-text title-controller)
-                                  media-id (.-text media-id-controller)
-                                  sequence-str (.-text sequence-controller)]
-                              (cond
-                                (empty? title) (toast/show-error-toast ctx "Гарчиг заавал байх ёстой")
-                                (empty? media-id) (toast/show-error-toast ctx "Аудио файл хуулна uу")
-                                :else
-                                (do
-                                  (swap! episode-state/episode-state assoc :loading true)
-                                  (let [episode-data (cond-> {"title" title "media_id" media-id}
-                                                       (not (empty? sequence-str)) (assoc "sequence" (dart:core/int.parse sequence-str)))]
-                                    (episode-service/create-episode navigator album-id episode-data)))))))})]))))))))
+         (m/Padding
+          .padding (m/EdgeInsets.all 32)
+          .child
+          (m/Row
+           .crossAxisAlignment m/CrossAxisAlignment.start
+           .children
+           [(m/Column
+             .crossAxisAlignment m/CrossAxisAlignment.start
+             .children
+             [(forms/field-label "Title *")
+              (m/SizedBox .height 300
+                          .child
+                          (mgl/MongolTextField
+                           .controller title-controller
+                           .decoration (m/InputDecoration
+                                        .hintText "Enter episode title"
+                                        .prefixIcon (m/Icon m/Icons.title_rounded)
+                                        .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 20)))
+                           .style (common/m-style)))])
+            (m/SizedBox .width 32)
+            (m/Column
+             .crossAxisAlignment m/CrossAxisAlignment.start
+             .children
+             [(forms/field-label "Audio File *")
+              (audio-upload-section uploading upload-progress selected-file picker-lock media-id-controller ctx theme)])
+            (m/SizedBox .width 32)
+            (m/Column
+             .crossAxisAlignment m/CrossAxisAlignment.start
+             .children
+             [(forms/field-label "Media ID")
+              (m/SizedBox .height 300
+                          .child
+                          (mgl/MongolTextField
+                           .controller media-id-controller
+                           .decoration (m/InputDecoration
+                                        .hintText "Media ID (auto-filled)"
+                                        .prefixIcon (m/Icon m/Icons.perm_media_outlined)
+                                        .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 20))
+                                        .enabled (not is-uploading))
+                           .style (common/m-style)))])
+            (m/SizedBox .width 32)
+            (m/Column
+             .crossAxisAlignment m/CrossAxisAlignment.start
+             .children
+             [(forms/field-label "Sequence")
+              (m/SizedBox .height 200
+                          .child
+                          (mgl/MongolTextField
+                           .controller sequence-controller
+                           .keyboardType m/TextInputType.number
+                           .decoration (m/InputDecoration
+                                        .hintText "Sequence"
+                                        .prefixIcon (m/Icon m/Icons.format_list_numbered_rounded)
+                                        .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 20)))
+                           .style (common/m-style)))])
+            (m/SizedBox .width 48)
+            (m/Column
+             .mainAxisAlignment m/MainAxisAlignment.end
+             .children
+             [(forms/form-actions
+               {:loading loading
+                :on-cancel (fn [] (episode-state/reset-state) (nav/navigator-pop navigator))
+                :on-submit (fn []
+                             (when (and (not loading) (not is-uploading))
+                               (let [title (.-text title-controller)
+                                     media-id (.-text media-id-controller)
+                                     sequence-str (.-text sequence-controller)]
+                                 (cond
+                                   (empty? title) (toast/show-error-toast ctx "Гарчиг заавал байх ёстой")
+                                   (empty? media-id) (toast/show-error-toast ctx "Аудио файл хуулна uу")
+                                   :else
+                                   (do
+                                     (swap! episode-state/episode-state assoc :loading true)
+                                     (let [episode-data (cond-> {"title" title "media_id" media-id}
+                                                          (not (empty? sequence-str)) (assoc "sequence" (dart:core/int.parse sequence-str)))]
+                                       (episode-service/create-episode navigator album-id episode-data)))))))})])])))))))))

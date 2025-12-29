@@ -26,7 +26,7 @@
         (m/Center
          .child (m/CircularProgressIndicator))
         (m/ListView.builder
-         .scrollDirection m.Axis/horizontal
+         .scrollDirection m/Axis.horizontal
          .shrinkWrap true
          .itemCount (count parents)
          .itemBuilder (fn [_ index]
@@ -50,7 +50,7 @@
           (m/Center
            .child (m/CircularProgressIndicator))
           (m/ListView.builder
-           .scrollDirection m.Axis/horizontal
+           .scrollDirection m/Axis.horizontal
            .shrinkWrap true
            .itemCount (count (or sub-categories []))
            .itemBuilder (fn [_ index]
@@ -81,10 +81,13 @@
                             .child (m/Column
                                     .mainAxisSize (.-min m/MainAxisSize)
                                     .children
-                                    [(mgl/MongolTextField
-                                      .controller name-controller
-                                      .autofocus true
-                                      .style (common/m-style))]))
+                                    [(m/SizedBox
+                                      .height 200
+                                      .child
+                                      (mgl/MongolTextField
+                                       .controller name-controller
+                                       .autofocus true
+                                       .style (common/m-style)))]))
                   .actions
                   [(mgl/MongolTextButton
                     .onPressed (fn []

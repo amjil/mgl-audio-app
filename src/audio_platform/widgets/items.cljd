@@ -6,90 +6,145 @@
    [audio-platform.utils.format :as format]
    [audio-platform.widgets.common :as common]))
 
-(defn episode-item [episode is-creator {:keys [on-edit on-delete on-play on-tap]}]
-  (mgl/MongolListTile
-   .leading (m/Icon m/Icons.play_circle_outline)
-  .title (mgl/MongolText
-          (get episode "title" "Unknown Episode")
-          .style (common/m-style :fontSize 16 :fontWeight m/FontWeight.normal))
-  .subtitle (mgl/MongolText
-             (format/format-duration (get episode "duration" 0))
-             .style (common/m-style :color m/Colors.grey.shade600 :fontSize 12))
-   .trailing (m/Row
-              .mainAxisSize m/MainAxisSize.min
-              .children
-              (if is-creator
-                [(m/IconButton
-                  .icon (m/Icon m/Icons.edit)
-                  .onPressed (fn [] (when on-edit (on-edit episode))))
-                 (m/IconButton
-                  .icon (m/Icon m/Icons.delete)
-                  .color m/Colors.red
-                  .onPressed (fn [] (when on-delete (on-delete episode))))
-                 (m/IconButton
-                  .icon (m/Icon m/Icons.play_arrow)
-                  .onPressed (fn [] (when on-play (on-play episode))))]
-                [(m/IconButton
-                  .icon (m/Icon m/Icons.play_arrow)
-                  .onPressed (fn [] (when on-play (on-play episode))))]))
-   .onTap (fn [] (when on-tap (on-tap episode)))))
+(defn episode-item [episode is-creator {:keys [on-edit on-delete on-tap]}]
+  (f/widget
+   :get [m/Theme]
+   (m/Container
+    .margin (m/EdgeInsets.symmetric .horizontal 16 .vertical 8)
+    .decoration (m/BoxDecoration
+                 .color (.-cardColor theme)
+                 .borderRadius (m/BorderRadius.circular 20)
+                 .boxShadow [(m/BoxShadow
+                              .color (if (= (.-brightness theme) m/Brightness.light)
+                                       (m/Color.fromRGBO 0 0 0 0.04)
+                                       (m/Color.fromRGBO 0 0 0 0.15))
+                              .blurRadius 10
+                              .offset (m/Offset 0 4))])
+    .child
+    (mgl/MongolListTile
+     .leading (m/Container
+               .padding (m/EdgeInsets.all 10)
+               .decoration (m/BoxDecoration
+                            .color (.-primaryColorContainer theme)
+                            .shape m/BoxShape.circle)
+               .child (m/Icon m/Icons.play_arrow_rounded .color (.-onPrimaryContainer theme)))
+     .title (mgl/MongolText
+             (get episode "title" "Unknown Episode")
+             .style (common/m-style :fontSize 16 :fontWeight m/FontWeight.w700))
+     .subtitle (m/Row
+                .children
+                [(m/Icon m/Icons.access_time_rounded .size 14 .color (if (= (.-brightness theme) m/Brightness.light)
+                                                                       m/Colors.grey.shade600
+                                                                       m/Colors.grey.shade400))
+                 (m/SizedBox .width 6)
+                 (mgl/MongolText
+                  (format/format-duration (get episode "duration" 0))
+                  .style (common/m-style :color (if (= (.-brightness theme) m/Brightness.light)
+                                                   m/Colors.grey.shade600
+                                                   m/Colors.grey.shade400)
+                                         :fontSize 12))])
+     .trailing (m/Row
+                .mainAxisSize m/MainAxisSize.min
+                .children
+                (if is-creator
+                  [(m/IconButton
+                    .icon (m/Icon m/Icons.edit_rounded .size 20)
+                    .onPressed (fn [] (when on-edit (on-edit episode))))
+                   (m/IconButton
+                    .icon (m/Icon m/Icons.delete_outline_rounded .size 20)
+                    .color m/Colors.red.shade400
+                    .onPressed (fn [] (when on-delete (on-delete episode))))]
+                  []))
+     .onTap (fn [] (when on-tap (on-tap episode)))))))
 
 (defn album-info-item [album episodes]
-  (m/Padding
-   .padding (m.EdgeInsets/all 16)
-   .child
-   (m/Column
-    .crossAxisAlignment m.CrossAxisAlignment/start
-    .children
-    [(m/Container
-      .height 160
-      .decoration (m/BoxDecoration .color m/Colors.grey.shade300)
-      .child (if (get album "cover_url")
-               (m/Image.network (get album "cover_url") .fit m/BoxFit.cover)
-               (m/Center .child (m/Icon m/Icons.album .size 64 .color m/Colors.grey.shade600))))
-     (m/SizedBox .height 20)
-     (m/Row
-      .children
-      [(mgl/MongolText (get album "title" "Unknown Album")
-                     .style (common/m-style :fontSize 24 :fontWeight m/FontWeight.bold))
-       (m/SizedBox .width 4)
-       (mgl/MongolText (get album "description" "")
-                     .style (common/m-style :fontSize 14 :color m/Colors.grey.shade700))
-       (m/SizedBox .width 4)
-       (m/VerticalDivider)
-       (m/SizedBox .width 4)
-       (mgl/MongolText (str "Episodes (" (count episodes) ")")
-                     .style (common/m-style :fontSize 18 :fontWeight m/FontWeight.bold))])])))
+  (f/widget
+   :get [m/Theme]
+   (m/Container
+    .width 320
+    .padding (m/EdgeInsets.all 24)
+    .child
+    (m/Column
+     .crossAxisAlignment m/CrossAxisAlignment.start
+     .children
+     [(m/Container
+       .height 240
+       .width 240
+       .decoration (m/BoxDecoration
+                    .borderRadius (m/BorderRadius.circular 32)
+                    .boxShadow [(m/BoxShadow
+                                 .color (if (= (.-brightness theme) m/Brightness.light)
+                                          (m/Color.fromRGBO 0 0 0 0.12)
+                                          (m/Color.fromRGBO 0 0 0 0.4))
+                                 .blurRadius 20
+                                 .offset (m/Offset 0 10))])
+       .clipBehavior m/Clip.antiAlias
+       .child (if (get album "cover_url")
+                (m/Image.network (get album "cover_url") .fit m/BoxFit.cover)
+                (m/Container
+                 .color (if (= (.-brightness theme) m/Brightness.light)
+                          m/Colors.grey.shade100
+                          (m/Color. 0xFF334155))
+                 .child (m/Center .child (m/Icon m/Icons.album_rounded .size 80 .color m/Colors.grey.shade400)))))
+      (m/SizedBox .height 32)
+      (mgl/MongolText (get album "title" "Unknown Album")
+                      .style (common/m-style :fontSize 26 :fontWeight m/FontWeight.w900))
+      (m/SizedBox .height 12)
+      (if-let [desc (get album "description")]
+        (mgl/MongolText desc
+                        .style (common/m-style :fontSize 14 :color (if (= (.-brightness theme) m/Brightness.light)
+                                                                      m/Colors.grey.shade600
+                                                                      m/Colors.grey.shade400)))
+        (m/SizedBox))
+      (m/SizedBox .height 24)
+      (m/Container
+       .padding (m/EdgeInsets.symmetric .horizontal 16 .vertical 8)
+       .decoration (m/BoxDecoration
+                    .color (.-secondaryContainer (.-colorScheme theme))
+                    .borderRadius (m/BorderRadius.circular 20))
+       .child (mgl/MongolText (str (count episodes) " Episodes")
+                             .style (common/m-style
+                                     :fontSize 13
+                                     :fontWeight m/FontWeight.w700
+                                     :color (.-onSecondaryContainer (.-colorScheme theme)))))]))))
 
 (defn category-tab-item [label count selected? on-tap]
   (f/widget
-   :context _context
+   :get [m/Theme]
    (m/InkWell
     .onTap on-tap
-    .child (m/Container
-            .padding (m.EdgeInsets/all 4)
+    .borderRadius (m/BorderRadius.circular 12)
+    .child (m/AnimatedContainer
+            .duration (dart:core/Duration .milliseconds 200)
+            .padding (m/EdgeInsets.symmetric .horizontal 12 .vertical 12)
             .decoration (m/BoxDecoration
                          .color (if selected?
-                                  (-> m/Theme (.of _context) .-colorScheme .-primaryContainer)
+                                  (.-primaryColor theme)
                                   m/Colors.transparent)
-                         .borderRadius (m.BorderRadius/circular 8))
+                         .borderRadius (m/BorderRadius.circular 12)
+                         .boxShadow (if selected?
+                                      [(m/BoxShadow .color (.withOpacity (.-primaryColor theme) 0.3) .blurRadius 8 .offset (m/Offset 0 4))]
+                                      []))
             .child (m/Column
-                    .crossAxisAlignment m.CrossAxisAlignment/start
+                    .crossAxisAlignment m/CrossAxisAlignment.start
                     .children
                     [(mgl/MongolText
                       label
                       .style (common/m-style
                               :fontSize 16
-                              :fontWeight (if selected? m.FontWeight/bold m.FontWeight/normal)
+                              :fontWeight (if selected? m/FontWeight.bold m/FontWeight.w500)
                               :color (if selected?
-                                       (-> m/Theme (.of _context) .-colorScheme .-onPrimaryContainer)
-                                       (-> m/Theme (.of _context) .-colorScheme .-onSurface))))
-                     (m/SizedBox .height 4)
+                                       (.-onPrimary (.-colorScheme theme))
+                                       (.-onSurface (.-colorScheme theme)))))
+                     (m/SizedBox .height 6)
                      (mgl/MongolText
                       (str "(" count ")")
                       .style (common/m-style
                               :fontSize 12
+                              :fontWeight (if selected? m/FontWeight.bold m/FontWeight.normal)
                               :color (if selected?
-                                       (-> m/Theme (.of _context) .-colorScheme .-onPrimaryContainer)
-                                       m/Colors.grey.shade600)))])))))
+                                       (.withOpacity (.-onPrimary (.-colorScheme theme)) 0.8)
+                                       (if (= (.-brightness theme) m/Brightness.light)
+                                         m/Colors.grey.shade600
+                                         m/Colors.grey.shade400))))])))))
 

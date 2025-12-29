@@ -1,6 +1,7 @@
 (ns audio-platform.screens.home
   (:require
    ["package:flutter/material.dart" :as m]
+   ["package:mongol/mongol.dart" :as mgl]
    [cljd.flutter :as f]
    [audio-platform.widgets.cards :as cards]
    [audio-platform.states.home :as home-state]
@@ -10,19 +11,18 @@
    [audio-platform.services.audio-player :as audio-player]
    [audio-platform.widgets.common :as common]))
 
-
 (defn home-page [_context]
   (f/widget
    :watch [{feed-items :items
             loading :loading
             error :error} home-state/home-feed-state]
+   :let [episodes (filter #(= (get % "type") "episode") feed-items)]
    :get [m/Navigator]
-  ;;  :init (home-state/init-home-data!)
    (m/Scaffold
     .appBar (m/AppBar
              .actions
              [(m/IconButton
-               .icon (m/Icon m.Icons/add_circle_outline)
+               .icon (m/Icon m/Icons.add_circle_outline)
                .tooltip "Create Album"
                .onPressed (fn []
                             (album-state/reset-state)
@@ -30,11 +30,11 @@
                             (album-service/get-categories :page 1 :per-page 100)
                             (nav/push-route navigator :album-form)))
               (m/IconButton
-               .icon (m/Icon m.Icons/search)
+               .icon (m/Icon m/Icons.search)
                .onPressed (fn []
                             (nav/push-route navigator :search)))
               (m/IconButton
-               .icon (m/Icon m.Icons/notifications)
+               .icon (m/Icon m/Icons.notifications)
                .onPressed (fn []
                             (dart:core/print "Notifications")))])
     .body (common/async-view
@@ -43,23 +43,58 @@
             :is-empty? (empty? feed-items)
             :content-fn
             (fn []
-              (m/ListView.separated
-               .scrollDirection m/Axis.horizontal
-               .padding (m/EdgeInsets.only .top 12 .bottom 24)
-               .itemCount (count feed-items)
-               .separatorBuilder (fn [_ __] (m/VerticalDivider .width 1 .thickness 0))
-               .itemBuilder (fn [_ index]
-                              (let [item (nth feed-items index)
-                                    item-type (get item "type")]
-                                (cards/feed-card item
-                                                 (fn []
-                                                   (case item-type
-                                                     "album"
-                                                     (let [album-id (get item "id")]
-                                                       (album-service/prefill-category-from-album-id album-id)
-                                                       (album-service/check-favorite album-id)
-                                                       (nav/push-route-with-arguments navigator
-                                                                                     :album-detail
-                                                                                     {"album_id" album-id}))
-                                                     "episode" (audio-player/play-episode item)
-                                                     (dart:core/print (str "Unknown type:" item-type)))))))))}))))
+              (m/CustomScrollView
+               .slivers
+               [(m/SliverToBoxAdapter
+                 .child (m/SizedBox
+                         .height 320
+                         .child (m/Padding
+                                 .padding (m/EdgeInsets.only .left 16 .top 24 .bottom 12)
+                                 .child (m/Row
+                                         .crossAxisAlignment m/CrossAxisAlignment.start
+                                         .children
+                                         [(mgl/MongolText "ᠣᠨᠴᠠᠯᠠᠬᠤ ᠠᠭᠤᠯᠭᠤ"
+                                                        .style (common/m-style :fontSize 20 :fontWeight m/FontWeight.w800))
+                                          (m/Expanded
+                                           .child (m/ListView.builder
+                                                   .scrollDirection m/Axis.horizontal
+                                                   .padding (m/EdgeInsets.symmetric .horizontal 8)
+                                                   .itemCount (count feed-items)
+                                                   .itemBuilder (fn [_ index]
+                                                                  (let [item (nth feed-items index)
+                                                                        item-type (get item "type")]
+                                                                    (cards/feed-card item
+                                                                                     (fn []
+                                                                                       (case item-type
+                                                                                         "album"
+                                                                                         (let [album-id (get item "id")]
+                                                                                           (album-service/prefill-category-from-album-id album-id)
+                                                                                           (album-service/check-favorite album-id)
+                                                                                           (nav/push-route-with-arguments navigator
+                                                                                                                         :album-detail
+                                                                                                                         {"album_id" album-id}))
+                                                                                         "episode" (audio-player/play-episode item)
+                                                                                         (dart:core/print (str "Unknown type:" item-type)))))))))
+                                          (mgl/MongolTextButton
+                                           .onPressed (fn [] (dart:core/print "View all"))
+                                           .child (mgl/MongolText "View All" .style (common/m-style :color (.-primaryColor (m/Theme.of _context)))))]))))
+                (m/SliverToBoxAdapter
+                 .child (m/SizedBox
+                         .height 150
+                         .child (m/Padding
+                                 .padding (m/EdgeInsets.only .left 16 .top 32 .bottom 12)
+                                 .child (m/Row
+                                         .crossAxisAlignment m/CrossAxisAlignment.start
+                                         .children
+                                         [(mgl/MongolText "ᠰᠢᠨᠡᠪᠲᠡᠷ ᠨᠢᠮᠡᠭᠳᠡᠭᠰᠡᠨ"
+                                                        .style (common/m-style :fontSize 20 :fontWeight m/FontWeight.w800))
+                                          (m/Expanded
+                                           .child (m/ListView.builder
+                                                   .scrollDirection m/Axis.horizontal
+                                                   .padding (m/EdgeInsets.symmetric .horizontal 8)
+                                                   .itemCount (count episodes)
+                                                   .itemBuilder (fn [_ index]
+                                                                  (let [item (nth episodes index)]
+                                                                    (m/SizedBox
+                                                                     .width 300
+                                                                     .child (cards/episode-card item (fn [] (audio-player/play-episode item))))))))]))))]))}))))

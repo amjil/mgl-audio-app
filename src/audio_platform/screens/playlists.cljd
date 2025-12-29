@@ -13,19 +13,19 @@
 (defn- playlist-item [playlist on-tap]
   (f/widget
    (m/Card
-    .margin (m.EdgeInsets/all 8)
+    .margin (m/EdgeInsets.all 8)
     .child (m/InkWell
             .onTap on-tap
             .child (m/Padding
-                    .padding (m.EdgeInsets/all 12)
+                    .padding (m/EdgeInsets.all 12)
                     .child (m/Column
-                            .crossAxisAlignment m.CrossAxisAlignment/start
+                            .crossAxisAlignment m/CrossAxisAlignment.start
                             .children
                             [(mgl/MongolText
                               (get playlist "title" "Untitled Playlist")
                               .style (common/m-style
                                       :fontSize 18
-                                      :fontWeight m.FontWeight/bold))
+                                      :fontWeight m/FontWeight.bold))
                              (m/SizedBox .height 8)
                              (mgl/MongolText
                               (or (get playlist "description") "No description")
@@ -42,7 +42,7 @@
    (m/Scaffold
     .appBar (m/AppBar
              .leading (m/IconButton
-                       .icon (m/Icon m.Icons/arrow_back)
+                       .icon (m/Icon m/Icons.arrow_back)
                        .onPressed (fn []
                                     (if selected-playlist
                                       (playlists-state/set-selected-playlist nil)
@@ -58,7 +58,7 @@
            (if (empty? items)
              (common/empty-state-view {:message "Playlist is empty"})
              (m/ListView.builder
-              .scrollDirection m.Axis/horizontal
+              .scrollDirection m/Axis.horizontal
               .itemCount (count items)
               .itemBuilder (fn [_ index]
                              (let [item (nth items index)
@@ -70,7 +70,7 @@
          (if (empty? playlists)
            (common/empty-state-view {:message "No playlists yet"})
            (m/ListView.builder
-            .scrollDirection m.Axis/horizontal
+            .scrollDirection m/Axis.horizontal
             .itemCount (count playlists)
             .itemBuilder (fn [_ index]
                            (let [playlist (nth playlists index)]
