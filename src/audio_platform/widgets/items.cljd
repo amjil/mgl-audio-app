@@ -60,16 +60,15 @@
 (defn album-info-item [album episodes]
   (f/widget
    :get [m/Theme]
-   (m/Container
-    .width 320
+   (m/Padding
     .padding (m/EdgeInsets.all 24)
     .child
     (m/Column
      .crossAxisAlignment m/CrossAxisAlignment.start
      .children
      [(m/Container
-       .height 240
-       .width 240
+       .height 180
+       .width 180
        .decoration (m/BoxDecoration
                     .borderRadius (m/BorderRadius.circular 32)
                     .boxShadow [(m/BoxShadow
@@ -87,26 +86,29 @@
                           (m/Color. 0xFF334155))
                  .child (m/Center .child (m/Icon m/Icons.album_rounded .size 80 .color m/Colors.grey.shade400)))))
       (m/SizedBox .height 32)
-      (mgl/MongolText (get album "title" "Unknown Album")
-                      .style (common/m-style :fontSize 26 :fontWeight m/FontWeight.w900))
-      (m/SizedBox .height 12)
-      (if-let [desc (get album "description")]
-        (mgl/MongolText desc
-                        .style (common/m-style :fontSize 14 :color (if (= (.-brightness theme) m/Brightness.light)
-                                                                      m/Colors.grey.shade600
-                                                                      m/Colors.grey.shade400)))
-        (m/SizedBox))
-      (m/SizedBox .height 24)
-      (m/Container
-       .padding (m/EdgeInsets.symmetric .horizontal 16 .vertical 8)
-       .decoration (m/BoxDecoration
-                    .color (.-secondaryContainer (.-colorScheme theme))
-                    .borderRadius (m/BorderRadius.circular 20))
-       .child (mgl/MongolText (str (count episodes) " Episodes")
-                             .style (common/m-style
-                                     :fontSize 13
-                                     :fontWeight m/FontWeight.w700
-                                     :color (.-onSecondaryContainer (.-colorScheme theme)))))]))))
+      (m/Row 
+       .children 
+       [
+        (mgl/MongolText (get album "title" "Unknown Album")
+                        .style (common/m-style :fontSize 26 :fontWeight m/FontWeight.w900))
+        (m/SizedBox .height 12)
+        (if-let [desc (get album "description")]
+          (mgl/MongolText desc
+                          .style (common/m-style :fontSize 14 :color (if (= (.-brightness theme) m/Brightness.light)
+                                                                       m/Colors.grey.shade600
+                                                                       m/Colors.grey.shade400)))
+          (m/SizedBox))
+        (m/SizedBox .width 24)
+        (m/Container
+         .padding (m/EdgeInsets.symmetric .horizontal 16 .vertical 8)
+         .decoration (m/BoxDecoration
+                      .color (.-secondaryContainer (.-colorScheme theme))
+                      .borderRadius (m/BorderRadius.circular 20))
+         .child (mgl/MongolText (str (count episodes) " Episodes")
+                                .style (common/m-style
+                                        :fontSize 13
+                                        :fontWeight m/FontWeight.w700
+                                        :color (.-onSecondaryContainer (.-colorScheme theme)))))])]))))
 
 (defn category-tab-item [label count selected? on-tap]
   (f/widget
