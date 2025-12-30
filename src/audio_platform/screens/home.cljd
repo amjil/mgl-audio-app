@@ -20,6 +20,7 @@
    :get [m/Navigator]
    (m/Scaffold
     .appBar (m/AppBar
+             .automaticallyImplyLeading false
              .actions
              [(m/IconButton
                .icon (m/Icon m/Icons.add_circle_outline)

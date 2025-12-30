@@ -98,7 +98,7 @@
                               (fn [user]
                                 (state/set-user user)
                                 (reset! loading false)
-                                (nav/push-replacement-route navigator :home)))
+                                (nav/push-route-and-remove-until navigator :home (fn [_] false))))
                              (.catchError
                               (fn [err]
                                 (reset! loading false)
