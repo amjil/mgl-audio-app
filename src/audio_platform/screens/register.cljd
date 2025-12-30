@@ -4,6 +4,7 @@
    ["package:mongol/mongol.dart" :as mgl]
    ["dart:async" :as async]
    [cljd.flutter :as f]
+   [virtual-keyboard.keyboard :as keyboard]
    [audio-platform.services.api :as api]
    [audio-platform.utils.toast :as toast]
    [audio-platform.utils.navigator :as nav]
@@ -54,6 +55,7 @@
          .child
          (mgl/MongolTextField
           .controller username-controller
+          .autofocus true
           .decoration (m/InputDecoration
                        .labelText "Username"
                        .prefixIcon (m/Icon m/Icons.person_outline)
@@ -167,9 +169,11 @@
        .child
        (m/SafeArea
         .child
-        (m/Center
-         .child
-         (m/SingleChildScrollView
-          .scrollDirection m/Axis.horizontal
-          .child
-          (register-form username-controller email-controller password-controller confirm-password-controller loading-val navigator context loading theme)))))))))
+        (m/Column
+         .children
+         [
+          (m/SingleChildScrollView
+           .scrollDirection m/Axis.horizontal
+           .child
+           (register-form username-controller email-controller password-controller confirm-password-controller loading-val navigator context loading theme))
+          (keyboard/keyboard {:custom-fns {}})])))))))
