@@ -14,7 +14,7 @@
    :get [m/Theme]
   (m/Container
    .margin (m/EdgeInsets.symmetric .horizontal 10 .vertical 10)
-   .width 150
+   .width 120
    .decoration (m/BoxDecoration
                 .borderRadius (m/BorderRadius.circular 24)
                 .boxShadow [(m/BoxShadow
@@ -38,8 +38,8 @@
       [(m/Stack
         .children
         [(m/Container
-          .width 150
-          .height 150
+          .width 120
+          .height 100
           .decoration (m/BoxDecoration
                        .color (if (= (.-brightness theme) m/Brightness.light)
                                 m/Colors.grey.shade100
