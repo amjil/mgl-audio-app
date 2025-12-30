@@ -44,7 +44,6 @@
             selected-tab :selected-tab} favorites-state/favorites-state]
    (m/Scaffold
     .appBar (m/AppBar
-             .title (mgl/MongolText "ᠲᠠᠭᠠᠯᠠᠭᠳᠠᠭᠰᠠᠨ" .style (common/m-style :fontSize 20 :fontWeight m/FontWeight.bold))
              .leading (m/IconButton
                        .icon (m/Icon m/Icons.arrow_back_ios_new_rounded .size 20)
                        .onPressed (fn [] (nav/navigator-pop navigator))))
