@@ -1,0 +1,68 @@
+(ns audio-app.components.layout
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]))
+
+;; =============================================================================
+;; 1. Core block layout: horizontal gallery section
+;; =============================================================================
+(defn gallery-section 
+  "Gallery-style layout tailored for traditional Mongolian vertical text.
+   The left side is a fixed vertical title (with a thin divider), the right side is a flexible content area (list or card grid).
+   - title: the vertically displayed title text
+   - child: the right-side content widget (usually wrapped in Expanded)"
+  [title child]
+  (f/widget
+   :get {{{:flds [onSurfaceVariant]} .-colorScheme} m/Theme}
+   (m/Row
+    .crossAxisAlignment m/CrossAxisAlignment.start
+    .children
+    [;; 1. Left side: vertical title area
+     (m/Container
+      .padding (m/EdgeInsets.only .left 24.0 .right 16.0 .top 24.0 .bottom 24.0)
+      ;; Ultra-thin divider to the right of the title for a refined “album” feel
+      .decoration (m/BoxDecoration
+                   .border (m/Border
+                            .right (m/BorderSide
+                                    .color (.withOpacity m/Colors.grey 0.2)
+                                    .width 1.0)))
+      .child (mgl/MongolText title
+                             .style (m/TextStyle .fontSize 24.0
+                                                 .fontWeight m/FontWeight.bold
+                                                 )))
+
+     ;; 2. 右侧：内容区
+     child])))
+
+;; =============================================================================
+;; 2. Page-level scaffold: Mongolian horizontal scroll canvas
+;; =============================================================================
+(defn canvas-scroll
+  "Full-screen horizontal scroll container designed for traditional Mongolian.
+   Uses iOS-style bouncing physics and accepts a list of slivers."
+  [& slivers]
+  (m/CustomScrollView
+   .scrollDirection m/Axis.horizontal
+   .physics (m/BouncingScrollPhysics.)
+   .slivers slivers))
+
+;; =============================================================================
+;; 3. Helper layout: vertical divider
+;; =============================================================================
+(defn v-divider 
+  "Elegant short divider line for separating vertical elements in horizontal layouts"
+  [& {:keys [height color-opacity] :or {height 100.0 color-opacity 0.2}}]
+  (m/Container
+   .height height
+   .width 1.0
+   .color (.withOpacity m/Colors.grey color-opacity)))
+
+;; =============================================================================
+;; 4. Helper layout: horizontal section padding
+;; =============================================================================
+(defn section-padding 
+  "Standard padding wrapper for SliverToBoxAdapter sections within the horizontal canvas"
+  [child]
+  (m/Padding
+   .padding (m/EdgeInsets.only .left 32.0 .right 24.0 .top 16.0 .bottom 32.0)
+   .child child))

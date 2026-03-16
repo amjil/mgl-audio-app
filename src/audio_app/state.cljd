@@ -1,0 +1,38 @@
+(ns audio-app.state)
+
+;; Root-level refresh: incremented after login/logout to rebuild main-app and re-run the FutureBuilder
+(def root-refresh-atom (atom 0))
+
+;; Search page state
+(def search-list-state
+  (atom {:items [] 
+         :offset 0 
+         :limit 10 
+         :has-more? true 
+         :loading? false 
+         :error nil
+         :initialized? false}))
+
+;; =============================================================================
+;; Discovery page state
+;; =============================================================================
+(def discovery-state
+  (atom {:authors [] 
+         :books [] 
+         :loading? false 
+         :error nil
+         :initialized? false}))
+
+
+(def library-state
+  (atom {:recent-books [] 
+         :favorite-books [] 
+         :loading? false 
+         :error nil
+         :initialized? false}))
+
+(def profile-state
+  (atom {:user nil 
+         :loading? false 
+         :error nil
+         :initialized? false}))

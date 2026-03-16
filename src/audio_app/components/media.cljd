@@ -1,0 +1,107 @@
+(ns audio-app.components.media
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:cached_network_image/cached_network_image.dart" :as cache]
+            [cljd.flutter :as f]))
+
+;; =============================================================================
+;; 1. Book cover component (rounded rectangle)
+;; =============================================================================
+(defn hero-cover
+  "Book cover widget with local cache, skeleton placeholder and Hero animation.
+   - id: unique identifier for the Hero animation (e.g. book-id)
+   - url: network image URL
+   - optional: width, height, border-radius"
+  [id url & {:keys [width height border-radius]
+             :or {width 120.0 height 160.0 border-radius 12.0}}]
+  (m/Hero
+   .tag (str "book-cover-" id)
+   .child
+   (m/ClipRRect
+    .borderRadius (m/BorderRadius.circular border-radius)
+    .child
+    (if (and url (not (empty? url)))
+      ;; When URL exists, use cached network image loader
+      (cache/CachedNetworkImage
+       .imageUrl url
+       .width width
+       .height height
+       .fit m/BoxFit.cover
+       
+      ;; Placeholder during loading (soft gray background + loading spinner)
+       .placeholder (fn [_ctx _url]
+                      (m/Container
+                       .width width
+                       .height height
+                       .color (.withOpacity m/Colors.grey 0.1)
+                       .child (m/Center
+                               .child (m/CircularProgressIndicator .strokeWidth 2.0))))
+       
+       ;; Fallback UI when image fails to load (offline, broken link, etc.)
+       .errorWidget (fn [_ctx _url _err]
+                      (m/Container
+                       .width width
+                       .height height
+                       .color (.withOpacity m/Colors.grey 0.1)
+                       .child (m/Icon m/Icons.broken_image .color m/Colors.grey))))
+      
+      ;; Extreme case: no URL at all, show a default placeholder
+      (m/Container
+       .width width
+       .height height
+       .color (.withOpacity m/Colors.grey 0.1)
+       .child (m/Icon m/Icons.book .color m/Colors.grey))))))
+
+;; =============================================================================
+;; 2. Avatar component (perfect circle)
+;; =============================================================================
+(defn hero-avatar
+  "Circular avatar widget with local cache and Hero animation, for author or user profile.
+   - id: unique identifier for the Hero animation (e.g. author-id or \"user-self\")
+   - url: network image URL
+   - optional: radius"
+  [id url & {:keys [radius] :or {radius 40.0}}]
+  (let [diameter (* radius 2.0)]
+    (m/Hero
+     .tag (str "avatar-" id)
+     .child
+     (if (and url (not (empty? url)))
+       ;; For circular avatars, use imageBuilder to customize the outer shape
+       (cache/CachedNetworkImage
+        .imageUrl url
+        .imageBuilder (fn [ctx image-provider]
+                        (m/Container
+                         .width diameter
+                         .height diameter
+                         .decoration (m/BoxDecoration
+                                      .shape m/BoxShape.circle
+                                      .image (m/DecorationImage
+                                              .image image-provider
+                                              .fit m/BoxFit.cover))))
+        
+        .placeholder (fn [_ctx _url]
+                       (m/Container
+                        .width diameter
+                        .height diameter
+                        .decoration (m/BoxDecoration
+                                     .color (.withOpacity m/Colors.grey 0.1)
+                                     .shape m/BoxShape.circle)
+                        .child (m/Center
+                                .child (m/CircularProgressIndicator .strokeWidth 2.0))))
+        
+        .errorWidget (fn [_ctx _url _err]
+                       (m/Container
+                        .width diameter
+                        .height diameter
+                        .decoration (m/BoxDecoration
+                                     .color (.withOpacity m/Colors.grey 0.1)
+                                     .shape m/BoxShape.circle)
+                        .child (m/Icon m/Icons.person .color m/Colors.grey))))
+       
+       ;; Default gray avatar when there is no URL
+       (m/Container
+        .width diameter
+        .height diameter
+        .decoration (m/BoxDecoration
+                     .color (.withOpacity m/Colors.grey 0.1)
+                     .shape m/BoxShape.circle)
+        .child (m/Icon m/Icons.person .color m/Colors.grey))))))

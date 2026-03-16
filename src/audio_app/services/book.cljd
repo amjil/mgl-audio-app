@@ -1,0 +1,63 @@
+(ns audio-app.services.book
+  (:require [audio-app.services.gql :as gql]
+            ;; 🚀 Import the Hive offline engine we just built
+            [audio-app.services.hive :as hive]))
+
+(def get-book-details-query
+  "query GetBookDetails($id: ID!) {
+     book(id: $id) {
+       id
+       title
+       cover_url
+       description
+       author { name }
+       reciter { name }
+       chapters {
+         id
+         title
+         audio_url
+         duration_seconds
+       }
+     }
+   }")
+
+(defn load-detail! 
+  "Load book details (offline-first: read cache instantly, then fetch network and update silently)"
+  [state-atom book-id]
+  
+  ;; ==========================================
+  ;; 1. Instant response: try to get cached data from local Hive
+  ;; ==========================================
+  (let [cached-book (hive/get-cached-book book-id)]
+    (if cached-book
+      ;; Cache hit: immediately turn off loading and feed cached data to the UI
+      ;; This makes the detail page render almost instantly, achieving “visual zero latency”.
+      (swap! state-atom assoc :loading? false :error nil :data cached-book)
+      
+      ;; Cache miss: enter loading state and wait for the network
+      (swap! state-atom assoc :loading? true :error nil :data nil))
+    
+    ;; ==========================================
+    ;; 2. Asynchronous silent update: always fetch the latest data once
+    ;; ==========================================
+    (-> (gql/query get-book-details-query {:id book-id})
+        (.then (fn [resp]
+                 (if (:error resp)
+                   ;; [网络报错]
+                   (if-not cached-book
+                     ;; 只有在【无缓存】的情况下，才把网络错误抛给 UI 让用户看到红字
+                     (swap! state-atom assoc :loading? false :error (:error resp))
+                     ;; 如果有缓存，我们选择“报喜不报忧”，默默吞下错误，让用户继续看缓存
+                     (dart:core/print "⚠️ 网络拉取失败，继续使用本地离线书籍缓存"))
+                   
+                   ;; [网络成功]
+                   (let [fresh-book (:book resp)]
+                     ;; A. 将最新数据塞给 UI。如果章节有增删，UI 会像流水一样平滑刷新
+                     (swap! state-atom assoc :loading? false :error nil :data fresh-book)
+                     
+                     ;; B. ✨ 核心魔法：把最新拉取到的数据，扔进 Hive 里覆盖旧缓存！
+                     (hive/cache-book! fresh-book)))))
+        (.catchError (fn [e]
+                       (if-not cached-book
+                         (swap! state-atom assoc :loading? false :error e)
+                         (dart:core/print "⚠️ 断网或异常，继续使用本地离线书籍缓存")))))))

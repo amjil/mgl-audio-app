@@ -1,0 +1,44 @@
+(ns audio-app.components.transcript
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]))
+
+(defn- get-active-index 
+  "Given the current playback position (seconds), find the active transcript index."
+  [segments position]
+  (let [idx (->> segments
+                 (keep-indexed (fn [i seg] 
+                                 (when (<= (or (:start_time seg) 0) position) i)))
+                 last)]
+    (or idx -1)))
+
+(defn sync-view 
+  "Horizontally scrolling synchronized transcript view."
+  [segments current-position]
+  (f/widget
+   :get {{{:flds [primary onSurface onSurfaceVariant]} .-colorScheme} m/Theme}
+   :let [active-idx (get-active-index segments current-position)]
+   
+   (if (empty? segments)
+     (m/Center 
+      .child (mgl/MongolText "ᠪᠢᠴᠢᠭᠡᠨ ᠦ ᠲᠡᠮᠳᠡᠭᠯᠡᠯ ᠪᠠᠶᠢᠬᠤ ᠦᠭᠡᠢ"
+                             .style (m/TextStyle .fontSize 18.0 .color onSurfaceVariant)))
+     
+     (m/ListView.builder
+      .scrollDirection m/Axis.horizontal
+      .physics (m/BouncingScrollPhysics.)
+      .padding (m/EdgeInsets.symmetric .horizontal 120.0)
+      .itemCount (count segments)
+      .itemBuilder
+      (f/build [i]
+        (let [seg (nth segments i)
+              is-active? (= i active-idx)]
+          (m/Container
+           .margin (m/EdgeInsets.only .right 40.0)
+           .alignment m/Alignment.center
+           .child
+           (mgl/MongolText (:text seg)
+                           .style (m/TextStyle 
+                                   .fontSize (if is-active? 28.0 20.0)
+                                   .fontWeight (if is-active? m/FontWeight.bold m/FontWeight.normal)
+                                   .color (if is-active? primary (.withOpacity onSurface 0.3)))))))))))

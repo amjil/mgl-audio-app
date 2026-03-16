@@ -1,0 +1,138 @@
+(ns audio-app.services.gql
+  (:require ["package:http/http.dart" :as http]
+            ["dart:convert" :as json]
+            ["dart:core" :as dart]
+            [cljd.flutter :as f]
+            ["package:flutter_secure_storage/flutter_secure_storage.dart" :as storage]
+            ;; Global navigation for forcing login on 401
+            [audio-app.nav :as nav]))
+
+;; =============================================================================
+;; 1. Basic configuration
+;; =============================================================================
+;; Elixir/Phoenix backend GraphQL endpoint
+;; - Desktop: localhost
+;; - Android emulator: use 10.0.2.2 instead of localhost (host machine port 4000)
+;; - iOS simulator: localhost usually works
+;; - Real device: use your LAN IP, e.g. "http://192.168.1.100:4000/api"
+(def ^:private endpoint "http://localhost:4000/api") 
+(def ^:private sc (storage/FlutterSecureStorage.))
+
+;; =============================================================================
+;; 2. Data conversion (Dart JSON -> Clojure map)
+;; =============================================================================
+(defn json->clj 
+  "Recursively convert Dart Map/List into Clojure data with keyword keys."
+  [x]
+  (cond
+    ;; Use dart:core/Map and dart:core/List for precise type checks
+    (dart/is? x dart/Map)
+    (into {} (for [[k v] x]
+               [(keyword k) (json->clj v)]))
+
+    (dart/is? x dart/List)
+    (mapv json->clj x)
+
+    :else x))
+
+(defn- clj->encodable
+  "Convert Clojure data into Map/List/primitive types accepted by Dart jsonEncode."
+  [x]
+  (cond
+    (nil? x) nil
+    (map? x) (dart/Map.fromEntries (into [] (for [[k v] x]
+                                              (dart/MapEntry. (if (keyword? k) (name k) (str k))
+                                                              (clj->encodable v)))))
+    (sequential? x) (into [] (map clj->encodable x))
+    :else x))
+
+;; =============================================================================
+;; 3. JWT token management (secure storage)
+;; =============================================================================
+(defn save-token! 
+  "Save or delete token. When token is nil, delete it."
+  [token]
+  (if token
+    (.write sc .key "jwt_token" .value token)
+    (.delete sc .key "jwt_token")))
+
+(defn get-token 
+  "Get token from local secure storage asynchronously (returns Future)."
+  []
+  (.read sc .key "jwt_token"))
+
+;; =============================================================================
+;; 4. Global authorization handling
+;; =============================================================================
+(defn- handle-unauthorized! 
+  "Handle 401 or unauthorized errors from GraphQL."
+  []
+  (dart/print "⚠️ Token invalid or rejected, clearing credentials and navigating to login...")
+  (save-token! nil)  ;; Clear invalid token
+  (nav/go-to-login!)) ;; Reset navigation stack to login
+
+;; =============================================================================
+;; 5. Core network request logic
+;; =============================================================================
+;; ^:async is required so we can use await inside
+(defn- ^:async execute-request [{:keys [query variables]}]
+  (try
+    (let [token (await (get-token))
+          headers (clj->encodable {"Content-Type" "application/json"
+                                   "Accept" "application/json"
+                                   "Authorization" (if token (str "Bearer " token) "")})
+          body (json/jsonEncode (clj->encodable {"query" query "variables" (or variables {})}))
+          response (await (http/post (dart/Uri.parse endpoint)
+                                     .headers headers
+                                     .body body))]
+      (cond
+        (== (.-statusCode response) 401)
+        (do (handle-unauthorized!)
+            {:error :unauthorized})
+
+        (== (.-statusCode response) 200)
+        (try
+          (let [decoded (json/jsonDecode (.-body response))
+                data (get decoded "data")
+                errors (get decoded "errors")]
+            (if errors
+              (let [err-msgs (map #(get % "message" "") errors)
+                    regex (dart/RegExp. "(?i)unauthorized|ᠪᠦᠷᠢᠳᠬᠡᠯ ᠦᠭᠡᠢ")
+                    is-unauthorized? (some #(.hasMatch regex %) err-msgs)]
+                (if is-unauthorized?
+                  (do (handle-unauthorized!)
+                      {:error :unauthorized})
+                  (do (dart/print (str "❌ GraphQL application error: " errors))
+                      {:error (json->clj errors)})))
+              (json->clj data)))
+          (catch dynamic e
+            ;; Non‑JSON response (e.g. HTML error page) caused parse failure
+            (dart/print (str "🌐 Failed to parse response (non‑JSON), exception: " (.-toString e)
+                            ", first 200 chars of body: "
+                            (if (.-body response)
+                              (let [s (.-body response)]
+                                (if (> (.-length s) 200) (.substring s 0 200) s))
+                              "null")))
+            {:error :network-error :reason :parse-error}))
+
+        :else
+        (do (dart/print (str "🌐 Network error, status code: " (.-statusCode response)
+                             ", body: " (.-body response)))
+            {:error :network-error :status (.-statusCode response)})))
+    (catch dynamic e
+      ;; Request did not reach server: refused, timeout, DNS, etc.
+      (dart/print (str "🌐 Request failed (could not reach server): " (.-toString e)))
+      {:error :network-error :reason :request-failed :message (.-toString e)})))
+
+;; =============================================================================
+;; 6. Public API
+;; =============================================================================
+(defn query 
+  "Send GraphQL query (read‑only). Returns a Future."
+  [q & [vars]]
+  (execute-request {:query q :variables vars}))
+
+(defn mutate 
+  "Send GraphQL mutation (writes data). Returns a Future."
+  [q & [vars]]
+  (execute-request {:query q :variables vars}))

@@ -1,0 +1,94 @@
+(ns audio-app.main-scaffold
+  (:require ["package:flutter/material.dart" :as m]
+            [cljd.flutter :as f]
+            [audio-app.state :as state]
+            [audio-app.services.gql :as gql]
+            [audio-app.services.discovery :as discovery-srv]
+            [audio-app.services.library :as library-srv]
+            [audio-app.services.profile :as profile-srv]
+            [audio-app.pages.auth :as auth]
+            [audio-app.pages.discovery :as discovery]
+            [audio-app.pages.library :as library]
+            [audio-app.pages.search :as search]
+            [audio-app.pages.profile :as profile]))
+
+;; =============================================================================
+;; 1. Tab lazy-load trigger (Lazy-load Pre-fetching)
+;; =============================================================================
+(defn- trigger-tab-load! 
+  "Given the tab index, trigger data loading if the corresponding state has not been initialized.
+   This avoids重复请求在业务上允许为空列表的场景中。"
+  [index]
+  (case index
+    ;; Discovery tab
+    0 (when (not (:initialized? @state/discovery-state))
+        (discovery-srv/load-data! state/discovery-state))
+    ;; Library tab
+    1 (when (not (:initialized? @state/library-state))
+        (library-srv/load-data! state/library-state))
+    ;; Search page has no默认数据；用户输入触发加载
+    2 nil
+    ;; Profile tab
+    3 (when (not (:initialized? @state/profile-state))
+        (profile-srv/load-data! state/profile-state))
+    nil))
+
+;; =============================================================================
+;; 2. Main layout after login (Main Layout)
+;; =============================================================================
+(defn- main-layout []
+  (let [current-tab (atom 0)]
+    
+    ;; Preload discovery data when entering the main layout
+    (trigger-tab-load! 0)
+    
+    (f/widget
+     :watch [tab-idx current-tab]
+     :get {{{:flds [surface primary onSurfaceVariant]} .-colorScheme} m/Theme}
+     
+     (m/Scaffold
+      .body (m/IndexedStack
+             .index tab-idx
+             .children [(discovery/page)
+                        (library/page)
+                        (search/page)
+                        (profile/page)])
+      
+      .bottomNavigationBar
+      (m/BottomNavigationBar
+       .currentIndex tab-idx
+       .onTap (fn [idx]
+                (reset! current-tab idx)
+                (trigger-tab-load! idx))
+       .type m/BottomNavigationBarType.fixed
+       .backgroundColor surface
+       .selectedItemColor primary
+       .unselectedItemColor onSurfaceVariant
+       .showSelectedLabels false
+       .showUnselectedLabels false
+       .items
+       [(m/BottomNavigationBarItem .icon (m/Icon m/Icons.explore) .label "Discover") 
+        (m/BottomNavigationBarItem .icon (m/Icon m/Icons.library_books) .label "Library")
+        (m/BottomNavigationBarItem .icon (m/Icon m/Icons.search) .label "Search")
+        (m/BottomNavigationBarItem .icon (m/Icon m/Icons.person) .label "Profile")])))))
+
+;; =============================================================================
+;; 3. Global entry scaffold (Main Scaffold / Root Router)
+;; =============================================================================
+(defn main-scaffold 
+  "Entry point of the app routing. Uses FutureBuilder to determine token state safely."
+  []
+  (m/FutureBuilder
+   .future (gql/get-token)
+   .builder
+      (fn [ctx snapshot]
+        (cond
+          (= (.-connectionState snapshot) m/ConnectionState.waiting)
+          (m/Scaffold .body (m/Center .child (m/CircularProgressIndicator)))
+          
+          (and (.-hasData snapshot) 
+               (not (empty? (.-data snapshot))))
+          (main-layout)
+          
+          :else
+          (auth/page)))))

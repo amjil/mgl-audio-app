@@ -1,0 +1,70 @@
+(ns audio-app.services.auth
+  (:require ["dart:core" :as dart]
+            [audio-app.services.gql :as gql]
+            [audio-app.nav :as nav]))
+
+(defn- error->msg
+  "Convert various error types into user‑facing, console‑readable strings."
+  [err]
+  (cond
+    (string? err) err
+    (keyword? err) (case err
+                     :unauthorized "Invalid or expired credentials, please log in again"
+                     :network-error "Network error, please check your connection and retry"
+                     (name err))
+    (map? err) (or (get err :message)
+                   (get-in err [0 :message])
+                   (str err))
+    (sequential? err) (if (empty? err)
+                        "Unknown error"
+                        (or (get-in (first err) [:message])
+                            (str err)))
+    :else (str err)))
+
+;; 1. 定义 GraphQL Mutations（与后端 Schema 一致：login 使用 email）
+(def ^:private login-mutation
+  "mutation Login($email: String!, $password: String!) {
+     login(email: $email, password: $password) {
+       token
+       user { id email }
+     }
+   }")
+
+(def ^:private register-mutation
+  "mutation Register($email: String!, $password: String!) {
+     register(email: $email, password: $password) {
+       token
+       user { id email }
+     }
+   }")
+
+;; 2. Core authentication logic
+(defn authenticate! 
+  "Perform login or registration.
+   mode can be :login or :register.
+   On success, token is stored to secure storage and navigation is triggered."
+  [state-atom mode email password]
+  ;; 1. Set loading state and clear previous errors
+  (swap! state-atom assoc :loading? true :error nil)
+  
+  ;; 2. Decide which mutation to use
+  (let [query (if (= mode :login) login-mutation register-mutation)]
+    (-> (gql/mutate query {:email email :password password})
+        (.then (fn [resp]
+                 (if (:error resp)
+                   (let [msg (error->msg (:error resp))]
+                     (dart/print (str "🔐 Login failed: " msg))
+                     (swap! state-atom assoc :loading? false :error msg))
+                   (let [token (get-in resp [(if (= mode :login) :login :register) :token])]
+                     (if token
+                       (do
+                         (swap! state-atom assoc :loading? false)
+                         (gql/save-token! token)
+                         (nav/go-to-main-layout!))
+                       (let [msg "Server did not return a token"]
+                         (dart/print (str "🔐 Login failed: " msg))
+                         (swap! state-atom assoc :loading? false :error msg)))))))
+        (.catchError (fn [e]
+                       (let [msg (error->msg e)]
+                         (dart/print (str "🔐 Login exception: " msg))
+                         (swap! state-atom assoc :loading? false :error msg)))))))

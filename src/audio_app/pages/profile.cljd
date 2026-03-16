@@ -1,0 +1,90 @@
+(ns audio-app.pages.profile
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]
+            [audio-app.state :as state]
+            [audio-app.services.profile :as srv]
+            [audio-app.components.media :as media]
+            [audio-app.components.layout :as layout]
+            [components.setting :as setting]))
+
+;; =============================================================================
+;; 1. Main page (driven by global state)
+;; =============================================================================
+(defn page []
+  (f/widget
+   :context ctx
+   :get {{{:flds [surface onSurface outlineVariant]} .-colorScheme} m/Theme}
+   :watch [{:keys [user loading? error]} state/profile-state]
+   
+   (m/Scaffold
+    .backgroundColor surface
+    .appBar (m/AppBar .backgroundColor surface .elevation 0)
+    .body
+    (cond
+      (and loading? (nil? user))
+      (m/Center .child (m/CircularProgressIndicator))
+      
+      (and error (nil? user))
+      (m/Center 
+       .child (m/Column 
+               .mainAxisAlignment m/MainAxisAlignment.center
+               .children 
+               [(m/Text "Network error")
+                (m/SizedBox .height 16.0)
+                (m/ElevatedButton .onPressed #(srv/load-data! state/profile-state) 
+                                  .child (m/Text "Retry"))]))
+      
+      :else
+      (m/Padding
+       .padding (m/EdgeInsets.all 32.0)
+       .child
+       (m/ListView
+        .scrollDirection m/Axis.horizontal
+        .padding (m/EdgeInsets.only .right 24.0)
+        .children
+        [(m/Container
+          .width 160.0
+          .child (m/Column
+                  .crossAxisAlignment m/CrossAxisAlignment.center
+                  .children
+                  [(media/hero-avatar (or (:id user) "me") (:avatar_url user) :radius 60.0)
+                   (m/SizedBox .height 32.0)
+                   (m/Expanded 
+                    .child (mgl/MongolText (or (:name user) "Уншигч")
+                                           .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold)))]))
+         
+         (m/SizedBox .width 16.0)
+         (layout/v-divider :height double/infinity)
+         (m/SizedBox .width 16.0)
+         
+         (setting/settings-section
+          "ᠦᠢᠯᠡᠴᠢᠯᠡᠭ᠎ᠡ"
+          [{:leading m/Icons.cloud_download
+            :title "ᠲᠠᠳᠠᠭᠰᠠᠨ"
+            :subtitle "0 ᠨᠣᠮ"
+            :show-arrow? true
+            :on-tap #(dart:core/print "Navigate to downloads")}
+           {:leading m/Icons.history
+            :title "ᠲᠡᠦᠬᠡ"
+            :show-arrow? true
+            :on-tap #(dart:core/print "Navigate to history")}])
+
+         (m/SizedBox .width 40.0)
+
+         (setting/settings-section
+          "ᠰᠢᠰᠲ᠋ᠧᠮ"
+          [{:leading m/Icons.dark_mode
+            :title "ᠬᠠᠷᠠᠩᠭᠤᠢ\nᠮᠣᠳᠧ"
+            :value false
+            :on-changed #(dart:core/print (str "Toggle theme: " %))}
+
+           {:leading m/Icons.settings
+            :title "ᠲᠣᠬᠢᠷᠠᠭᠤᠯᠭ᠎ᠠ"
+            :show-arrow? true
+            :on-tap #(dart:core/print "Navigate to settings")}
+
+           {:leading m/Icons.exit_to_app
+            :title "ᠭᠠᠷᠬᠤ"
+            :show-arrow? true
+            :on-tap #(srv/logout! state/profile-state)}])]))))))

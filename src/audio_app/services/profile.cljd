@@ -1,0 +1,34 @@
+(ns audio-app.services.profile
+  (:require [audio-app.services.gql :as gql]
+            [audio-app.nav :as nav]))
+
+(def get-profile-query
+  "query GetMyProfile {
+     me {
+       id
+       email
+     }
+   }")
+
+(defn load-data! 
+  "Fetch user profile and update the global state-atom"
+  [state-atom]
+  (swap! state-atom assoc :loading? true :error nil)
+  
+  (-> (gql/query get-profile-query)
+      (.then (fn [resp]
+               (if (:error resp)
+                 (swap! state-atom assoc :loading? false :error (:error resp))
+                 (swap! state-atom assoc
+                        :loading? false
+                        :initialized? true
+                        :user (:me resp)))))
+      (.catchError (fn [e]
+                     (swap! state-atom assoc :loading? false :error e)))))
+
+(defn logout! 
+  "Logout: clear token, reset global state and navigate back to login"
+  [state-atom]
+  (gql/save-token! nil)
+  (reset! state-atom {:user nil :loading? false :error nil :initialized? false})
+  (nav/go-to-login!))

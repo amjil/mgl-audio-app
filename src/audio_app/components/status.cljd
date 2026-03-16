@@ -1,0 +1,35 @@
+(ns audio-app.components.status
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]))
+
+;; =============================================================================
+;; 1. Center loading indicator
+;; =============================================================================
+(defn loading-center []
+  (m/Center .child (m/CircularProgressIndicator)))
+
+;; =============================================================================
+;; 2. Center error with retry button
+;; =============================================================================
+(defn error-with-retry 
+  [{:keys [on-retry]}]
+  (m/Center
+   .child (m/Column
+           .mainAxisAlignment m/MainAxisAlignment.center
+           .children
+           [(m/Text "Network error")
+            (m/SizedBox .height 16.0)
+            (m/ElevatedButton
+             .onPressed (or on-retry #(identity nil))
+             .child (m/Text "Retry"))])))
+
+;; =============================================================================
+;; 3. Center empty placeholder (Mongolian text)
+;; =============================================================================
+(defn empty-center 
+  [msg]
+  (m/Center
+   .child (mgl/MongolText
+           msg
+           .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))))
+

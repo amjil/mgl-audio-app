@@ -1,0 +1,125 @@
+(ns audio-app.services.player
+  (:require ["package:audioplayers/audioplayers.dart" :as ap]
+            ["dart:core" :as dart]
+            [audio-app.services.gql :as gql])) ;; 如果将来需要向后端同步播放进度，可以引入
+
+;; =============================================================================
+;; 1. Global player state (single source of truth)
+;; =============================================================================
+(def player-state
+  (atom {:status :stopped       ;; 状态枚举: :stopped, :loading, :playing, :paused, :completed
+         :position 0            ;; 当前播放秒数
+         :duration 0            ;; 音频总秒数
+         :current-book nil      ;; 当前播放的书籍信息
+         :current-chapter nil   ;; 当前播放的章节信息
+         :playlist []           ;; 播放列表 (当前书的所有章节)
+         :current-index 0}))    ;; 当前在列表中的索引
+
+;; =============================================================================
+;; 2. Underlying player instance (singleton)
+;; =============================================================================
+(def ^:private audio-player (ap/AudioPlayer.))
+
+;; =============================================================================
+;; 3. Core listeners: convert Dart streams into reactive atoms
+;; =============================================================================
+(defn- init-listeners! 
+  "Initialize player event listeners, executed once when the service loads"
+  []
+  ;; Listen for player state changes (Playing, Paused, Completed, etc.)
+  (-> audio-player .-onPlayerStateChanged
+      (.listen (fn [^ap/PlayerState state]
+                 (let [status (cond
+                                (= state ap/PlayerState.playing)   :playing
+                                (= state ap/PlayerState.paused)    :paused
+                                (= state ap/PlayerState.completed) :completed
+                                :else :stopped)]
+                   (swap! player-state assoc :status status)
+                   
+                   ;; When playback is completed, we can auto-play the next chapter
+                   (when (= status :completed)
+                     ;; 这里可以调用 (next!) 自动连播，但需要先声明 next!，为避免循环依赖，可用延迟调用或分派
+                     (dart:core/print "🎵 当前章节播放结束"))))))
+
+  ;; Listen for current playback position (fires every few hundred milliseconds)
+  (-> audio-player .-onPositionChanged
+      (.listen (fn [^dart:core/Duration d]
+                 (swap! player-state assoc :position (.-inSeconds d)))))
+
+  ;; Listen for total duration (usually fires once when audio is loaded)
+  (-> audio-player .-onDurationChanged
+      (.listen (fn [^dart:core/Duration d]
+                 (when d
+                   (swap! player-state assoc :duration (.-inSeconds d)))))))
+
+;; Initialize listeners immediately when the namespace is loaded
+(init-listeners!)
+
+;; =============================================================================
+;; 4. Public control APIs (UI layer only calls these)
+;; =============================================================================
+
+(defn load-chapter! 
+  "Load and play a specific chapter"
+  [book chapter audio-url & {:keys [playlist index] :or {playlist [] index 0}}]
+  ;; 1. Put UI into loading state and reset progress
+  (swap! player-state assoc
+         :current-book book
+         :current-chapter chapter
+         :playlist playlist
+         :current-index index
+         :status :loading
+         :position 0
+         :duration (:duration_seconds chapter 0))
+  
+  ;; 2. Command the underlying player to load and play the URL
+  ;; (UrlSource automatically handles buffering network audio)
+  (.play audio-player (ap/UrlSource. audio-url)))
+
+(defn toggle-play! 
+  "Toggle between play and pause"
+  []
+  (let [status (:status @player-state)]
+    (if (= status :playing)
+      (.pause audio-player)
+      (.resume audio-player))))
+
+(defn seek! 
+  "Seek to the specified second (used by the slider)"
+  [seconds]
+  (let [target-duration (dart:core/Duration. .seconds (int seconds))]
+    (.seek audio-player target-duration)))
+
+(defn next! 
+  "Play the next chapter (depends on playlist state)"
+  []
+  (let [{:keys [playlist current-index current-book]} @player-state
+        next-idx (inc current-index)]
+    (if (< next-idx (count playlist))
+      (let [next-chapter (nth playlist next-idx)]
+        (load-chapter! current-book next-chapter (:audio_url next-chapter) 
+                       :playlist playlist :index next-idx))
+      (dart:core/print "🚫 Already at the last chapter"))))
+
+(defn prev! 
+  "Play the previous chapter"
+  []
+  (let [{:keys [playlist current-index current-book]} @player-state
+        prev-idx (dec current-index)]
+    (if (>= prev-idx 0)
+      (let [prev-chapter (nth playlist prev-idx)]
+        (load-chapter! current-book prev-chapter (:audio_url prev-chapter) 
+                       :playlist playlist :index prev-idx))
+      ;; If already at the first chapter, reset progress to 0
+      (seek! 0))))
+
+;; =============================================================================
+;; 5. Extended feature: background progress sync (pseudo code example)
+;; =============================================================================
+(defn sync-progress-to-server! 
+  "Sync current playback progress to the backend (e.g. when leaving the page or via a timer)"
+  []
+  (let [{:keys [current-chapter position]} @player-state]
+    (when (and current-chapter (> position 10))
+      (gql/mutate "mutation SyncProgress($id: ID!, $pos: Int!) { ... }" 
+                  {:id (:id current-chapter) :pos position}))))

@@ -1,0 +1,72 @@
+(ns audio-app.pages.library
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]
+            [audio-app.state :as state]
+            [audio-app.services.library :as srv]
+            [audio-app.components.media :as media]
+            [audio-app.components.layout :as layout]
+            [audio-app.components.cards :as cards]
+            [audio-app.components.status :as status]
+            [audio-app.pages.book-detail :as book-detail]))
+
+;; =============================================================================
+;; 1. Pure render components: book cards and horizontal list with empty state
+;; =============================================================================
+(defn- library-book-card 
+  [book ctx]
+  (m/GestureDetector
+   .onTap (fn [] 
+            (m/Navigator.push ctx (m/MaterialPageRoute .builder (fn [_] (book-detail/page book))))
+            nil)
+   .child (cards/book-card book :width 140.0 :height double/infinity :border-radius 12.0 :title-font-size 18.0)))
+
+(defn- build-h-list-with-empty 
+  "Build a horizontal list. When items are empty, show a centered Mongolian placeholder."
+  [items empty-msg ctx]
+  (m/Expanded
+   .child (if (empty? items)
+            (status/empty-center empty-msg)
+            (m/ListView.builder
+             .scrollDirection m/Axis.horizontal
+             .physics (m/AlwaysScrollableScrollPhysics.) 
+             .padding (m/EdgeInsets.all 24.0)
+             .itemCount (count items)
+             .itemBuilder (f/build [i] (library-book-card (nth items i) ctx))))))
+
+;; =============================================================================
+;; 2. Main page (driven by global state)
+;; =============================================================================
+(defn page []
+  (f/widget
+   :context ctx
+   :get {{{:flds [surface onSurface outlineVariant]} .-colorScheme} m/Theme}
+   :watch [{:keys [recent-books favorite-books loading? error]} state/library-state]
+
+   (m/Scaffold
+    .backgroundColor surface
+    .appBar (m/AppBar .backgroundColor surface .elevation 0)
+    .body
+    (cond
+      (and loading? (empty? recent-books) (empty? favorite-books))
+      (status/loading-center)
+
+      (and error (empty? recent-books) (empty? favorite-books))
+      (status/error-with-retry {:on-retry #(srv/load-data! state/library-state)})
+
+      :else
+      (m/Column
+       .children
+       [(m/Expanded
+         .flex 1
+         .child (layout/gallery-section "ᠦᠷᠭᠦᠯᠵᠢᠯᠡᠨ ᠰᠣᠨᠣᠰᠬᠤ"
+                                        (build-h-list-with-empty recent-books "ᠣᠳᠣᠬᠠᠨ ᠳᠤ ᠪᠠᠶᠢᠬᠤ ᠦᠭᠡᠢ" ctx)))
+
+        (m/Padding
+         .padding (m/EdgeInsets.symmetric .horizontal 24.0)
+         .child (m/Divider .color outlineVariant .height 1.0))
+
+        (m/Expanded
+         .flex 1
+         .child (layout/gallery-section "ᠮᠢᠨᠦ ᠰᠠᠩ"
+                                        (build-h-list-with-empty favorite-books "ᠬᠣᠭᠣᠰᠤᠨ ᠪᠠᠶᠢᠨ᠎ᠠ" ctx)))])))))

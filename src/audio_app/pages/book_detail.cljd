@@ -1,0 +1,167 @@
+(ns audio-app.pages.book-detail
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]
+            [audio-app.services.book :as srv]
+            [audio-app.components.media :as media]
+            [audio-app.components.layout :as layout]
+            [audio-app.services.player :as player]
+            [audio-app.pages.player-full :as pf]))
+
+;; =============================================================================
+;; 1. Chapter card component (adaptive size, no hard-coded constraints)
+;; =============================================================================
+(defn- chapter-card-tile 
+  [book chapter ctx]
+  (f/widget
+   :get {{{:flds [primary surfaceContainerHighest onSurfaceVariant]} .-colorScheme} m/Theme}
+   
+   (m/Center
+    .child
+    (m/Container
+     .margin (m/EdgeInsets.only .right 20.0)
+     .decoration (m/BoxDecoration 
+                  .color surfaceContainerHighest
+                  .borderRadius (m/BorderRadius.circular 20.0)
+                  .border (m/Border.all .color (.withOpacity m/Colors.grey 0.15)))
+     .child
+     (m/InkWell
+      .onTap (fn []
+               (let [chapters (:chapters book)
+                     idx (first (keep-indexed #(when (= (:id %2) (:id chapter)) %1) chapters))]
+                 (player/load-chapter! book chapter (:audio_url chapter)
+                                       :playlist (or chapters [])
+                                       :index (or idx 0))
+                 (m/Navigator.push
+                  ctx
+                  (m/MaterialPageRoute
+                   .builder (fn [_] (pf/player-page book (or (:segments chapter) []))))))
+               nil)
+      .borderRadius (m/BorderRadius.circular 20.0)
+      .child (m/Padding
+              .padding (m/EdgeInsets.symmetric .horizontal 20.0 .vertical 28.0)
+              .child (m/Column
+                      .mainAxisSize m/MainAxisSize.min
+                      .crossAxisAlignment m/CrossAxisAlignment.center
+                      .children
+                      [
+                       (m/Container
+                        .padding (m/EdgeInsets.all 12.0)
+                        .decoration (m/BoxDecoration .color (.withOpacity primary 0.1) .shape m/BoxShape.circle)
+                        .child (m/Icon m/Icons.play_arrow .color primary .size 28.0))
+                       
+                       (m/SizedBox .height 24.0)
+                       
+                       (m/Row
+                        .mainAxisSize m/MainAxisSize.min
+                        .crossAxisAlignment m/CrossAxisAlignment.start
+                        .children
+                        [(mgl/MongolText (:title chapter) 
+                                         .style (m/TextStyle .fontSize 18.0 .fontWeight m/FontWeight.w600))
+                         (m/SizedBox .width 12.0)
+                         (mgl/MongolText (str (quot (:duration_seconds chapter 0) 60) " min")
+                                         .style (m/TextStyle .color onSurfaceVariant .fontSize 14.0))])])))))))
+
+;; =============================================================================
+;; 2. Main page (driven by local state)
+;; =============================================================================
+(defn page 
+  "Book detail page. Uses incoming book-summary for instant header render, then loads full detail asynchronously."
+  [book-summary]
+  (let [detail-state (atom {:loading? true :error nil :data nil})]
+    
+    (srv/load-detail! detail-state (:id book-summary))
+    
+    (f/widget
+     :context ctx
+     :get {{{:flds [surface onSurface]} .-colorScheme} m/Theme}
+     :watch [{:keys [loading? error data]} detail-state]
+     
+     (m/Scaffold
+      .backgroundColor surface
+      .appBar (m/AppBar 
+               .backgroundColor m/Colors.transparent 
+               .elevation 0
+               .leading (m/IconButton .icon (m/Icon m/Icons.arrow_back_ios) 
+                                      .color onSurface
+                                      .onPressed (fn []
+                                                   (m/Navigator.pop ctx)
+                                                   nil)))
+      .body
+      (m/CustomScrollView
+       .scrollDirection m/Axis.horizontal
+       .physics (m/BouncingScrollPhysics.)
+       .slivers
+       [
+        (m/SliverToBoxAdapter
+         .child
+         (m/Padding
+          .padding (m/EdgeInsets.only .left 32.0 .right 40.0 .bottom 32.0 .top 16.0)
+          .child (m/Row
+                  .crossAxisAlignment m/CrossAxisAlignment.start
+                  .children
+                  [
+                   (media/hero-cover (:id book-summary) (:cover_url book-summary) 
+                                     :width 240.0 :height 360.0 :border-radius 16.0)
+                   
+                   (m/SizedBox .width 32.0)
+                   
+                   (m/SizedBox 
+                    .height 360.0
+                    .child (mgl/MongolText (:title book-summary)
+                                           .style (m/TextStyle .fontSize 36.0 .height 1.2 .fontWeight m/FontWeight.bold)))
+                   
+                   (m/SizedBox .width 24.0)
+                   
+                   (if (and data (not error))
+                     (m/SizedBox
+                      .height 360.0
+                      .child (m/Row
+                              .children
+                              [(mgl/MongolText (str "ᠵᠣᠬᠢᠶᠠᠭᠴᠢ: " (get-in data [:author :name]))
+                                               .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))
+                               (m/SizedBox .width 20.0)
+                               (mgl/MongolText (str "ᠤᠩᠰᠢᠭᠴᠢ: " (get-in data [:reciter :name]))
+                                               .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))]))
+                     (m/SizedBox.shrink))
+                   ])))
+        
+        (m/SliverToBoxAdapter
+         .child (cond
+                  error    (m/Center .child (m/Text "Load failed"))
+                  loading? (m/Container .width 100.0 .child (m/Center .child (m/CircularProgressIndicator)))
+                  (:description data)
+                  (m/Container
+                   .height 360.0
+                   .padding (m/EdgeInsets.only .right 48.0 .top 16.0)
+                   .child (mgl/MongolText (:description data) 
+                                          .style (m/TextStyle .fontSize 18.0 .height 1.8 .color onSurface)))
+                  :else (m/SizedBox.shrink)))
+
+        (if (and (not loading?) (not error) (seq (:chapters data)))
+          (m/SliverToBoxAdapter
+           .child
+           (m/Padding
+            .padding (m/EdgeInsets.only .right 24.0 .left 24.0 .bottom 32.0 .top 16.0)
+            .child (m/Row
+                    .children
+                    [(layout/v-divider :height 360.0)
+                     (m/SizedBox .width 24.0)
+                     (m/SizedBox
+                      .height 360.0
+                      .child (mgl/MongolText "ᠪᠦᠯᠦᠭ\nᠭᠠᠷᠴᠠᠭ"
+                                             .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold .letterSpacing 2.0)))])))
+          (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
+
+        (if (and (not loading?) (not error) (seq (:chapters data)))
+          (m/SliverList
+           .delegate (m/SliverChildBuilderDelegate
+                      (f/build [i]
+                               (m/Padding
+                                .padding (m/EdgeInsets.only .bottom 32.0 .top 16.0)
+                                .child (chapter-card-tile data (nth (:chapters data) i) ctx)))
+                      .childCount (count (:chapters data))))
+          (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
+        
+        (m/SliverToBoxAdapter .child (m/SizedBox .width 160.0))
+        ])))))

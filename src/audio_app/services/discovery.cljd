@@ -1,0 +1,28 @@
+(ns audio-app.services.discovery
+  (:require [audio-app.services.gql :as gql]))
+
+(def discovery-query
+  "query GetDiscoveryData {
+     hotAuthors { id name avatar_url }
+     hotBooks { id title cover_url author { name } }
+   }")
+
+(defn load-data! 
+  "Fetch discovery (hot) data and automatically update the provided state-atom"
+  [state-atom]
+  ;; 1. Enter loading state (clear previous errors)
+  (swap! state-atom assoc :loading? true :error nil)
+  
+  ;; 2. Send request and handle result with .then
+  (-> (gql/query discovery-query)
+      (.then (fn [resp]
+               (if (:error resp)
+                 (swap! state-atom assoc :loading? false :error (:error resp))
+                 ;; On success: extract data and update state
+                 (swap! state-atom assoc
+                        :loading? false
+                        :initialized? true
+                        :authors  (get-in resp [:hotAuthors] [])
+                        :books    (get-in resp [:hotBooks] [])))))
+      (.catchError (fn [e]
+                     (swap! state-atom assoc :loading? false :error e)))))

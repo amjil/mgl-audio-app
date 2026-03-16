@@ -1,0 +1,50 @@
+(ns audio-app.components.button
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [components.text :as text]
+            [cljd.flutter :as f]))
+
+;; =============================================================================
+;; 1. Vertical action button
+;; =============================================================================
+
+(defn v-action-btn
+  "Unified vertical action button for the whole app, with M3 color states.
+   - text: Mongolian label text shown on the button.
+   - on-tap: callback when pressed.
+   - icon: (optional) leading icon.
+   - is-active?: (optional) state flag.
+     * false (default): use primary color, representing primary actions (play, follow, etc.).
+     * true: use secondaryContainer color, representing active/secondary state (pause, already followed, etc.)."
+  [ctx text on-tap & {:keys [icon is-active?] :or {is-active? false}}]
+  (f/widget
+   :context ctx
+   :get {{{:flds [primary surface secondaryContainer onSecondaryContainer]} .-colorScheme
+          {:flds [labelLarge]} .-textTheme} m/Theme}
+   (let [bg-color (if is-active? secondaryContainer primary)
+         fg-color (if is-active? onSecondaryContainer surface)]
+     (mgl/MongolElevatedButton
+      .style (m/ElevatedButton.styleFrom
+              .backgroundColor bg-color
+              .foregroundColor fg-color
+              .elevation (if is-active? 0.0 2.0)
+              .padding (m/EdgeInsets.symmetric .horizontal 20.0 .vertical 16.0)
+              .shape (m/RoundedRectangleBorder
+                      .borderRadius (m/BorderRadius.circular 24.0)))
+      .onPressed on-tap
+      .child (if icon
+               (m/Row
+                .mainAxisSize m/MainAxisSize.min
+                .children
+                [(m/Icon icon .size 18.0)
+                 (m/SizedBox .width 8.0)
+                 (text/text-block
+                  {:text text
+                   :style (.copyWith labelLarge
+                                    .color fg-color
+                                    .fontWeight m/FontWeight.bold)})])
+               (text/text-block
+                {:text text
+                 :style (.copyWith labelLarge
+                                  .color fg-color
+                                  .fontWeight m/FontWeight.bold)}))))))

@@ -1,0 +1,135 @@
+(ns audio-app.pages.player-full
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]
+            ;; 引入底层 UI 组件
+            [audio-app.components.media :as media]
+            [audio-app.components.transcript :as transcript]
+            ;; 引入播放器业务逻辑与全局状态
+            [audio-app.services.player :as player]))
+
+;; =============================================================================
+;; 1. Helper: time formatting
+;; =============================================================================
+(defn- format-time 
+  "Convert seconds into MM:SS format"
+  [seconds]
+  (let [s (int (or seconds 0))
+        m (quot s 60)
+        rs (rem s 60)]
+    (str (.padLeft (.toString m) 2 "0") ":" (.padLeft (.toString rs) 2 "0"))))
+
+;; =============================================================================
+;; 2. Fullscreen player main page
+;; =============================================================================
+(defn player-page 
+  "Fullscreen immersive player.
+   Receives `book` and `segments` from the detail page.
+   Progress and controls are fully driven by the reactive global `player-state`."
+  [book segments]
+  (f/widget
+   :context ctx
+   :get {{{:flds [surface onSurface primary outlineVariant surfaceContainerHighest]} .-colorScheme} m/Theme}
+   
+   ;; 💡 核心：纯粹监听全局的播放器状态
+   :watch [{:keys [status position duration]} player/player-state]
+   
+   (m/Scaffold
+    .backgroundColor surface
+    
+    ;; Top app bar: transparent background + down arrow (hinting this page can be dismissed)
+    .appBar (m/AppBar
+             .backgroundColor m/Colors.transparent
+             .elevation 0
+             .leading (m/IconButton
+                       .icon (m/Icon m/Icons.keyboard_arrow_down .size 32.0)
+                       .color onSurface
+                       .onPressed (fn []
+                                    (m/Navigator.pop ctx)
+                                    nil)))
+    .body
+    (m/Padding
+     .padding (m/EdgeInsets.symmetric .horizontal 32.0 .vertical 16.0)
+     .child
+     (m/Column
+      .children
+      [
+       ;; ==========================================
+       ;; 1. Cover display (Hero animation for seamless scale-up)
+       ;; ==========================================
+       (m/Expanded
+        .flex 4
+        .child (m/Center
+                .child (media/hero-cover (:id book) (:cover_url book) 
+                                         :width 280.0 :height 280.0 :border-radius 24.0)))
+       
+       (m/SizedBox .height 40.0)
+       
+       ;; ==========================================
+       ;; 2. Synchronized transcript area (scrolling canvas)
+       ;; ==========================================
+       (m/Expanded
+        .flex 3
+        ;; Pass the current playback seconds (position) to transcript for auto highlight
+        .child (transcript/sync-view segments position))
+       
+       (m/SizedBox .height 24.0)
+       
+       ;; ==========================================
+       ;; 3. Progress bar and time display
+       ;; ==========================================
+       (m/Column
+        .children
+        [
+         (m/Slider
+          .value (double (or position 0))
+          ;; Defensive: if duration not loaded yet, use 1.0 to avoid errors
+          .max (double (if (and duration (> duration 0)) duration 1.0))
+          .activeColor primary
+          .inactiveColor surfaceContainerHighest
+          ;; Dragging the slider directly calls the service layer
+          .onChanged (fn [v] (player/seek! v)))
+         
+         (m/Padding
+          .padding (m/EdgeInsets.symmetric .horizontal 24.0)
+          .child (m/Row
+                  .mainAxisAlignment m/MainAxisAlignment.spaceBetween
+                  .children
+                  [(m/Text (format-time position) 
+                           .style (m/TextStyle .color outlineVariant .fontFamily "Courier" .fontWeight m/FontWeight.w600))
+                   (m/Text (format-time duration) 
+                           .style (m/TextStyle .color outlineVariant .fontFamily "Courier" .fontWeight m/FontWeight.w600))]))])
+       
+       (m/SizedBox .height 40.0)
+       
+       ;; ==========================================
+       ;; 4. Playback control center
+       ;; ==========================================
+       (m/Row
+        .mainAxisAlignment m/MainAxisAlignment.spaceEvenly
+        .crossAxisAlignment m/CrossAxisAlignment.center
+        .children
+        [
+        ;; Previous track
+         (m/IconButton .icon (m/Icon m/Icons.skip_previous) .iconSize 48.0 .color onSurface 
+                       .onPressed #(player/prev!))
+         
+        ;; Play / pause (primary button)
+         (m/GestureDetector
+          .onTap #(player/toggle-play!)
+          .child (m/Container
+                  .padding (m/EdgeInsets.all 24.0)
+                  .decoration (m/BoxDecoration 
+                               .color primary 
+                               .shape m/BoxShape.circle
+                               .boxShadow [(m/BoxShadow .color (.withOpacity primary 0.3) 
+                                                        .blurRadius 20.0 .offset (m/Offset 0.0 10.0))])
+                  ;; Toggle icon according to status
+                  .child (m/Icon (if (= status :playing) m/Icons.pause m/Icons.play_arrow) 
+                                 .color surface .size 48.0)))
+         
+        ;; Next track
+         (m/IconButton .icon (m/Icon m/Icons.skip_next) .iconSize 48.0 .color onSurface 
+                       .onPressed #(player/next!))])
+         
+       (m/SizedBox .height 48.0)])))))

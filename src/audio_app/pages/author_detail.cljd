@@ -1,0 +1,117 @@
+(ns audio-app.pages.author-detail
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]
+            [audio-app.services.author :as srv]
+            [audio-app.components.media :as media]
+            [audio-app.components.layout :as layout]
+            [audio-app.pages.book-detail :as book-detail]))
+
+;; =============================================================================
+;; 1. Child component: book card used in author detail page
+;; =============================================================================
+(defn- author-book-card 
+  [book ctx]
+  (m/GestureDetector
+   .onTap (fn [] 
+            (m/Navigator.push ctx (m/MaterialPageRoute .builder (fn [_] (book-detail/page book))))
+            nil) 
+   .child (m/Container
+           .width 160.0
+           .margin (m/EdgeInsets.only .right 24.0)
+           .child (m/Column
+                   .crossAxisAlignment m/CrossAxisAlignment.start
+                   .children
+                   [(m/Expanded 
+                     .flex 3 
+                     .child (media/hero-cover (:id book) (:cover_url book) 
+                                              :width 160.0 :height dart:core/double.infinity :border-radius 16.0))
+                    (m/SizedBox .height 16.0)
+                    (m/Expanded 
+                     .flex 2 
+                     .child (m/ClipRect 
+                             .child (mgl/MongolText (:title book) 
+                                                    .style (m/TextStyle .fontSize 20.0 .fontWeight m/FontWeight.w600))))]))))
+
+;; =============================================================================
+;; 2. Main page (driven by per-entry local state)
+;; =============================================================================
+(defn page 
+  "Receive author summary from previous page to instantly render Hero animation."
+  [author-summary]
+  (let [detail-state (atom {:loading? true :error nil :data nil})]
+    
+    (srv/load-detail! detail-state (:id author-summary))
+    
+    (f/widget
+     :context ctx
+     :get {{{:flds [surface onSurface outlineVariant]} .-colorScheme} m/Theme}
+     :watch [{:keys [loading? error data]} detail-state]
+     
+     (m/Scaffold
+      .backgroundColor surface
+      .appBar (m/AppBar 
+               .backgroundColor m/Colors.transparent .elevation 0
+               .leading (m/IconButton .icon (m/Icon m/Icons.arrow_back_ios) 
+                                      .color onSurface
+                                      .onPressed (fn [] 
+                                                   (m/Navigator.pop ctx)
+                                                   nil)))
+      .body
+      (m/CustomScrollView
+       .scrollDirection m/Axis.horizontal
+       .physics (m/BouncingScrollPhysics.)
+       .slivers
+       [
+        (m/SliverToBoxAdapter
+         .child
+         (m/Padding
+          .padding (m/EdgeInsets.only .left 32.0 .right 40.0 .bottom 32.0 .top 16.0)
+          .child (m/Row
+                  .crossAxisAlignment m/CrossAxisAlignment.start
+                  .children
+                  [(media/hero-avatar (:id author-summary) (:avatar_url author-summary) :radius 80.0)
+                   (m/SizedBox .width 40.0)
+                   (m/SizedBox 
+                    .height 360.0
+                    .child (mgl/MongolText (:name author-summary)
+                                           .style (m/TextStyle .fontSize 40.0 .height 1.2 .fontWeight m/FontWeight.bold)))])))
+        
+        (m/SliverToBoxAdapter
+         .child (cond
+                  error    (m/Center .child (m/Text "Load failed"))
+                  loading? (m/Container .width 100.0 .child (m/Center .child (m/CircularProgressIndicator)))
+                  (:bio data)
+                  (m/Container
+                   .height 360.0
+                   .padding (m/EdgeInsets.only .right 48.0 .top 16.0)
+                   .child (mgl/MongolText (:bio data) 
+                                          .style (m/TextStyle .fontSize 18.0 .height 1.8 .color onSurface)))
+                  :else (m/SizedBox.shrink)))
+
+        (if (and (not loading?) (not error) (seq (:books data)))
+          (m/SliverToBoxAdapter
+           .child
+           (m/Padding
+            .padding (m/EdgeInsets.only .right 24.0 .left 24.0 .bottom 32.0 .top 16.0)
+            .child (m/Row
+                    .children
+                    [(layout/v-divider :height 360.0)
+                     (m/SizedBox .width 24.0)
+                     (m/SizedBox
+                      .height 360.0
+                      .child (mgl/MongolText "ᠲᠡᠭᠦᠨ ᠦ\nᠪᠦᠲᠦᠭᠡᠯ"
+                                             .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold .letterSpacing 2.0)))])))
+          (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
+
+        (if (and (not loading?) (not error) (seq (:books data)))
+          (m/SliverList
+           .delegate (m/SliverChildBuilderDelegate
+                      (f/build [i]
+                               (m/Padding
+                                .padding (m/EdgeInsets.only .bottom 32.0 .top 16.0)
+                                .child (author-book-card (nth (:books data) i) ctx)))
+                      .childCount (count (:books data))))
+          (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
+        
+        (m/SliverToBoxAdapter .child (m/SizedBox .width 160.0))])))))

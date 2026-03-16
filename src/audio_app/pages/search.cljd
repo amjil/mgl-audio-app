@@ -1,0 +1,109 @@
+(ns audio-app.pages.search
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]
+            [audio-app.state :as state]
+            [audio-app.services.search :as srv]
+            [audio-app.components.media :as media]
+            [audio-app.components.layout :as layout]
+            [audio-app.components.cards :as cards]
+            [audio-app.components.status :as status]
+            [audio-app.pages.book-detail :as book-detail]
+            [components.search-bar :as search-bar]
+            [components.input-dialog :as input-dialog]))
+
+;; =============================================================================
+;; 1. Open virtual keyboard and input dialog
+;; =============================================================================
+(defn- open-search-dialog 
+  [ctx keyword-atom]
+  (m/showDialog
+   .context ctx
+   .builder
+   (fn [dialog-ctx]
+     (input-dialog/generic-input-dialog
+      {:hint "ᠬᠠᠶᠢᠬᠤ ᠦᠭᠡ ᠪᠡᠨ ᠣᠷᠣᠭᠤᠯᠤᠭᠠᠷᠠᠢ"
+       :initial-text @keyword-atom
+       :on-submit (fn [text]
+                    (reset! keyword-atom text)
+                    (-> (m/Navigator.of dialog-ctx) (.pop))
+                    (when-not (empty? text)
+                      (srv/load-page! state/search-list-state text 10 true)))}))))
+
+;; =============================================================================
+;; 2. Main search page
+;; =============================================================================
+(defn page []
+  (let [keyword-atom (atom "")]
+    (f/widget
+     :context ctx
+     :get {{{:flds [surface onSurface outlineVariant]} .-colorScheme} m/Theme}
+     :managed [scroll-ctrl (as-> (m/ScrollController.) ctrl
+                             (doto ctrl
+                               (.addListener
+                                (fn []
+                                  (when (>= (.-pixels (.-position ctrl))
+                                            (- (.-maxScrollExtent (.-position ctrl)) 200))
+                                    (when-not (empty? @keyword-atom)
+                                      (srv/load-page! state/search-list-state @keyword-atom 10 false)))))))]
+     :watch [keyword-val keyword-atom
+             {:keys [items loading? has-more? error]} state/search-list-state]
+     
+     (m/Scaffold
+      .backgroundColor surface
+      .body
+      (m/SafeArea
+       .child
+       (m/Row
+        .crossAxisAlignment m/CrossAxisAlignment.start
+        .children
+        [
+         (m/Container
+          .width 100.0
+          .padding (m/EdgeInsets.only .left 24.0 .top 24.0 .bottom 24.0 .right 16.0)
+          .child (search-bar/fake-search-bar
+                  {:state-atom keyword-atom
+                   :label "ᠬᠠᠶᠢᠬᠤ"
+                   :on-tap #(open-search-dialog ctx keyword-atom)}))
+         
+         (layout/v-divider)
+         
+         (m/Expanded
+          .child 
+          (cond
+            (and loading? (empty? items))
+            (status/loading-center)
+            
+            (and (not loading?) (empty? items) (not error))
+            (status/empty-center
+             (if (empty? keyword-val) 
+               "ᠬᠠᠶᠢᠬᠤ ᠦᠭᠡ ᠪᠡᠨ ᠣᠷᠣᠭᠤᠯᠤᠭᠠᠷᠠᠢ"
+               "ᠣᠳᠣᠬᠠᠨ ᠳᠤ ᠪᠠᠶᠢᠬᠤ ᠦᠭᠡᠢ"))
+            
+            :else
+            (m/ListView.builder
+             .controller scroll-ctrl
+             .scrollDirection m/Axis.horizontal
+             .physics (m/BouncingScrollPhysics.)
+             .padding (m/EdgeInsets.all 24.0)
+             .itemCount (inc (count items))
+             .itemBuilder
+             (f/build [i]
+               (if (= i (count items))
+                 (m/Container
+                  .width 80.0
+                  .child (m/Center
+                          .child
+                          (cond
+                            error     (m/Text "Load failed" .style (m/TextStyle .color m/Colors.red))
+                            loading?  (m/CircularProgressIndicator .strokeWidth 2.0)
+                            has-more? (m/SizedBox.shrink)
+                            :else     (mgl/MongolText "ᠡᠴᠦᠰ ᠲᠦ ᠬᠦᠷᠴᠡᠢ"
+                                                      .style (m/TextStyle .color outlineVariant)))))
+                 
+                 (let [book (nth items i)]
+                   (m/GestureDetector
+                    .onTap (fn [] 
+                             (m/Navigator.push ctx (m/MaterialPageRoute .builder (fn [_] (book-detail/page book))))
+                             nil) 
+                    .child (cards/book-card book :width 140.0 :height double/infinity :border-radius 12.0 :title-font-size 18.0))))))))]))))))

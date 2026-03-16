@@ -1,0 +1,32 @@
+(ns audio-app.components.cards
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [audio-app.components.media :as media]))
+
+;; =============================================================================
+;; 1. Generic book card used across discovery/library/search
+;; =============================================================================
+(defn book-card
+  "Horizontal book card (cover + vertical title).
+   Options:
+   - :width, :height, :border-radius
+   - :title-font-size"
+  [book & {:keys [width height border-radius title-font-size]
+           :or {width 140.0 height double/infinity border-radius 12.0 title-font-size 18.0}}]
+  (m/Container
+   .width width
+   .margin (m/EdgeInsets.only .right 24.0)
+   .child (m/Column
+           .children
+           [(m/Expanded
+             .flex 3
+             .child (media/hero-cover (:id book) (:cover_url book)
+                                      :width width :height height :border-radius border-radius))
+            (m/SizedBox .height 16.0)
+            (m/Expanded
+             .flex 2
+             .child (m/ClipRect
+                     .child (mgl/MongolText (:title book)
+                                            .style (m/TextStyle .fontSize title-font-size
+                                                                .fontWeight m/FontWeight.w600))))])))
+

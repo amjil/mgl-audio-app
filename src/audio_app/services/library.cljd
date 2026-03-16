@@ -1,0 +1,27 @@
+(ns audio-app.services.library
+  (:require [audio-app.services.gql :as gql]))
+
+(def get-library-query
+  "query GetMyLibrary {
+     my_library {
+       recent_books { id title cover_url author { name } }
+       favorite_books { id title cover_url author { name } }
+     }
+   }")
+
+(defn load-data! 
+  "Fetch library data and update the global state-atom"
+  [state-atom]
+  (swap! state-atom assoc :loading? true :error nil)
+  
+  (-> (gql/query get-library-query)
+      (.then (fn [resp]
+               (if (:error resp)
+                 (swap! state-atom assoc :loading? false :error (:error resp))
+                 (swap! state-atom assoc
+                        :loading? false
+                        :initialized? true
+                        :recent-books   (get-in resp [:my_library :recent_books] [])
+                        :favorite-books (get-in resp [:my_library :favorite_books] [])))))
+      (.catchError (fn [e]
+                     (swap! state-atom assoc :loading? false :error e)))))

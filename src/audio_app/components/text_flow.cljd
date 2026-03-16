@@ -1,0 +1,34 @@
+(ns audio-app.components.text-flow
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]))
+
+;; =============================================================================
+;; Core component: horizontal flow text
+;; =============================================================================
+
+(defn h-flow-text
+  "Limit container height so that vertical Mongolian text automatically wraps into a new column to the right.
+   - text: Mongolian string to display.
+   - height-ratio: fraction of screen height (e.g. 0.6 means 60% of screen height).
+   - style-override: optional TextStyle override."
+  [ctx text height-ratio & {:keys [style-override]}]
+  (f/widget
+   :context ctx
+   :get {{{:flds [height]} .-size} m/MediaQuery
+         {{:flds [onSurfaceVariant]} .-colorScheme
+          {:flds [bodyLarge]} .-textTheme} m/Theme}
+
+   (m/Container
+    ;; 1. Key: limit height to trigger MongolText’s column-wrapping-to-right behavior
+    .height (* height height-ratio)
+    ;; Give text some breathing room to avoid touching edges
+    .padding (m/EdgeInsets.symmetric .horizontal 8.0)
+    .child (mgl/MongolText
+            text
+            .style (or style-override
+                       (.copyWith bodyLarge
+                                  .color onSurfaceVariant
+                                  ;; 2. 适当的行高（在蒙古文中即为列间距）
+                                  .height 1.6
+                                  .letterSpacing 0.5))))))

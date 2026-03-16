@@ -1,0 +1,26 @@
+(ns audio-app.services.author
+  (:require [audio-app.services.gql :as gql]))
+
+(def get-author-details-query
+  "query GetAuthorDetails($id: ID!) {
+     author(id: $id) {
+       id
+       bio
+       books {
+         id
+         title
+         cover_url
+       }
+     }
+   }")
+
+(defn load-detail! 
+  "Fetch author details and write data into the provided local state atom"
+  [state-atom author-id]
+  (-> (gql/query get-author-details-query {:id author-id})
+      (.then (fn [resp]
+               (if (:error resp)
+                 (swap! state-atom assoc :loading? false :error (:error resp))
+                 (swap! state-atom assoc :loading? false :data (:author resp)))))
+      (.catchError (fn [e]
+                     (swap! state-atom assoc :loading? false :error e)))))

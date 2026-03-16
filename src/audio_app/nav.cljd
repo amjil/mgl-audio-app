@@ -1,0 +1,12 @@
+(ns audio-app.nav
+  (:require [audio-app.state :as state]))
+
+;; Global navigation: use root-refresh-atom to rebuild the root widget so that
+;; FutureBuilder re-runs get-token and switches between
+;; “has token → main layout” and “no token → login page”.
+
+(defn go-to-login! []
+  (swap! state/root-refresh-atom inc))
+
+(defn go-to-main-layout! []
+  (swap! state/root-refresh-atom inc))

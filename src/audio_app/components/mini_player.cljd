@@ -1,0 +1,89 @@
+(ns audio-app.components.mini-player
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]
+            [audio-app.services.player :refer [player-state toggle-play!]]
+            [audio-app.pages.player-full :refer [player-page]]
+            [audio-app.components.media :as media]))
+
+;; =============================================================================
+;; Global floating mini player: collapsed when idle, shows cover/title/progress/controls when playing
+;; =============================================================================
+
+(defn widget
+  "Global floating mini player. Listens to `player-state`.
+   Returns SizedBox.shrink when there is no `current-book`;
+   shows a 72px-high control bar when there is, and navigates to the fullscreen player (Hero cover transition) on tap."
+  []
+  (f/widget
+   :context ctx
+   :get {{{:flds [primary surfaceContainerHighest onSurface]} .-colorScheme} m/Theme}
+   :watch [{:keys [status position duration current-book current-chapter]} player-state]
+
+   (if (nil? current-book)
+     (m/SizedBox.shrink)
+
+     (let [pos-s (or position 0)
+           dur-s (or duration 1)
+           progress (if (pos? dur-s) (/ (double pos-s) (double dur-s)) 0.0)
+           segments (or (:segments current-chapter) [])
+           chapter-title (or (:title current-chapter) "")]
+
+       (m/GestureDetector
+        .onTap (fn []
+                 (m/Navigator.push
+                  ctx
+                  (m/MaterialPageRoute
+                   .fullscreenDialog true
+                   .builder (fn [_] (player-page current-book segments))))
+                 nil)
+
+        .child (m/Container
+                .height 72.0
+                .decoration (m/BoxDecoration
+                             .color surfaceContainerHighest
+                             .boxShadow [(m/BoxShadow
+                                          .color (.withOpacity m/Colors.black 0.05)
+                                          .blurRadius 8.0
+                                          .offset (m/Offset 0 -2.0))])
+                .child (m/Stack
+                        .children
+                        [
+                         ;; 1. Minimal progress bar (pinned at the bottom)
+                         (m/Positioned
+                          .bottom 0.0 .left 0.0 .right 0.0
+                          .child (m/LinearProgressIndicator
+                                  .value (float progress)
+                                  .backgroundColor m/Colors.transparent
+                                  .color primary
+                                  .minHeight 2.0))
+
+                         ;; 2. Core content area
+                         (m/Padding
+                          .padding (m/EdgeInsets.symmetric .horizontal 16.0 .vertical 8.0)
+                          .child (m/Row
+                                  .children
+                                  [
+                                   ;; Cover (Hero animation that flies into the fullscreen player)
+                                   (media/hero-cover (:id current-book)
+                                                    (or (:cover_url current-book) "https://picsum.photos/100")
+                                                    :width 48.0 :height 48.0)
+
+                                   (m/SizedBox .width 16.0)
+
+                                   ;; Book title and chapter title (Mongolian vertical layout, clipped when long)
+                                   (m/Expanded
+                                    .child (m/ClipRect
+                                            .child (mgl/MongolText
+                                                    (str (:title current-book) " - " chapter-title)
+                                                    .style (m/TextStyle
+                                                            .fontSize 16.0
+                                                            .color onSurface
+                                                            .fontWeight m/FontWeight.w500))))
+
+                                   ;; Play / pause
+                                   (m/IconButton
+                                    .icon (m/Icon (if (= status :playing) m/Icons.pause m/Icons.play_arrow))
+                                    .color primary
+                                    .iconSize 32.0
+                                    .onPressed toggle-play!)]))])))))))
