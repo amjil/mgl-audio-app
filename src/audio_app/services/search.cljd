@@ -2,8 +2,8 @@
   (:require [audio-app.services.gql :as gql]))
 
 (def search-query
-  "query SearchBooks($keyword: String!, $limit: Int!, $offset: Int!) {
-     search(keyword: $keyword, limit: $limit, offset: $offset) {
+  "query SearchBooks($query: String!, $limit: Int!, $offset: Int!) {
+     search_books(query: $query, limit: $limit, offset: $offset) {
        items { id title cover_url }
        has_next_page
      }
@@ -15,21 +15,20 @@
   (let [{:keys [loading? has-more? offset items]} @state-atom]
     (when (and (not loading?) (or has-more? is-refresh?))
       (let [current-offset (if is-refresh? 0 offset)]
-        
-        ;; 1. Enter loading state
         (swap! state-atom assoc :loading? true :error nil)
-        
-        ;; 2. Send request and handle result with .then
-        (-> (gql/query search-query {:keyword keyword :limit limit :offset current-offset})
-            (.then (fn [resp]
-                     (if (:error resp)
-                       (swap! state-atom assoc :loading? false :error (:error resp))
-                       (let [new-items (get-in resp [:search :items] [])
-                             next?     (get-in resp [:search :has_next_page] false)]
-                         (swap! state-atom assoc
-                                :loading? false
-                                :items    (if is-refresh? (vec new-items) (vec (concat items new-items)))
-                                :offset   (+ current-offset limit)
-                                :has-more? next?)))))
+        (-> (gql/query search-query {:query keyword :limit limit :offset current-offset})
+            (.then
+             (fn [resp]
+               (if (:error resp)
+                 (swap! state-atom assoc :loading? false :error (:error resp))
+                 (let [new-items (get-in resp [:search_books :items] [])
+                       next? (get-in resp [:search_books :has_next_page] false)]
+                   (swap! state-atom assoc
+                          :loading? false
+                          :items (if is-refresh?
+                                   (vec new-items)
+                                   (vec (concat items new-items)))
+                          :offset (+ current-offset limit)
+                          :has-more? next?)))))
             (.catchError (fn [e]
                            (swap! state-atom assoc :loading? false :error e))))))))

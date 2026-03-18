@@ -19,17 +19,51 @@
 (defn- clj->json-str 
   "Convert Clojure data structures safely to a JSON string."
   [clj-data]
-  ;; Ensure keys are strings before encoding
-  (let [dart-map (into {} (map (fn [[k v]] [(name k) v]) clj-data))]
-    (convert/jsonEncode dart-map)))
+  (letfn [(clj->encodable [x]
+            (cond
+              (nil? x) nil
+              ;; If already Dart containers, still deep-convert contents.
+              (dart/is? x dart/Map)
+              (dart/Map.fromEntries
+               (dart/List.from
+                (into []
+                      (for [[k v] x]
+                        (dart/MapEntry. (if (keyword? k) (name k) (str k))
+                                        (clj->encodable v))))))
+
+              (dart/is? x dart/List)
+              (dart/List.from (into [] (map clj->encodable x)))
+
+              (associative? x)
+              (dart/Map.fromEntries
+               (dart/List.from
+                (into []
+                      (for [[k v] x]
+                        (dart/MapEntry. (if (keyword? k) (name k) (str k))
+                                        (clj->encodable v))))))
+
+              (sequential? x)
+              (dart/List.from (into [] (map clj->encodable x)))
+
+              :else x))]
+    (convert/jsonEncode (clj->encodable clj-data))))
 
 (defn- json-str->clj 
   "Convert JSON string back into a Clojure map with keyword keys."
   [json-str]
-  (when json-str
-    (let [dart-map (convert/jsonDecode json-str)]
-      ;; Turn Dart string keys back into Clojure keyword keys
-      (into {} (map (fn [[k v]] [(keyword k) v]) (dart:core/Map.castFrom dart-map))))))
+  (letfn [(json->clj [x]
+            (cond
+              (dart/is? x dart/Map)
+              (into {} (for [[k v] x]
+                         [(keyword (str k)) (json->clj v)]))
+
+              (dart/is? x dart/List)
+              (mapv json->clj x)
+
+              :else x))]
+    (when json-str
+      (let [decoded (convert/jsonDecode json-str)]
+        (json->clj decoded)))))
 
 ;; =============================================================================
 ;; 2. Database lifecycle management

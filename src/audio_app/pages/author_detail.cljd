@@ -45,7 +45,7 @@
     
     (f/widget
      :context ctx
-     :get {{{:flds [surface onSurface outlineVariant]} .-colorScheme} m/Theme}
+     :get {{{:flds [surface onSurface]} .-colorScheme} m/Theme}
      :watch [{:keys [loading? error data]} detail-state]
      
      (m/Scaffold
@@ -79,7 +79,7 @@
         
         (m/SliverToBoxAdapter
          .child (cond
-                  error    (m/Center .child (m/Text "Load failed"))
+                  error    (m/Center .child (m/Text (str "Load failed: " (or (:message error) error))))
                   loading? (m/Container .width 100.0 .child (m/Center .child (m/CircularProgressIndicator)))
                   (:bio data)
                   (m/Container

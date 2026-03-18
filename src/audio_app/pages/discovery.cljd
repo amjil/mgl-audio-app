@@ -39,7 +39,15 @@
    .onTap (fn [] 
             (m/Navigator.push ctx (m/MaterialPageRoute .builder (fn [_] (book-detail/page book))))
             nil) 
-   .child (cards/book-card book :width 140.0 :height double/infinity :border-radius 12.0 :title-font-size 18.0)))
+   .child (cards/book-card book
+                           ;; Tighten card width to match the circular cover (radius 40 => diameter 80),
+                           ;; reducing the perceived left/right blank space inside each item.
+                           :width 88.0
+                           :margin-right 12.0
+                           :cover-variant :avatar
+                           :height double/infinity
+                           :border-radius 12.0
+                           :title-font-size 18.0)))
 
 (defn- build-h-list 
   "Build the horizontal adaptive list on the right"
@@ -49,7 +57,9 @@
            .scrollDirection m/Axis.horizontal
            ;; Key point: always allow scrolling so pull-to-refresh works
            .physics (m/AlwaysScrollableScrollPhysics.) 
-           .padding (m/EdgeInsets.all 24.0)
+           ;; Keep vertical breathing room but avoid large horizontal blank space.
+           ;; The left title block already has padding and a divider.
+           .padding (m/EdgeInsets.only .left 6.0 .right 6.0 .top 8.0 .bottom 24.0)
            .itemCount (count items)
            .itemBuilder (f/build [i] (builder-fn (nth items i))))))
 
@@ -59,7 +69,7 @@
 (defn page []
   (f/widget
    :context ctx
-   :get {{{:flds [surface onSurface]} .-colorScheme} m/Theme}
+   :get {{{:flds [surface]} .-colorScheme} m/Theme}
    :watch [{:keys [authors books loading? error]} state/discovery-state]
    
    (m/Scaffold

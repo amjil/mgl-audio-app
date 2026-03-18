@@ -30,7 +30,8 @@
             (m/ListView.builder
              .scrollDirection m/Axis.horizontal
              .physics (m/AlwaysScrollableScrollPhysics.) 
-             .padding (m/EdgeInsets.all 24.0)
+             ;; Avoid excessive horizontal blank space inside the gallery section.
+             .padding (m/EdgeInsets.only .left 6.0 .right 6.0 .top 24.0 .bottom 24.0)
              .itemCount (count items)
              .itemBuilder (f/build [i] (library-book-card (nth items i) ctx))))))
 

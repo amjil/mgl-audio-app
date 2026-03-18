@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   cached_network_image: ^3.3.0
+  flutter_svg: ^2.2.0
 
   # 后台播放与锁屏/通知栏媒体控制
   just_audio: ^0.9.40

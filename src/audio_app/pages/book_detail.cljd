@@ -1,6 +1,7 @@
 (ns audio-app.pages.book-detail
   (:require ["package:flutter/material.dart" :as m]
             ["package:mongol/mongol.dart" :as mgl]
+            ["dart:core" :as dart]
             [cljd.flutter :as f]
             [audio-app.services.book :as srv]
             [audio-app.components.media :as media]
@@ -68,7 +69,8 @@
 (defn page 
   "Book detail page. Uses incoming book-summary for instant header render, then loads full detail asynchronously."
   [book-summary]
-  (let [detail-state (atom {:loading? true :error nil :data nil})]
+  (let [detail-state (atom {:loading? true :error nil :data nil})
+        last-logged-error (atom ::none)]
     
     (srv/load-detail! detail-state (:id book-summary))
     
@@ -76,7 +78,6 @@
      :context ctx
      :get {{{:flds [surface onSurface]} .-colorScheme} m/Theme}
      :watch [{:keys [loading? error data]} detail-state]
-     
      (m/Scaffold
       .backgroundColor surface
       .appBar (m/AppBar 
@@ -102,12 +103,12 @@
                   .children
                   [
                    (media/hero-cover (:id book-summary) (:cover_url book-summary) 
-                                     :width 240.0 :height 360.0 :border-radius 16.0)
+                                     :width 120.0 :height 180.0 :border-radius 16.0)
                    
                    (m/SizedBox .width 32.0)
                    
                    (m/SizedBox 
-                    .height 360.0
+                    .height 180.0
                     .child (mgl/MongolText (:title book-summary)
                                            .style (m/TextStyle .fontSize 36.0 .height 1.2 .fontWeight m/FontWeight.bold)))
                    
@@ -115,7 +116,7 @@
                    
                    (if (and data (not error))
                      (m/SizedBox
-                      .height 360.0
+                      .height 180.0
                       .child (m/Row
                               .children
                               [(mgl/MongolText (str "Author: " (get-in data [:author :name]))
@@ -128,7 +129,7 @@
         
         (m/SliverToBoxAdapter
          .child (cond
-                  error    (m/Center .child (m/Text "Load failed"))
+                  error    (m/Center .child (m/Text (str "Load failed: " (or (:message error) error))))
                   loading? (m/Container .width 100.0 .child (m/Center .child (m/CircularProgressIndicator)))
                   (:description data)
                   (m/Container

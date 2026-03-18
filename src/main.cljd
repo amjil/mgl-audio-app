@@ -16,7 +16,8 @@
 (defn main-app []
   (f/widget
    :watch [_ state/root-refresh-atom]
-   :let [info (merge keyboard-options/keyboard-option {})]
+   :let [info (merge keyboard-options/keyboard-option
+                     {:keyboard/mongol-font-family "OyunQaganTig"})]
    :bind {:info info}
    (m/MaterialApp
     .title "Nom-un Dalai"

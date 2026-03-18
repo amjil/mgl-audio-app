@@ -1,11 +1,51 @@
 (ns audio-app.components.media
   (:require ["package:flutter/material.dart" :as m]
             ["package:cached_network_image/cached_network_image.dart" :as cache]
-            [cljd.flutter :as f]))
+            ["package:flutter_svg/flutter_svg.dart" :as svg]
+            [clojure.string :as str]
+            [audio-app.services.gql :as gql]))
 
 ;; =============================================================================
 ;; 1. Book cover component (rounded rectangle)
 ;; =============================================================================
+(defn- svg-url? [u]
+  (and (string? u)
+       (str/ends-with? (str/lower-case u) ".svg")))
+
+(defn- network-image
+  [{:keys [url width height fit shape icon]
+    :or {fit m/BoxFit.cover icon m/Icons.broken_image}}]
+  (let [placeholder (fn []
+                      (m/Container
+                       .width width
+                       .height height
+                       .decoration (when shape (m/BoxDecoration .shape shape .color (.withOpacity m/Colors.grey 0.1)))
+                       .color (when (nil? shape) (.withOpacity m/Colors.grey 0.1))
+                       .child (m/Center
+                               .child (m/CircularProgressIndicator .strokeWidth 2.0))))
+        error-widget (fn []
+                       (m/Container
+                        .width width
+                        .height height
+                        .decoration (when shape (m/BoxDecoration .shape shape .color (.withOpacity m/Colors.grey 0.1)))
+                        .color (when (nil? shape) (.withOpacity m/Colors.grey 0.1))
+                        .child (m/Icon icon .color m/Colors.grey)))]
+    (if (svg-url? url)
+      ;; SVG cannot be decoded by Flutter ImageCodec (used by CachedNetworkImage).
+      (svg/SvgPicture.network
+       url
+       .width width
+       .height height
+       .fit (or fit m/BoxFit.contain)
+       .placeholderBuilder (fn [_ctx] (placeholder)))
+      (cache/CachedNetworkImage
+       .imageUrl url
+       .width width
+       .height height
+       .fit fit
+       .placeholder (fn [_ctx _url] (placeholder))
+       .errorWidget (fn [_ctx _url _err] (error-widget))))))
+
 (defn hero-cover
   "Book cover widget with local cache, skeleton placeholder and Hero animation.
    - id: unique identifier for the Hero animation (e.g. book-id)
@@ -13,6 +53,7 @@
    - optional: width, height, border-radius"
   [id url & {:keys [width height border-radius]
              :or {width 120.0 height 160.0 border-radius 12.0}}]
+  (let [url (gql/resolve-url url)]
   (m/Hero
    .tag (str "book-cover-" id)
    .child
@@ -20,36 +61,47 @@
     .borderRadius (m/BorderRadius.circular border-radius)
     .child
     (if (and url (not (empty? url)))
-      ;; When URL exists, use cached network image loader
-      (cache/CachedNetworkImage
-       .imageUrl url
-       .width width
-       .height height
-       .fit m/BoxFit.cover
-       
-      ;; Placeholder during loading (soft gray background + loading spinner)
-       .placeholder (fn [_ctx _url]
-                      (m/Container
-                       .width width
-                       .height height
-                       .color (.withOpacity m/Colors.grey 0.1)
-                       .child (m/Center
-                               .child (m/CircularProgressIndicator .strokeWidth 2.0))))
-       
-       ;; Fallback UI when image fails to load (offline, broken link, etc.)
-       .errorWidget (fn [_ctx _url _err]
-                      (m/Container
-                       .width width
-                       .height height
-                       .color (.withOpacity m/Colors.grey 0.1)
-                       .child (m/Icon m/Icons.broken_image .color m/Colors.grey))))
+      (network-image {:url url
+                      :width width
+                      :height height
+                      :fit m/BoxFit.cover
+                      :icon m/Icons.broken_image})
       
       ;; Extreme case: no URL at all, show a default placeholder
       (m/Container
        .width width
        .height height
        .color (.withOpacity m/Colors.grey 0.1)
-       .child (m/Icon m/Icons.book .color m/Colors.grey))))))
+       .child (m/Icon m/Icons.book .color m/Colors.grey)))))))
+
+(defn hero-cover-avatar
+  "Book cover widget in circular avatar style (Hero + cached image).
+   Uses the same Hero tag as `hero-cover` so transitions keep working.
+   - id: book id for Hero tag
+   - url: cover URL
+   - optional: radius"
+  [id url & {:keys [radius] :or {radius 40.0}}]
+  (let [url (gql/resolve-url url)
+        diameter (* radius 2.0)]
+    (m/Hero
+     .tag (str "book-cover-" id)
+     .child
+     (if (and url (not (empty? url)))
+       (m/ClipOval
+        .child
+        (network-image {:url url
+                        :width diameter
+                        :height diameter
+                        :fit m/BoxFit.cover
+                        :shape m/BoxShape.circle
+                        :icon m/Icons.broken_image}))
+       (m/Container
+        .width diameter
+        .height diameter
+        .decoration (m/BoxDecoration
+                     .color (.withOpacity m/Colors.grey 0.1)
+                     .shape m/BoxShape.circle)
+        .child (m/Icon m/Icons.book .color m/Colors.grey)))))) 
 
 ;; =============================================================================
 ;; 2. Avatar component (perfect circle)
@@ -60,42 +112,20 @@
    - url: network image URL
    - optional: radius"
   [id url & {:keys [radius] :or {radius 40.0}}]
-  (let [diameter (* radius 2.0)]
+  (let [url (gql/resolve-url url)
+        diameter (* radius 2.0)]
     (m/Hero
      .tag (str "avatar-" id)
      .child
      (if (and url (not (empty? url)))
-       ;; For circular avatars, use imageBuilder to customize the outer shape
-       (cache/CachedNetworkImage
-        .imageUrl url
-        .imageBuilder (fn [ctx image-provider]
-                        (m/Container
-                         .width diameter
-                         .height diameter
-                         .decoration (m/BoxDecoration
-                                      .shape m/BoxShape.circle
-                                      .image (m/DecorationImage
-                                              .image image-provider
-                                              .fit m/BoxFit.cover))))
-        
-        .placeholder (fn [_ctx _url]
-                       (m/Container
-                        .width diameter
-                        .height diameter
-                        .decoration (m/BoxDecoration
-                                     .color (.withOpacity m/Colors.grey 0.1)
-                                     .shape m/BoxShape.circle)
-                        .child (m/Center
-                                .child (m/CircularProgressIndicator .strokeWidth 2.0))))
-        
-        .errorWidget (fn [_ctx _url _err]
-                       (m/Container
-                        .width diameter
-                        .height diameter
-                        .decoration (m/BoxDecoration
-                                     .color (.withOpacity m/Colors.grey 0.1)
-                                     .shape m/BoxShape.circle)
-                        .child (m/Icon m/Icons.person .color m/Colors.grey))))
+       (m/ClipOval
+        .child
+        (network-image {:url url
+                        :width diameter
+                        :height diameter
+                        :fit m/BoxFit.cover
+                        :shape m/BoxShape.circle
+                        :icon m/Icons.person}))
        
        ;; Default gray avatar when there is no URL
        (m/Container

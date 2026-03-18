@@ -11,35 +11,61 @@
    Fixed width is restored for consistent layout in horizontal gallery lists.
    Options:
    - :width, :height, :border-radius
+   - :cover-variant (:rect | :avatar)
+   - :cover-width (optional, defaults to :width)
+   - :cover-height (optional, defaults to ratio based on cover width)
+   - :cover-radius (used when :cover-variant is :avatar)
+   - :margin-right
    - :title-font-size
    - :on-tap"
-  [book & {:keys [width height border-radius title-font-size on-tap]
+  [book & {:keys [width height border-radius cover-variant cover-width cover-height cover-radius margin-right title-font-size on-tap]
            ;; Use width 140.0 as the default fixed width
-           :or {width 140.0 height double/infinity border-radius 12.0 title-font-size 18.0}}]
-  (m/GestureDetector
-   .onTap on-tap
-   .child
-   (m/Container
-    ;; Lock the outer container width
-    .width width
-    .margin (m/EdgeInsets.only .right 24.0)
-    .child (m/Column
-            .crossAxisAlignment m/CrossAxisAlignment.center 
-            .children
-            [;; Top: cover (width fixed, height expands by ratio)
-             (m/Expanded 
-              .flex 3 
-              ;; Pass width to hero-cover; BoxFit.cover crops irregular images cleanly
-              .child (media/hero-cover (:id book) (:cover_url book) 
-                                       :width width :height height :border-radius border-radius))
-             
-             (m/SizedBox .height 16.0)
-             
-             ;; Bottom: vertical book title
-             (m/Expanded 
-              .flex 2 
-              ;; Outer Container fixes width; ClipRect clips overflow if title is large or multi-line
-              .child (m/ClipRect 
-                      .child (mgl/MongolText (:title book) 
-                                             .style (m/TextStyle .fontSize title-font-size 
-                                                                 .fontWeight m/FontWeight.w600))))]))))
+           :or {width 140.0 height double/infinity border-radius 12.0 title-font-size 18.0 cover-variant :rect margin-right 24.0}}]
+  (let [cw (or cover-width width)
+        ;; Avatar covers should feel "full-bleed" inside the fixed card width.
+        ;; If a smaller radius is explicitly provided, we still expand it up to cw/2
+        ;; to avoid large left/right blank bands caused by centering a small circle.
+        cr (if (= cover-variant :avatar)
+             (max (or cover-radius 0.0) (/ cw 2.0))
+             (or cover-radius (/ cw 2.0)))
+        ;; Default cover ratio matches media/hero-cover defaults: 120x160 => 4/3
+        ch (or cover-height (if (= height double/infinity) (* cw (/ 4.0 3.0)) height))]
+    (m/GestureDetector
+     .onTap on-tap
+     .child
+     (m/Container
+      ;; Lock the outer container width
+      .width width
+      .margin (m/EdgeInsets.only .right margin-right)
+      .child (m/Column
+              .crossAxisAlignment m/CrossAxisAlignment.center 
+              .children
+              [;; Top: cover
+               ;; - :rect keeps the old behavior (fills available height via Expanded)
+               ;; - :avatar uses fixed diameter to avoid large blank space above
+               (if (= cover-variant :avatar)
+                 (m/SizedBox
+                  .height (* cr 2.0)
+                  .child (m/Center
+                          .child (media/hero-cover-avatar (:id book) (:cover_url book)
+                                                          :radius cr)))
+                 (m/Expanded 
+                  .flex 3 
+                  ;; Pass width to hero-cover; BoxFit.cover crops irregular images cleanly
+                  .child (m/Center
+                          .child (media/hero-cover (:id book) (:cover_url book) 
+                                                   :width cw
+                                                   :height ch
+                                                   :border-radius border-radius))))
+               
+               (m/SizedBox .height 16.0)
+               
+               ;; Bottom: vertical book title
+               (m/Expanded 
+                .flex 2 
+                ;; Outer Container fixes width; ClipRect clips overflow if title is large or multi-line
+                .child (m/ClipRect 
+                        .child (mgl/MongolText (:title book) 
+                                               .style (m/TextStyle
+                                                       .fontSize title-font-size 
+                                                       .fontWeight m/FontWeight.w600))))]))))) 
