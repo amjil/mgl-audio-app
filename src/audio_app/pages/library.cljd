@@ -59,8 +59,8 @@
        .children
        [(m/Expanded
          .flex 1
-         .child (layout/gallery-section "ᠦᠷᠭᠦᠯᠵᠢᠯᠡᠨ ᠰᠣᠨᠣᠰᠬᠤ"
-                                        (build-h-list-with-empty recent-books "ᠣᠳᠣᠬᠠᠨ ᠳᠤ ᠪᠠᠶᠢᠬᠤ ᠦᠭᠡᠢ" ctx)))
+         .child (layout/gallery-section "Recently played"
+                                        (build-h-list-with-empty recent-books "Nothing here yet" ctx)))
 
         (m/Padding
          .padding (m/EdgeInsets.symmetric .horizontal 24.0)
@@ -68,5 +68,5 @@
 
         (m/Expanded
          .flex 1
-         .child (layout/gallery-section "ᠮᠢᠨᠦ ᠰᠠᠩ"
-                                        (build-h-list-with-empty favorite-books "ᠬᠣᠭᠣᠰᠤᠨ ᠪᠠᠶᠢᠨ᠎ᠠ" ctx)))])))))
+         .child (layout/gallery-section "My shelf"
+                                        (build-h-list-with-empty favorite-books "No favorites yet" ctx)))])))))

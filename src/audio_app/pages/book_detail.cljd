@@ -118,10 +118,10 @@
                       .height 360.0
                       .child (m/Row
                               .children
-                              [(mgl/MongolText (str "ᠵᠣᠬᠢᠶᠠᠭᠴᠢ: " (get-in data [:author :name]))
+                              [(mgl/MongolText (str "Author: " (get-in data [:author :name]))
                                                .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))
                                (m/SizedBox .width 20.0)
-                               (mgl/MongolText (str "ᠤᠩᠰᠢᠭᠴᠢ: " (get-in data [:reciter :name]))
+                               (mgl/MongolText (str "Narrator: " (get-in data [:reciter :name]))
                                                .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))]))
                      (m/SizedBox.shrink))
                    ])))
@@ -149,7 +149,7 @@
                      (m/SizedBox .width 24.0)
                      (m/SizedBox
                       .height 360.0
-                      .child (mgl/MongolText "ᠪᠦᠯᠦᠭ\nᠭᠠᠷᠴᠠᠭ"
+                      .child (mgl/MongolText "Full\ntranscript"
                                              .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold .letterSpacing 2.0)))])))
           (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
 

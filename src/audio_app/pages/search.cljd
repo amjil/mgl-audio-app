@@ -22,7 +22,7 @@
    .builder
    (fn [dialog-ctx]
      (input-dialog/generic-input-dialog
-      {:hint "ᠬᠠᠶᠢᠬᠤ ᠦᠭᠡ ᠪᠡᠨ ᠣᠷᠣᠭᠤᠯᠤᠭᠠᠷᠠᠢ"
+      {:hint "Search books"
        :initial-text @keyword-atom
        :on-submit (fn [text]
                     (reset! keyword-atom text)
@@ -63,7 +63,7 @@
           .padding (m/EdgeInsets.only .left 24.0 .top 24.0 .bottom 24.0 .right 16.0)
           .child (search-bar/fake-search-bar
                   {:state-atom keyword-atom
-                   :label "ᠬᠠᠶᠢᠬᠤ"
+                   :label "Search"
                    :on-tap #(open-search-dialog ctx keyword-atom)}))
          
          (layout/v-divider)
@@ -77,8 +77,8 @@
             (and (not loading?) (empty? items) (not error))
             (status/empty-center
              (if (empty? keyword-val) 
-               "ᠬᠠᠶᠢᠬᠤ ᠦᠭᠡ ᠪᠡᠨ ᠣᠷᠣᠭᠤᠯᠤᠭᠠᠷᠠᠢ"
-               "ᠣᠳᠣᠬᠠᠨ ᠳᠤ ᠪᠠᠶᠢᠬᠤ ᠦᠭᠡᠢ"))
+               "Enter a search query"
+               "No results"))
             
             :else
             (m/ListView.builder
@@ -98,7 +98,7 @@
                             error     (m/Text "Load failed" .style (m/TextStyle .color m/Colors.red))
                             loading?  (m/CircularProgressIndicator .strokeWidth 2.0)
                             has-more? (m/SizedBox.shrink)
-                            :else     (mgl/MongolText "ᠡᠴᠦᠰ ᠲᠦ ᠬᠦᠷᠴᠡᠢ"
+                            :else     (mgl/MongolText "No more"
                                                       .style (m/TextStyle .color outlineVariant)))))
                  
                  (let [book (nth items i)]

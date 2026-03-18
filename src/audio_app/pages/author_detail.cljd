@@ -100,7 +100,7 @@
                      (m/SizedBox .width 24.0)
                      (m/SizedBox
                       .height 360.0
-                      .child (mgl/MongolText "ᠲᠡᠭᠦᠨ ᠦ\nᠪᠦᠲᠦᠭᠡᠯ"
+                      .child (mgl/MongolText "Books by\nthis author"
                                              .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold .letterSpacing 2.0)))])))
           (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
 

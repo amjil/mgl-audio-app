@@ -97,7 +97,7 @@
                 errors (get decoded "errors")]
             (if errors
               (let [err-msgs (map #(get % "message" "") errors)
-                    regex (dart/RegExp. "(?i)unauthorized|ᠪᠦᠷᠢᠳᠬᠡᠯ ᠦᠭᠡᠢ")
+                    regex (dart/RegExp. "(?i)unauthorized|not authenticated|forbidden")
                     is-unauthorized? (some #(.hasMatch regex %) err-msgs)]
                 (if is-unauthorized?
                   (do (handle-unauthorized!)

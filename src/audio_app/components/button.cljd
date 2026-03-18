@@ -33,11 +33,11 @@
                       .borderRadius (m/BorderRadius.circular 24.0)))
       .onPressed on-tap
       .child (if icon
-               (m/Row
+               (m/Column
                 .mainAxisSize m/MainAxisSize.min
                 .children
                 [(m/Icon icon .size 18.0)
-                 (m/SizedBox .width 8.0)
+                 (m/SizedBox .height 8.0)
                  (text/text-block
                   {:text text
                    :style (.copyWith labelLarge

@@ -6,27 +6,40 @@
 ;; =============================================================================
 ;; 1. Generic book card used across discovery/library/search
 ;; =============================================================================
-(defn book-card
+(defn book-card 
   "Horizontal book card (cover + vertical title).
+   Fixed width is restored for consistent layout in horizontal gallery lists.
    Options:
    - :width, :height, :border-radius
-   - :title-font-size"
-  [book & {:keys [width height border-radius title-font-size]
+   - :title-font-size
+   - :on-tap"
+  [book & {:keys [width height border-radius title-font-size on-tap]
+           ;; Use width 140.0 as the default fixed width
            :or {width 140.0 height double/infinity border-radius 12.0 title-font-size 18.0}}]
-  (m/Container
-   .width width
-   .margin (m/EdgeInsets.only .right 24.0)
-   .child (m/Column
-           .children
-           [(m/Expanded
-             .flex 3
-             .child (media/hero-cover (:id book) (:cover_url book)
-                                      :width width :height height :border-radius border-radius))
-            (m/SizedBox .height 16.0)
-            (m/Expanded
-             .flex 2
-             .child (m/ClipRect
-                     .child (mgl/MongolText (:title book)
-                                            .style (m/TextStyle .fontSize title-font-size
-                                                                .fontWeight m/FontWeight.w600))))])))
-
+  (m/GestureDetector
+   .onTap on-tap
+   .child
+   (m/Container
+    ;; Lock the outer container width
+    .width width
+    .margin (m/EdgeInsets.only .right 24.0)
+    .child (m/Column
+            .crossAxisAlignment m/CrossAxisAlignment.center 
+            .children
+            [;; Top: cover (width fixed, height expands by ratio)
+             (m/Expanded 
+              .flex 3 
+              ;; Pass width to hero-cover; BoxFit.cover crops irregular images cleanly
+              .child (media/hero-cover (:id book) (:cover_url book) 
+                                       :width width :height height :border-radius border-radius))
+             
+             (m/SizedBox .height 16.0)
+             
+             ;; Bottom: vertical book title
+             (m/Expanded 
+              .flex 2 
+              ;; Outer Container fixes width; ClipRect clips overflow if title is large or multi-line
+              .child (m/ClipRect 
+                      .child (mgl/MongolText (:title book) 
+                                             .style (m/TextStyle .fontSize title-font-size 
+                                                                 .fontWeight m/FontWeight.w600))))]))))

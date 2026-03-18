@@ -51,7 +51,7 @@
                   [(media/hero-avatar (or (:id user) "me") (:avatar_url user) :radius 60.0)
                    (m/SizedBox .height 32.0)
                    (m/Expanded 
-                    .child (mgl/MongolText (or (:name user) "Уншигч")
+                    .child (mgl/MongolText (or (:name user) "Reader")
                                            .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold)))]))
          
          (m/SizedBox .width 16.0)
@@ -59,32 +59,32 @@
          (m/SizedBox .width 16.0)
          
          (setting/settings-section
-          "ᠦᠢᠯᠡᠴᠢᠯᠡᠭ᠎ᠡ"
+          "Library"
           [{:leading m/Icons.cloud_download
-            :title "ᠲᠠᠳᠠᠭᠰᠠᠨ"
-            :subtitle "0 ᠨᠣᠮ"
+            :title "Downloads"
+            :subtitle "0 books"
             :show-arrow? true
             :on-tap #(dart:core/print "Navigate to downloads")}
            {:leading m/Icons.history
-            :title "ᠲᠡᠦᠬᠡ"
+            :title "History"
             :show-arrow? true
             :on-tap #(dart:core/print "Navigate to history")}])
 
          (m/SizedBox .width 40.0)
 
          (setting/settings-section
-          "ᠰᠢᠰᠲ᠋ᠧᠮ"
+          "System"
           [{:leading m/Icons.dark_mode
-            :title "ᠬᠠᠷᠠᠩᠭᠤᠢ\nᠮᠣᠳᠧ"
+            :title "Dark mode"
             :value false
             :on-changed #(dart:core/print (str "Toggle theme: " %))}
 
            {:leading m/Icons.settings
-            :title "ᠲᠣᠬᠢᠷᠠᠭᠤᠯᠭ᠎ᠠ"
+            :title "Feedback"
             :show-arrow? true
             :on-tap #(dart:core/print "Navigate to settings")}
 
            {:leading m/Icons.exit_to_app
-            :title "ᠭᠠᠷᠬᠤ"
+            :title "Log out"
             :show-arrow? true
             :on-tap #(srv/logout! state/profile-state)}])]))))))

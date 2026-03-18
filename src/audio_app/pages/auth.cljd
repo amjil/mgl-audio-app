@@ -42,8 +42,8 @@
                                        .border (m/Border .right (m/BorderSide .color outlineVariant .width 1.0)))
                           .child (mgl/MongolText 
                                   (if (= mode :login) 
-                                    "ᠨᠣᠮ ᠤᠨ ᠳᠠᠯᠠᠢ ᠳ᠋ᠤ\nᠲᠠᠪᠲᠠᠢ ᠮᠣᠷᠢᠯᠠᠭᠠᠷᠠᠢ"
-                                    "ᠰᠢᠨ᠎ᠡ ᠪᠦᠷᠢᠳᠬᠡᠯ\nᠨᠡᠭᠡᠭᠡᠬᠦ")
+                                    "Welcome to\nNom-un Dalai"
+                                    "Create an account")
                                   .style (m/TextStyle .fontSize 36.0 .fontWeight m/FontWeight.bold .height 1.2 .color primary)))))
          
          ;; ==========================================
@@ -104,7 +104,7 @@
                                            #(srv/authenticate! auth-state mode (.-text user-ctrl) (.-text pwd-ctrl)))
                               .child (if loading? 
                                        (m/CircularProgressIndicator .color surface)
-                                       (mgl/MongolText (if (= mode :login) "ᠨᠡᠪᠲᠡᠷᠡᠬᠦ" "ᠪᠦᠷᠢᠳᠬᠡᠭᠦᠯᠬᠦ")
+                                       (mgl/MongolText (if (= mode :login) "Sign in" "Sign up")
                                                        .style (m/TextStyle .fontSize 20.0 .fontWeight m/FontWeight.bold))))
                              
                              (m/SizedBox .height 16.0)
@@ -117,6 +117,6 @@
                                             (swap! auth-state assoc 
                                                    :mode (if (= mode :login) :register :login)
                                                    :error nil))
-                              .child (mgl/MongolText (if (= mode :login) "ᠰᠢᠨ᠎ᠡ ᠬᠡᠷᠡᠭᠯᠡᠭᠴᠢ ᠪᠣᠯ..." "ᠪᠤᠴᠠᠵᠤ ᠨᠡᠪᠲᠡᠷᠡᠬᠦ")
+                              .child (mgl/MongolText (if (= mode :login) "New user? Sign up" "Already have an account? Sign in")
                                                      .style (m/TextStyle .fontSize 16.0 .color onSurfaceVariant)))])
                            ])))]))))))

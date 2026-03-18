@@ -86,11 +86,11 @@
          ;; Upper half: hot authors gallery
          (m/Expanded 
           .flex 1 
-          .child (layout/gallery-section "ᠵᠣᠬᠢᠶᠠᠭᠴᠢ"
+          .child (layout/gallery-section "Authors"
                                          (build-h-list authors #(author-card % ctx))))
          
          ;; Lower half: hot books gallery
          (m/Expanded 
           .flex 1 
-          .child (layout/gallery-section "ᠨᠣᠮ"
+          .child (layout/gallery-section "Books"
                                          (build-h-list books #(book-card % ctx))))]))))))

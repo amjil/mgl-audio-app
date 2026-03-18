@@ -52,7 +52,7 @@
   ;; 4. Initialize background playback and lock screen/notification
   (await (jab/JustAudioBackground.init
           .androidNotificationChannelId "com.nomundalai.app.audio"
-          .androidNotificationChannelName "ᠨᠣᠮ ᠤᠨ ᠳᠠᠯᠠᠢ (Nom-un Dalai Playback)"
+          .androidNotificationChannelName "Nom-un Dalai playback"
           .androidNotificationOngoing true))
             
   ;; 5. 🚀 Start Hive offline database engine

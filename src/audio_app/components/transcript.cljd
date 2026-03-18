@@ -21,7 +21,7 @@
    
    (if (empty? segments)
      (m/Center 
-      .child (mgl/MongolText "ᠪᠢᠴᠢᠭᠡᠨ ᠦ ᠲᠡᠮᠳᠡᠭᠯᠡᠯ ᠪᠠᠶᠢᠬᠤ ᠦᠭᠡᠢ"
+      .child (mgl/MongolText "No transcript available"
                              .style (m/TextStyle .fontSize 18.0 .color onSurfaceVariant)))
      
      (m/ListView.builder
