@@ -37,70 +37,72 @@
        .elevation 0
        .leading
        (m/IconButton
-        .icon (m/Icon m/Icons.arrow_back_ios)
+        .icon (m/Icon m/Icons.arrow_back_ios .size 28.0)
         .color onSurface
         .onPressed (fn []
                       (m/Navigator.pop ctx)
                       nil)))
       .body
-      (layout/canvas-scroll
-       (m/SliverToBoxAdapter
-        .child
-        (m/Padding
-         .padding (m/EdgeInsets.only .left 32.0 .right 40.0 .bottom 32.0 .top 16.0)
-         .child (header-fn summary data error)))
+      (m/SafeArea
+       .child
+       (layout/canvas-scroll
+        (m/SliverToBoxAdapter
+         .child
+         (m/Padding
+          .padding (m/EdgeInsets.only .left 24.0 .right 24.0 .bottom 24.0 .top 12.0)
+          .child (header-fn summary data error)))
 
-       (m/SliverToBoxAdapter
-        .child
-        (cond
-          error
-          (m/Center
-           .child (m/Text (str "Load failed: " (or (:message error) error))))
+        (m/SliverToBoxAdapter
+         .child
+         (cond
+           error
+           (m/Center
+            .child (m/Text (str "Load failed: " (or (:message error) error))))
+           
+           loading?
+           (m/Container
+            .width 100.0
+            .child (m/Center .child (m/CircularProgressIndicator)))
+           
+           :else
+           (let [detail-text (detail-text-fn data)]
+             (if (and detail-text (not (empty? detail-text)))
+               (m/Container
+                .height 360.0
+                .padding (m/EdgeInsets.only .right 48.0 .top 16.0)
+                .child (mgl/MongolText
+                        detail-text
+                        .style (m/TextStyle .fontSize 18.0 .height 1.8 .color onSurface)))
+               (m/SizedBox.shrink)))))
 
-          loading?
-          (m/Container
-           .width 100.0
-           .child (m/Center .child (m/CircularProgressIndicator)))
-
-          :else
-          (let [detail-text (detail-text-fn data)]
-            (if (and detail-text (not (empty? detail-text)))
-              (m/Container
-               .height 360.0
-               .padding (m/EdgeInsets.only .right 48.0 .top 16.0)
-               .child (mgl/MongolText
-                       detail-text
-                       .style (m/TextStyle .fontSize 18.0 .height 1.8 .color onSurface)))
-              (m/SizedBox.shrink)))))
-
-       (if (and (not loading?) (not error) (seq items))
-         (m/SliverToBoxAdapter
-          .child
-          (m/Padding
-           .padding (m/EdgeInsets.only .right 24.0 .left 24.0 .bottom 32.0 .top 16.0)
+        (if (and (not loading?) (not error) (seq items))
+          (m/SliverToBoxAdapter
            .child
-           (m/Row
-            .children
-            [(layout/v-divider :height 360.0)
-             (m/SizedBox .width 24.0)
-             (m/SizedBox
-              .height 360.0
-              .child
-              (mgl/MongolText
-               section-title
-               .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold .letterSpacing 2.0)))])))
-         (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
+           (m/Padding
+            .padding (m/EdgeInsets.only .right 24.0 .left 24.0 .bottom 32.0 .top 16.0)
+            .child
+            (m/Row
+             .children
+             [(layout/v-divider :height 360.0)
+              (m/SizedBox .width 24.0)
+              (m/SizedBox
+               .height 360.0
+               .child
+               (mgl/MongolText
+                section-title
+                .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold .letterSpacing 2.0)))])))
+          (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
 
-       (if (and (not loading?) (not error) (seq items))
-         (m/SliverList
-          .delegate
-          (m/SliverChildBuilderDelegate
-           (f/build [i]
-             (m/Padding
-              .padding (m/EdgeInsets.only .bottom 32.0 .top 16.0)
-              .child (item-tile-fn (nth items i) data ctx)))
-           .childCount (count items)))
-         (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
+        (if (and (not loading?) (not error) (seq items))
+          (m/SliverList
+           .delegate
+           (m/SliverChildBuilderDelegate
+            (f/build [i]
+              (m/Padding
+               .padding (m/EdgeInsets.only .bottom 32.0 .top 16.0)
+               .child (item-tile-fn (nth items i) data ctx)))
+            .childCount (count items)))
+          (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
 
-       (m/SliverToBoxAdapter .child (m/SizedBox .width 160.0)))))))
+        (m/SliverToBoxAdapter .child (m/SizedBox .width 160.0))))))))
 

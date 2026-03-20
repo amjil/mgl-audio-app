@@ -6,6 +6,7 @@
             [audio-app.services.discovery :as discovery-srv]
             [audio-app.services.library :as library-srv]
             [audio-app.services.profile :as profile-srv]
+            [audio-app.components.bottom-nav :as bottom-nav]
             [audio-app.pages.auth :as auth]
             [audio-app.pages.discovery :as discovery]
             [audio-app.pages.library :as library]
@@ -53,24 +54,13 @@
                         (library/page)
                         (search/page)
                         (profile/page)])
-      
+
       .bottomNavigationBar
-      (m/BottomNavigationBar
-       .currentIndex tab-idx
-       .onTap (fn [idx]
-                (reset! current-tab idx)
-                (trigger-tab-load! idx))
-       .type m/BottomNavigationBarType.fixed
-       .backgroundColor surface
-       .selectedItemColor primary
-       .unselectedItemColor onSurfaceVariant
-       .showSelectedLabels false
-       .showUnselectedLabels false
-       .items
-       [(m/BottomNavigationBarItem .icon (m/Icon m/Icons.explore) .label "Discover") 
-        (m/BottomNavigationBarItem .icon (m/Icon m/Icons.library_books) .label "Library")
-        (m/BottomNavigationBarItem .icon (m/Icon m/Icons.search) .label "Search")
-        (m/BottomNavigationBarItem .icon (m/Icon m/Icons.person) .label "Profile")])))))
+      (bottom-nav/widget
+       tab-idx
+       (fn [idx]
+         (reset! current-tab idx)
+         (trigger-tab-load! idx)))))))
 
 ;; =============================================================================
 ;; 3. Global entry scaffold (Main Scaffold / Root Router)

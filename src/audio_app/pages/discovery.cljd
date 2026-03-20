@@ -61,33 +61,39 @@
    
    (m/Scaffold
     .backgroundColor surface
-    .appBar (m/AppBar .backgroundColor surface .elevation 0)
     .body
-    (m/RefreshIndicator
-     .onRefresh (fn [] (srv/load-data! state/discovery-state))
+    (m/SafeArea
      .child
-     (cond
-       ;; A: Initial loading (command sent but data not yet returned)
-       (and loading? (empty? authors) (empty? books))
-       (status/loading-center)
-       
-       ;; B: Network error with no local cache
-       (and error (empty? authors) (empty? books))
-       (status/error-with-retry {:on-retry #(srv/load-data! state/discovery-state)})
-       
-       ;; C: Data loaded successfully, render gallery layout
-       :else
-       (m/Column
-        .children
-        [
-         ;; Upper half: hot authors gallery
-         (m/Expanded 
-          .flex 1 
-          .child (layout/gallery-section "Authors"
-                                          (hlist/h-list authors #(author-card % ctx))))
-         
-         ;; Lower half: hot books gallery
-         (m/Expanded 
-          .flex 1 
-          .child (layout/gallery-section "Books"
-                                          (hlist/h-list books #(book-card % ctx))))]))))))        
+     (m/Column
+      .children
+      [
+       (m/Expanded
+        .child
+        (m/RefreshIndicator
+         .onRefresh (fn [] (srv/load-data! state/discovery-state))
+         .child
+         (cond
+           ;; A: Initial loading (command sent but data not yet returned)
+           (and loading? (empty? authors) (empty? books))
+           (status/loading-center)
+           
+           ;; B: Network error with no local cache
+           (and error (empty? authors) (empty? books))
+           (status/error-with-retry {:on-retry #(srv/load-data! state/discovery-state)})
+           
+           ;; C: Data loaded successfully, render gallery layout
+           :else
+           (m/Column
+            .children
+            [
+             ;; Upper half: hot authors gallery
+             (m/Expanded 
+              .flex 1 
+              .child (layout/gallery-section "Authors"
+                                              (hlist/h-list authors #(author-card % ctx))))
+             
+             ;; Lower half: hot books gallery
+             (m/Expanded 
+              .flex 1 
+              .child (layout/gallery-section "Books"
+                                              (hlist/h-list books #(book-card % ctx))))]))))])))))

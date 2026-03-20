@@ -14,74 +14,79 @@
 ;; =============================================================================
 (defn page []
   (f/widget
-   :context ctx
-   :get {{{:flds [surface onSurface outlineVariant]} .-colorScheme} m/Theme}
+   :get {{{:flds [surface]} .-colorScheme} m/Theme}
    :watch [{:keys [user loading? error]} state/profile-state]
    
    (m/Scaffold
     .backgroundColor surface
-    .appBar (m/AppBar .backgroundColor surface .elevation 0)
     .body
-    (cond
-      (and loading? (nil? user))
-      (status/loading-center)
-      
-      (and error (nil? user))
-      (status/error-with-retry
-       {:on-retry #(srv/load-data! state/profile-state)
-        :message "Network error"
-        :retry-text "Retry"})
-      
-      :else
-      (m/Padding
-       .padding (m/EdgeInsets.all 32.0)
-       .child
-       (m/ListView
-        .scrollDirection m/Axis.horizontal
-        .padding (m/EdgeInsets.only .right 24.0)
-        .children
-        [(m/Container
-          .width 160.0
-          .child (m/Column
-                  .crossAxisAlignment m/CrossAxisAlignment.center
-                  .children
-                  [(media/hero-avatar (or (:id user) "me") (:avatar_url user) :radius 60.0)
-                   (m/SizedBox .height 32.0)
-                   (m/Expanded 
-                    .child (mgl/MongolText (or (:name user) "Reader")
-                                           .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold)))]))
-         
-         (m/SizedBox .width 16.0)
-         (layout/v-divider :height dart:core/double.infinity)
-         (m/SizedBox .width 16.0)
-         
-         (setting/settings-section
-          "Library"
-          [{:leading m/Icons.cloud_download
-            :title "Downloads"
-            :subtitle "0 books"
-            :show-arrow? true
-            :on-tap #(dart:core/print "Navigate to downloads")}
-           {:leading m/Icons.history
-            :title "History"
-            :show-arrow? true
-            :on-tap #(dart:core/print "Navigate to history")}])
-
-         (m/SizedBox .width 40.0)
-
-         (setting/settings-section
-          "System"
-          [{:leading m/Icons.dark_mode
-            :title "Dark mode"
-            :value false
-            :on-changed #(dart:core/print (str "Toggle theme: " %))}
-
-           {:leading m/Icons.settings
-            :title "Feedback"
-            :show-arrow? true
-            :on-tap #(dart:core/print "Navigate to settings")}
-
-           {:leading m/Icons.exit_to_app
-            :title "Log out"
-            :show-arrow? true
-            :on-tap #(srv/logout! state/profile-state)}])]))))))
+    (m/SafeArea
+     .child
+     (m/Column
+      .children
+      [
+       (m/Expanded
+        .child
+        (cond
+          (and loading? (nil? user))
+          (status/loading-center)
+          
+          (and error (nil? user))
+          (status/error-with-retry
+           {:on-retry #(srv/load-data! state/profile-state)
+            :message "Network error"
+            :retry-text "Retry"})
+          
+          :else
+          (m/Padding
+           .padding (m/EdgeInsets.all 32.0)
+           .child
+           (m/ListView
+            .scrollDirection m/Axis.horizontal
+            .padding (m/EdgeInsets.only .right 24.0)
+            .children
+            [(m/Container
+              .width 160.0
+              .child (m/Column
+                      .crossAxisAlignment m/CrossAxisAlignment.center
+                      .children
+                      [(media/hero-avatar (or (:id user) "me") (:avatar_url user) :radius 60.0)
+                       (m/SizedBox .height 32.0)
+                       (m/Expanded 
+                        .child (mgl/MongolText (or (:name user) "Reader")
+                                               .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold)))]))
+             
+             (m/SizedBox .width 16.0)
+             (layout/v-divider :height dart:core/double.infinity)
+             (m/SizedBox .width 16.0)
+             
+             (setting/settings-section
+              "Library"
+              [{:leading m/Icons.cloud_download
+                :title "Downloads"
+                :subtitle "0 books"
+                :show-arrow? true
+                :on-tap #(dart:core/print "Navigate to downloads")}
+               {:leading m/Icons.history
+                :title "History"
+                :show-arrow? true
+                :on-tap #(dart:core/print "Navigate to history")}])
+             
+             (m/SizedBox .width 40.0)
+             
+             (setting/settings-section
+              "System"
+              [{:leading m/Icons.dark_mode
+                :title "Dark mode"
+                :value false
+                :on-changed #(dart:core/print (str "Toggle theme: " %))}
+               
+               {:leading m/Icons.settings
+                :title "Feedback"
+                :show-arrow? true
+                :on-tap #(dart:core/print "Navigate to settings")}
+               
+               {:leading m/Icons.exit_to_app
+                :title "Log out"
+                :show-arrow? true
+                :on-tap #(srv/logout! state/profile-state)}])]))))]))))          )
