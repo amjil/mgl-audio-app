@@ -17,6 +17,13 @@
          title
          audio_url
          duration_seconds
+        segments {
+          id
+          text
+          start_ms
+          end_ms
+          index
+        }
        }
      }
    }")

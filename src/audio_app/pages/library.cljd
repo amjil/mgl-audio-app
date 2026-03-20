@@ -1,11 +1,10 @@
 (ns audio-app.pages.library
   (:require ["package:flutter/material.dart" :as m]
-            ["package:mongol/mongol.dart" :as mgl]
             [cljd.flutter :as f]
             [audio-app.state :as state]
             [audio-app.services.library :as srv]
-            [audio-app.components.media :as media]
             [audio-app.components.layout :as layout]
+            [audio-app.components.horizontal-list :as hlist]
             [audio-app.components.cards :as cards]
             [audio-app.components.status :as status]
             [audio-app.pages.book-detail :as book-detail]))
@@ -19,21 +18,7 @@
    .onTap (fn [] 
             (m/Navigator.push ctx (m/MaterialPageRoute .builder (fn [_] (book-detail/page book))))
             nil)
-   .child (cards/book-card book :width 140.0 :height double/infinity :border-radius 12.0 :title-font-size 18.0)))
-
-(defn- build-h-list-with-empty 
-  "Build a horizontal list. When items are empty, show a centered Mongolian placeholder."
-  [items empty-msg ctx]
-  (m/Expanded
-   .child (if (empty? items)
-            (status/empty-center empty-msg)
-            (m/ListView.builder
-             .scrollDirection m/Axis.horizontal
-             .physics (m/AlwaysScrollableScrollPhysics.) 
-             ;; Avoid excessive horizontal blank space inside the gallery section.
-             .padding (m/EdgeInsets.only .left 6.0 .right 6.0 .top 24.0 .bottom 24.0)
-             .itemCount (count items)
-             .itemBuilder (f/build [i] (library-book-card (nth items i) ctx))))))
+   .child (cards/book-card book :width 140.0 :height dart:core/double.infinity :border-radius 12.0 :title-font-size 18.0)))
 
 ;; =============================================================================
 ;; 2. Main page (driven by global state)
@@ -41,7 +26,7 @@
 (defn page []
   (f/widget
    :context ctx
-   :get {{{:flds [surface onSurface outlineVariant]} .-colorScheme} m/Theme}
+   :get {{{:flds [surface outlineVariant]} .-colorScheme} m/Theme}
    :watch [{:keys [recent-books favorite-books loading? error]} state/library-state]
 
    (m/Scaffold
@@ -60,8 +45,12 @@
        .children
        [(m/Expanded
          .flex 1
-         .child (layout/gallery-section "Recently played"
-                                        (build-h-list-with-empty recent-books "Nothing here yet" ctx)))
+         .child (layout/gallery-section
+                  "Recently played"
+                  (hlist/h-list-with-empty
+                   recent-books
+                   "Nothing here yet"
+                   #(library-book-card % ctx))))
 
         (m/Padding
          .padding (m/EdgeInsets.symmetric .horizontal 24.0)
@@ -69,5 +58,9 @@
 
         (m/Expanded
          .flex 1
-         .child (layout/gallery-section "My shelf"
-                                        (build-h-list-with-empty favorite-books "No favorites yet" ctx)))])))))
+         .child (layout/gallery-section
+                  "My shelf"
+                  (hlist/h-list-with-empty
+                   favorite-books
+                   "No favorites yet"
+                   #(library-book-card % ctx))))])))))

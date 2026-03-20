@@ -5,6 +5,7 @@
             [audio-app.state :as state]
             [audio-app.services.discovery :as srv]
             [audio-app.components.media :as media]
+            [audio-app.components.horizontal-list :as hlist]
             [audio-app.components.layout :as layout]
             [audio-app.components.cards :as cards]
             [audio-app.components.status :as status]
@@ -45,23 +46,9 @@
                            :width 88.0
                            :margin-right 12.0
                            :cover-variant :avatar
-                           :height double/infinity
+                           :height dart:core/double.infinity
                            :border-radius 12.0
                            :title-font-size 18.0)))
-
-(defn- build-h-list 
-  "Build the horizontal adaptive list on the right"
-  [items builder-fn]
-  (m/Expanded
-   .child (m/ListView.builder
-           .scrollDirection m/Axis.horizontal
-           ;; Key point: always allow scrolling so pull-to-refresh works
-           .physics (m/AlwaysScrollableScrollPhysics.) 
-           ;; Keep vertical breathing room but avoid large horizontal blank space.
-           ;; The left title block already has padding and a divider.
-           .padding (m/EdgeInsets.only .left 6.0 .right 6.0 .top 8.0 .bottom 24.0)
-           .itemCount (count items)
-           .itemBuilder (f/build [i] (builder-fn (nth items i))))))
 
 ;; =============================================================================
 ;; 2. Main page (driven entirely by injected state)
@@ -97,10 +84,10 @@
          (m/Expanded 
           .flex 1 
           .child (layout/gallery-section "Authors"
-                                         (build-h-list authors #(author-card % ctx))))
+                                          (hlist/h-list authors #(author-card % ctx))))
          
          ;; Lower half: hot books gallery
          (m/Expanded 
           .flex 1 
           .child (layout/gallery-section "Books"
-                                         (build-h-list books #(book-card % ctx))))]))))))
+                                          (hlist/h-list books #(book-card % ctx))))]))))))        

@@ -1,0 +1,106 @@
+(ns audio-app.components.detail-page
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]
+            [audio-app.components.layout :as layout]))
+
+;; =============================================================================
+;; Generic horizontal detail page (used by book_detail/author_detail)
+;; =============================================================================
+
+(defn horizontal-detail-page
+  "Generic horizontal detail page scaffold.
+
+   Args:
+   - summary: summary map with at least `:id`
+   - load-detail!: (fn [detail-state id]) populates `:data` + `:error` + `:loading?`
+   - header-fn: (fn [summary data error] -> widget) for the top hero/header row
+   - detail-text-fn: (fn [data] -> string | nil) for the large description/bio area
+   - section-title: string (can include `\\n`)
+   - items-fn: (fn [data] -> seq | nil) items used by section list
+   - item-tile-fn: (fn [item data ctx] -> widget) for each list tile"
+  [summary load-detail! header-fn detail-text-fn section-title items-fn item-tile-fn]
+  (let [detail-state (atom {:loading? true :error nil :data nil})]
+    (load-detail! detail-state (:id summary))
+
+    (f/widget
+     :context ctx
+     :get {{{:flds [surface onSurface]} .-colorScheme} m/Theme}
+     :watch [{:keys [loading? error data]} detail-state]
+     :let [items (when data (items-fn data))]
+
+     (m/Scaffold
+      .backgroundColor surface
+      .appBar
+      (m/AppBar
+       .backgroundColor m/Colors.transparent
+       .elevation 0
+       .leading
+       (m/IconButton
+        .icon (m/Icon m/Icons.arrow_back_ios)
+        .color onSurface
+        .onPressed (fn []
+                      (m/Navigator.pop ctx)
+                      nil)))
+      .body
+      (layout/canvas-scroll
+       (m/SliverToBoxAdapter
+        .child
+        (m/Padding
+         .padding (m/EdgeInsets.only .left 32.0 .right 40.0 .bottom 32.0 .top 16.0)
+         .child (header-fn summary data error)))
+
+       (m/SliverToBoxAdapter
+        .child
+        (cond
+          error
+          (m/Center
+           .child (m/Text (str "Load failed: " (or (:message error) error))))
+
+          loading?
+          (m/Container
+           .width 100.0
+           .child (m/Center .child (m/CircularProgressIndicator)))
+
+          :else
+          (let [detail-text (detail-text-fn data)]
+            (if (and detail-text (not (empty? detail-text)))
+              (m/Container
+               .height 360.0
+               .padding (m/EdgeInsets.only .right 48.0 .top 16.0)
+               .child (mgl/MongolText
+                       detail-text
+                       .style (m/TextStyle .fontSize 18.0 .height 1.8 .color onSurface)))
+              (m/SizedBox.shrink)))))
+
+       (if (and (not loading?) (not error) (seq items))
+         (m/SliverToBoxAdapter
+          .child
+          (m/Padding
+           .padding (m/EdgeInsets.only .right 24.0 .left 24.0 .bottom 32.0 .top 16.0)
+           .child
+           (m/Row
+            .children
+            [(layout/v-divider :height 360.0)
+             (m/SizedBox .width 24.0)
+             (m/SizedBox
+              .height 360.0
+              .child
+              (mgl/MongolText
+               section-title
+               .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold .letterSpacing 2.0)))])))
+         (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
+
+       (if (and (not loading?) (not error) (seq items))
+         (m/SliverList
+          .delegate
+          (m/SliverChildBuilderDelegate
+           (f/build [i]
+             (m/Padding
+              .padding (m/EdgeInsets.only .bottom 32.0 .top 16.0)
+              .child (item-tile-fn (nth items i) data ctx)))
+           .childCount (count items)))
+         (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
+
+       (m/SliverToBoxAdapter .child (m/SizedBox .width 160.0)))))))
+

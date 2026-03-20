@@ -8,7 +8,13 @@
   [segments position]
   (let [idx (->> segments
                  (keep-indexed (fn [i seg] 
-                                 (when (<= (or (:start_time seg) 0) position) i)))
+                                 (let [start-ms (:start_ms seg)
+                                       ;; Frontend may also receive `start_time` (seconds) from older payloads.
+                                       start-s (cond
+                                                  (number? start-ms) (/ start-ms 1000.0)
+                                                  (number? (:start_time seg)) (:start_time seg)
+                                                  :else 0.0)]
+                                   (when (<= start-s position) i))))
                  last)]
     (or idx -1)))
 

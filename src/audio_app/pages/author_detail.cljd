@@ -1,10 +1,9 @@
 (ns audio-app.pages.author-detail
   (:require ["package:flutter/material.dart" :as m]
             ["package:mongol/mongol.dart" :as mgl]
-            [cljd.flutter :as f]
             [audio-app.services.author :as srv]
             [audio-app.components.media :as media]
-            [audio-app.components.layout :as layout]
+            [audio-app.components.detail-page :as detail-page]
             [audio-app.pages.book-detail :as book-detail]))
 
 ;; =============================================================================
@@ -39,79 +38,20 @@
 (defn page 
   "Receive author summary from previous page to instantly render Hero animation."
   [author-summary]
-  (let [detail-state (atom {:loading? true :error nil :data nil})]
-    
-    (srv/load-detail! detail-state (:id author-summary))
-    
-    (f/widget
-     :context ctx
-     :get {{{:flds [surface onSurface]} .-colorScheme} m/Theme}
-     :watch [{:keys [loading? error data]} detail-state]
-     
-     (m/Scaffold
-      .backgroundColor surface
-      .appBar (m/AppBar 
-               .backgroundColor m/Colors.transparent .elevation 0
-               .leading (m/IconButton .icon (m/Icon m/Icons.arrow_back_ios) 
-                                      .color onSurface
-                                      .onPressed (fn [] 
-                                                   (m/Navigator.pop ctx)
-                                                   nil)))
-      .body
-      (m/CustomScrollView
-       .scrollDirection m/Axis.horizontal
-       .physics (m/BouncingScrollPhysics.)
-       .slivers
-       [
-        (m/SliverToBoxAdapter
-         .child
-         (m/Padding
-          .padding (m/EdgeInsets.only .left 32.0 .right 40.0 .bottom 32.0 .top 16.0)
-          .child (m/Row
-                  .crossAxisAlignment m/CrossAxisAlignment.start
-                  .children
-                  [(media/hero-avatar (:id author-summary) (:avatar_url author-summary) :radius 80.0)
-                   (m/SizedBox .width 40.0)
-                   (m/SizedBox 
-                    .height 360.0
-                    .child (mgl/MongolText (:name author-summary)
-                                           .style (m/TextStyle .fontSize 40.0 .height 1.2 .fontWeight m/FontWeight.bold)))])))
-        
-        (m/SliverToBoxAdapter
-         .child (cond
-                  error    (m/Center .child (m/Text (str "Load failed: " (or (:message error) error))))
-                  loading? (m/Container .width 100.0 .child (m/Center .child (m/CircularProgressIndicator)))
-                  (:bio data)
-                  (m/Container
-                   .height 360.0
-                   .padding (m/EdgeInsets.only .right 48.0 .top 16.0)
-                   .child (mgl/MongolText (:bio data) 
-                                          .style (m/TextStyle .fontSize 18.0 .height 1.8 .color onSurface)))
-                  :else (m/SizedBox.shrink)))
-
-        (if (and (not loading?) (not error) (seq (:books data)))
-          (m/SliverToBoxAdapter
-           .child
-           (m/Padding
-            .padding (m/EdgeInsets.only .right 24.0 .left 24.0 .bottom 32.0 .top 16.0)
-            .child (m/Row
-                    .children
-                    [(layout/v-divider :height 360.0)
-                     (m/SizedBox .width 24.0)
-                     (m/SizedBox
-                      .height 360.0
-                      .child (mgl/MongolText "Books by\nthis author"
-                                             .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold .letterSpacing 2.0)))])))
-          (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
-
-        (if (and (not loading?) (not error) (seq (:books data)))
-          (m/SliverList
-           .delegate (m/SliverChildBuilderDelegate
-                      (f/build [i]
-                               (m/Padding
-                                .padding (m/EdgeInsets.only .bottom 32.0 .top 16.0)
-                                .child (author-book-card (nth (:books data) i) ctx)))
-                      .childCount (count (:books data))))
-          (m/SliverToBoxAdapter .child (m/SizedBox.shrink)))
-        
-        (m/SliverToBoxAdapter .child (m/SizedBox .width 160.0))])))))
+  (detail-page/horizontal-detail-page
+   author-summary
+   srv/load-detail!
+   (fn [summary _data _error]
+     (m/Row
+      .crossAxisAlignment m/CrossAxisAlignment.start
+      .children
+      [(media/hero-avatar (:id summary) (:avatar_url summary) :radius 80.0)
+       (m/SizedBox .width 40.0)
+       (m/SizedBox
+        .height 360.0
+        .child (mgl/MongolText (:name summary)
+                                .style (m/TextStyle .fontSize 40.0 .height 1.2 .fontWeight m/FontWeight.bold)))]))
+   (fn [data] (:bio data))
+   "Books by\nthis author"
+   (fn [data] (:books data))
+   (fn [book _detail ctx] (author-book-card book ctx))))

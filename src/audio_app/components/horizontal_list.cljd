@@ -1,0 +1,38 @@
+(ns audio-app.components.horizontal-list
+  (:require ["package:flutter/material.dart" :as m]
+            [cljd.flutter :as f]
+            [audio-app.components.status :as status]))
+
+;; =============================================================================
+;; Horizontal gallery list
+;; =============================================================================
+
+(defn h-list
+  "Horizontal list used in gallery sections.
+   Returns an `Expanded` widget so it can be placed directly inside `layout/gallery-section`."
+  [items item->widget & {:keys [left-pad right-pad top-pad bottom-pad]
+                           :or {left-pad 6.0 right-pad 6.0 top-pad 8.0 bottom-pad 24.0}}]
+  (m/Expanded
+   .child
+   (m/ListView.builder
+    .scrollDirection m/Axis.horizontal
+    .physics (m/AlwaysScrollableScrollPhysics.)
+    .padding (m/EdgeInsets.only .left left-pad .right right-pad .top top-pad .bottom bottom-pad)
+    .itemCount (count items)
+    .itemBuilder (f/build [i] (item->widget (nth items i))))))
+
+(defn h-list-with-empty
+  "Horizontal list with a centered empty placeholder."
+  [items empty-msg item->widget & {:keys [left-pad right-pad top-pad bottom-pad]
+                                    :or {left-pad 6.0 right-pad 6.0 top-pad 24.0 bottom-pad 24.0}}]
+  (m/Expanded
+   .child
+   (if (empty? items)
+     (status/empty-center empty-msg)
+     (m/ListView.builder
+      .scrollDirection m/Axis.horizontal
+      .physics (m/AlwaysScrollableScrollPhysics.)
+      .padding (m/EdgeInsets.only .left left-pad .right right-pad .top top-pad .bottom bottom-pad)
+      .itemCount (count items)
+      .itemBuilder (f/build [i] (item->widget (nth items i)))))))
+
