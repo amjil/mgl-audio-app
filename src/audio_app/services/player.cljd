@@ -1,19 +1,19 @@
 (ns audio-app.services.player
   (:require ["package:audioplayers/audioplayers.dart" :as ap]
             ["dart:core" :as dart]
-            [audio-app.services.gql :as gql])) ;; 如果将来需要向后端同步播放进度，可以引入
+            [audio-app.services.gql :as gql])) ;; If we ever need to sync playback progress to the backend, we can import it here.
 
 ;; =============================================================================
 ;; 1. Global player state (single source of truth)
 ;; =============================================================================
 (def player-state
-  (atom {:status :stopped       ;; 状态枚举: :stopped, :loading, :playing, :paused, :completed
-         :position 0            ;; 当前播放秒数
-         :duration 0            ;; 音频总秒数
-         :current-book nil      ;; 当前播放的书籍信息
-         :current-chapter nil   ;; 当前播放的章节信息
-         :playlist []           ;; 播放列表 (当前书的所有章节)
-         :current-index 0}))    ;; 当前在列表中的索引
+  (atom {:status :stopped       ;; Status enum: :stopped, :loading, :playing, :paused, :completed
+         :position 0            ;; Current playback seconds
+         :duration 0            ;; Total audio seconds
+         :current-book nil      ;; Current book info being played
+         :current-chapter nil   ;; Current chapter info being played
+         :playlist []           ;; Playlist (all chapters of the current book)
+         :current-index 0}))    ;; Index in the current playlist
 
 ;; =============================================================================
 ;; 2. Underlying player instance (singleton)
@@ -38,8 +38,9 @@
                    
                    ;; When playback is completed, we can auto-play the next chapter
                    (when (= status :completed)
-                     ;; 这里可以调用 (next!) 自动连播，但需要先声明 next!，为避免循环依赖，可用延迟调用或分派
-                     (dart:core/print "🎵 当前章节播放结束"))))))
+                    ;; Here we can call (next!) for auto-play, but we need to declare next! first.
+                    ;; To avoid circular dependencies, use a delayed call or dispatch.
+                     (dart:core/print "🎵 Current chapter finished playback"))))))
 
   ;; Listen for current playback position (fires every few hundred milliseconds)
   (-> audio-player .-onPositionChanged

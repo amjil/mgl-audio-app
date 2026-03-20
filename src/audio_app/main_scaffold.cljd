@@ -17,7 +17,7 @@
 ;; =============================================================================
 (defn- trigger-tab-load! 
   "Given the tab index, trigger data loading if the corresponding state has not been initialized.
-   This avoids重复请求在业务上允许为空列表的场景中。"
+   This avoids repeated requests in business scenarios where an empty list is allowed."
   [index]
   (case index
     ;; Discovery tab
@@ -26,7 +26,7 @@
     ;; Library tab
     1 (when (not (:initialized? @state/library-state))
         (library-srv/load-data! state/library-state))
-    ;; Search page has no默认数据；用户输入触发加载
+    ;; Search page has no default data; user input triggers loading
     2 nil
     ;; Profile tab
     3 (when (not (:initialized? @state/profile-state))
@@ -81,7 +81,7 @@
   (m/FutureBuilder
    .future (gql/get-token)
    .builder
-      (fn [ctx snapshot]
+     (fn [_ctx snapshot]
         (cond
           (= (.-connectionState snapshot) m/ConnectionState.waiting)
           (m/Scaffold .body (m/Center .child (m/CircularProgressIndicator)))

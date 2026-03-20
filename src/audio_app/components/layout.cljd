@@ -13,7 +13,6 @@
    - child: the right-side content widget (usually wrapped in Expanded)"
   [title child]
   (f/widget
-   :get {{{:flds [onSurfaceVariant]} .-colorScheme} m/Theme}
    (m/Row
     .crossAxisAlignment m/CrossAxisAlignment.start
     .children
@@ -31,7 +30,7 @@
                                                  .fontWeight m/FontWeight.bold
                                                  )))
 
-     ;; 2. 右侧：内容区
+     ;; 2. Right side: content area
      child])))
 
 ;; =============================================================================

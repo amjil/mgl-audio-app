@@ -126,8 +126,8 @@
     (nil? err) "Unknown error"
     (string? err) err
     (keyword? err) (case err
-                     :unauthorized "未登录或登录已过期，请重新登录"
-                     :network-error "网络错误，请检查连接后重试"
+                     :unauthorized "Not logged in or your login has expired. Please log in again."
+                     :network-error "Network error. Please check your connection and try again."
                      (name err))
     (map? err) (or (get err :message)
                    (get-in err [0 :message])
@@ -193,7 +193,7 @@
                             (let [s (.-body response)]
                               (if (> (.-length s) 200) (.substring s 0 200) s))
                             "null")]
-              {:error (mk-error :parse "响应不是 JSON（可能是代理/网关/HTML 错误页）"
+              {:error (mk-error :parse "Response is not JSON (possibly a proxy/gateway/HTML error page)"
                                 {:exception (.toString e) :body_snippet snippet})})))
 
         :else

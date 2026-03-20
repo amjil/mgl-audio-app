@@ -50,21 +50,23 @@
     (-> (gql/query get-book-details-query {:id book-id})
         (.then (fn [resp]
                  (if (:error resp)
-                   ;; [网络报错]
+                    ;; [Network error]
                    (if-not cached-book
-                     ;; 只有在【无缓存】的情况下，才把网络错误抛给 UI 让用户看到红字
+                     ;; Only when there is no cache, surface the network error to the UI so the user sees red text
                      (swap! state-atom assoc :loading? false :error (:error resp))
-                     ;; 如果有缓存，我们选择“报喜不报忧”，默默吞下错误，让用户继续看缓存
-                     (dart:core/print "⚠️ 网络拉取失败，继续使用本地离线书籍缓存"))
+                     ;; If we have a cache, we choose to "report good news, not bad": swallow the error silently
+                     ;; so the user can keep reading the cached content
+                     (dart:core/print "⚠️ Network fetch failed, continue using the local offline book cache"))
                    
-                   ;; [网络成功]
+                   ;; [Network success]
                    (let [fresh-book (:book resp)]
-                     ;; A. 将最新数据塞给 UI。如果章节有增删，UI 会像流水一样平滑刷新
+                     ;; A. Push the latest data to the UI. If chapters are added/removed, the UI refreshes smoothly
+                     ;; like flowing water.
                      (swap! state-atom assoc :loading? false :error nil :data fresh-book)
                      
-                     ;; B. ✨ 核心魔法：把最新拉取到的数据，扔进 Hive 里覆盖旧缓存！
+                     ;; B. ✨ Core magic: put the newly fetched data into Hive to overwrite the old cache!
                      (hive/cache-book! fresh-book)))))
         (.catchError (fn [e]
                        (if-not cached-book
                          (swap! state-atom assoc :loading? false :error e)
-                         (dart:core/print "⚠️ 断网或异常，继续使用本地离线书籍缓存")))))))
+                         (dart:core/print "⚠️ Offline or error occurred; continue using the local offline book cache"))))))) 

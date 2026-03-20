@@ -12,9 +12,9 @@
    - text: Mongolian string to display.
    - height-ratio: fraction of screen height (e.g. 0.6 means 60% of screen height).
    - style-override: optional TextStyle override."
-  [ctx text height-ratio & {:keys [style-override]}]
+  [_ctx text height-ratio & {:keys [style-override]}]
   (f/widget
-   :context ctx
+   :context _ctx
    :get {{{:flds [height]} .-size} m/MediaQuery
          {{:flds [onSurfaceVariant]} .-colorScheme
           {:flds [bodyLarge]} .-textTheme} m/Theme}
@@ -29,6 +29,6 @@
             .style (or style-override
                        (.copyWith bodyLarge
                                   .color onSurfaceVariant
-                                  ;; 2. 适当的行高（在蒙古文中即为列间距）
+                                  ;; 2. Appropriate line height (i.e. column spacing in Mongolian text)
                                   .height 1.6
                                   .letterSpacing 0.5))))))

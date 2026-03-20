@@ -21,7 +21,7 @@
                             (str err)))
     :else (str err)))
 
-;; 1. 定义 GraphQL Mutations（与后端 Schema 一致：login 使用 email）
+;; 1. Define GraphQL Mutations (consistent with the backend schema: login uses email)
 (def ^:private login-mutation
   "mutation Login($email: String!, $password: String!) {
      login(email: $email, password: $password) {

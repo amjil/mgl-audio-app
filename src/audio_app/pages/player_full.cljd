@@ -1,11 +1,11 @@
 (ns audio-app.pages.player-full
   (:require ["package:flutter/material.dart" :as m]
             [cljd.flutter :as f]
-            ;; 引入底层 UI 组件
+            ;; Import underlying UI components
             [audio-app.components.media :as media]
             [audio-app.components.transcript :as transcript]
             [audio-app.components.player-ui :as player-ui]
-            ;; 引入播放器业务逻辑与全局状态
+            ;; Import player business logic and global state
             [audio-app.services.player :as player]))
 
 ;; =============================================================================
@@ -20,7 +20,7 @@
    :context ctx
    :get {{{:flds [surface onSurface primary outlineVariant surfaceContainerHighest]} .-colorScheme} m/Theme}
    
-   ;; 💡 核心：纯粹监听全局的播放器状态
+   ;; 💡 Core: purely listen to the global player state
    :watch [{:keys [status position duration]} player/player-state]
    
    (m/Scaffold
