@@ -1,23 +1,12 @@
 (ns audio-app.pages.player-full
   (:require ["package:flutter/material.dart" :as m]
-            ["package:mongol/mongol.dart" :as mgl]
             [cljd.flutter :as f]
             ;; 引入底层 UI 组件
             [audio-app.components.media :as media]
             [audio-app.components.transcript :as transcript]
+            [audio-app.components.player-ui :as player-ui]
             ;; 引入播放器业务逻辑与全局状态
             [audio-app.services.player :as player]))
-
-;; =============================================================================
-;; 1. Helper: time formatting
-;; =============================================================================
-(defn- format-time 
-  "Convert seconds into MM:SS format"
-  [seconds]
-  (let [s (int (or seconds 0))
-        m (quot s 60)
-        rs (rem s 60)]
-    (str (.padLeft (.toString m) 2 "0") ":" (.padLeft (.toString rs) 2 "0"))))
 
 ;; =============================================================================
 ;; 2. Fullscreen player main page
@@ -81,24 +70,18 @@
        (m/Column
         .children
         [
-         (m/Slider
-          .value (double (or position 0))
-          ;; Defensive: if duration not loaded yet, use 1.0 to avoid errors
-          .max (double (if (and duration (> duration 0)) duration 1.0))
-          .activeColor primary
-          .inactiveColor surfaceContainerHighest
-          ;; Dragging the slider directly calls the service layer
-          .onChanged (fn [v] (player/seek! v)))
+         (player-ui/progress-slider position duration
+                                     #(player/seek! %)
+                                     :active-color primary
+                                     :inactive-color surfaceContainerHighest)
          
          (m/Padding
           .padding (m/EdgeInsets.symmetric .horizontal 24.0)
           .child (m/Row
                   .mainAxisAlignment m/MainAxisAlignment.spaceBetween
                   .children
-                  [(m/Text (format-time position) 
-                           .style (m/TextStyle .color outlineVariant .fontFamily "Courier" .fontWeight m/FontWeight.w600))
-                   (m/Text (format-time duration) 
-                           .style (m/TextStyle .color outlineVariant .fontFamily "Courier" .fontWeight m/FontWeight.w600))]))])
+                  [(player-ui/time-text position outlineVariant)
+                   (player-ui/time-text duration outlineVariant)]))])
        
        (m/SizedBox .height 40.0)
        
@@ -125,8 +108,7 @@
                                .boxShadow [(m/BoxShadow .color (.withOpacity primary 0.3) 
                                                         .blurRadius 20.0 .offset (m/Offset 0.0 10.0))])
                   ;; Toggle icon according to status
-                  .child (m/Icon (if (= status :playing) m/Icons.pause m/Icons.play_arrow) 
-                                 .color surface .size 48.0)))
+                  .child (player-ui/play-pause-icon status :color surface :size 48.0)))
          
         ;; Next track
          (m/IconButton .icon (m/Icon m/Icons.skip_next) .iconSize 48.0 .color onSurface 

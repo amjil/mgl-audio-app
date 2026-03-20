@@ -1,0 +1,96 @@
+(ns audio-app.components.auth-form
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]
+            [audio-app.components.status :as status]))
+
+;; =============================================================================
+;; Login / register form (used by `pages/auth`)
+;; =============================================================================
+
+(defn auth-form
+  "Account/password form.
+   - auth-state: atom with keys {:mode :login|:register, :loading?, :error}
+   - on-authenticate!: (fn [auth-state mode email password] ...)
+   Returns a widget sized to be placed inside the right column of auth page."
+  [auth-state on-authenticate!]
+  (f/widget
+   :context ctx
+   :get {{{:flds [primary surface onSurfaceVariant]} .-colorScheme} m/Theme}
+
+   :managed [user-ctrl (m/TextEditingController)
+              pwd-ctrl  (m/TextEditingController)]
+
+   :watch [{:keys [mode loading? error]} auth-state]
+
+   (m/Padding
+    .padding (m/EdgeInsets.all 48.0)
+    .child
+    (m/Column
+     .mainAxisAlignment m/MainAxisAlignment.center
+     .crossAxisAlignment m/CrossAxisAlignment.start
+     .children
+     [
+      ;; Error area (empty when no error)
+      (if error
+        (status/inline-error error)
+        (m/SizedBox.shrink))
+
+      (m/TextField
+       .controller user-ctrl
+       .decoration
+       (m/InputDecoration
+        .labelText "Email"
+        .prefixIcon (m/Icon m/Icons.person)
+        .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 12.0))))
+
+      (m/SizedBox .height 24.0)
+
+      (m/TextField
+       .controller pwd-ctrl
+       .obscureText true
+       .decoration
+       (m/InputDecoration
+        .labelText "Password"
+        .prefixIcon (m/Icon m/Icons.lock)
+        .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 12.0))))
+
+      (m/SizedBox .height 40.0)
+
+      ;; Submit and mode toggle buttons (vertical layout)
+      (m/Column
+       .mainAxisSize m/MainAxisSize.min
+       .crossAxisAlignment m/CrossAxisAlignment.start
+       .children
+       [
+        (mgl/MongolElevatedButton
+         .style (mgl/MongolElevatedButton.styleFrom
+                 .backgroundColor primary
+                 .foregroundColor surface
+                 .padding (m/EdgeInsets.symmetric .vertical 32.0 .horizontal 24.0)
+                 .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 16.0)))
+         .onPressed (if loading?
+                      nil
+                      #(on-authenticate! auth-state mode
+                                         (.-text user-ctrl)
+                                         (.-text pwd-ctrl)))
+         .child (if loading?
+                  (m/CircularProgressIndicator .color surface)
+                  (mgl/MongolText (if (= mode :login) "Sign in" "Sign up")
+                                   .style (m/TextStyle .fontSize 20.0 .fontWeight m/FontWeight.bold))))
+
+        (m/SizedBox .height 16.0)
+
+        (mgl/MongolTextButton
+         .onPressed #(do
+                        (.clear user-ctrl)
+                        (.clear pwd-ctrl)
+                        (swap! auth-state assoc
+                               :mode (if (= mode :login) :register :login)
+                               :error nil))
+         .child (mgl/MongolText
+                 (if (= mode :login)
+                   "New user? Sign up"
+                   "Already have an account? Sign in")
+                 .style (m/TextStyle .fontSize 16.0 .color onSurfaceVariant)))])]))))
+

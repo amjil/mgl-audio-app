@@ -1,0 +1,52 @@
+(ns audio-app.components.horizontal-infinite-list
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]))
+
+;; =============================================================================
+;; Horizontal infinite list (with terminal footer tile).
+;; Intended for `pages/search`.
+;; =============================================================================
+
+(defn horizontal-infinite-list
+  "Render a horizontal `ListView.builder` with an extra footer slot.
+
+   - scroll-ctrl: provided by the parent page (:managed ScrollController)
+   - items: seq of results
+   - item->widget: (fn [item ctx] -> widget)
+   - loading?/has-more?/error: state used for footer rendering"
+  [scroll-ctrl items item->widget loading? has-more? error]
+  (f/widget
+   :context ctx
+   :get {{{:flds [outlineVariant]} .-colorScheme} m/Theme}
+   (m/ListView.builder
+    .controller scroll-ctrl
+    .scrollDirection m/Axis.horizontal
+    .physics (m/BouncingScrollPhysics.)
+    .padding (m/EdgeInsets.all 24.0)
+    .itemCount (inc (count items))
+    .itemBuilder
+    (f/build [i]
+      (if (= i (count items))
+        (m/Container
+         .width 80.0
+         .child
+         (m/Center
+          .child
+          (cond
+            error
+            (m/Text "Load failed"
+                    .style (m/TextStyle .color m/Colors.red))
+
+            loading?
+            (m/CircularProgressIndicator .strokeWidth 2.0)
+
+            has-more?
+            (m/SizedBox.shrink)
+
+            :else
+            (mgl/MongolText
+             "No more"
+             .style (m/TextStyle .color outlineVariant)))))
+        (item->widget (nth items i) ctx))))))
+

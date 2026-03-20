@@ -1,0 +1,53 @@
+(ns audio-app.components.player-ui
+  (:require ["package:flutter/material.dart" :as m]))
+
+;; =============================================================================
+;; Shared player UI helpers (play/pause icon, slider, time formatting)
+;; =============================================================================
+
+(defn- format-time
+  "Convert seconds into MM:SS."
+  [seconds]
+  (let [s (int (or seconds 0))
+        m (quot s 60)
+        rs (rem s 60)]
+    (str (.padLeft (.toString m) 2 "0")
+         ":"
+         (.padLeft (.toString rs) 2 "0"))))
+
+(defn play-pause-icon
+  "Render a play/pause icon based on player status."
+  [status & {:keys [color size]
+              :or {size 32.0}}]
+  (m/Icon (if (= status :playing) m/Icons.pause m/Icons.play_arrow)
+          .color color
+          .size size))
+
+(defn play-pause-icon-button
+  "IconButton wrapper for play/pause."
+  [status on-pressed {:keys [color icon-size] :or {icon-size 32.0}}]
+  (m/IconButton
+   .icon (play-pause-icon status :color color :size icon-size)
+   .color color
+   .iconSize icon-size
+   .onPressed on-pressed))
+
+(defn progress-slider
+  "Slider for playback progress with defensive duration handling."
+  [position duration on-seek & {:keys [active-color inactive-color]}]
+  (m/Slider
+   .value (double (or position 0))
+   .max (double (if (and duration (> duration 0)) duration 1.0))
+   .activeColor active-color
+   .inactiveColor inactive-color
+   .onChanged (fn [v] (on-seek v))))
+
+(defn time-text
+  "Time text widget using the app's Courier-ish style."
+  [seconds color]
+  (m/Text (format-time seconds)
+          .style (m/TextStyle
+                  .color color
+                  .fontFamily "Courier"
+                  .fontWeight m/FontWeight.w600)))
+

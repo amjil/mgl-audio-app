@@ -4,7 +4,8 @@
             [cljd.flutter :as f]
             [audio-app.services.player :refer [player-state toggle-play!]]
             [audio-app.pages.player-full :refer [player-page]]
-            [audio-app.components.media :as media]))
+            [audio-app.components.media :as media]
+            [audio-app.components.player-ui :as player-ui]))
 
 ;; =============================================================================
 ;; Global floating mini player: collapsed when idle, shows cover/title/progress/controls when playing
@@ -82,8 +83,7 @@
                                                             .fontWeight m/FontWeight.w500))))
 
                                    ;; Play / pause
-                                   (m/IconButton
-                                    .icon (m/Icon (if (= status :playing) m/Icons.pause m/Icons.play_arrow))
-                                    .color primary
-                                    .iconSize 32.0
-                                    .onPressed toggle-play!)]))])))))))
+                                   (player-ui/play-pause-icon-button
+                                    status
+                                    toggle-play!
+                                    {:color primary :icon-size 32.0})]))])))))))

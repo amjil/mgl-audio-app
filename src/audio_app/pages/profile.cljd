@@ -6,6 +6,7 @@
             [audio-app.services.profile :as srv]
             [audio-app.components.media :as media]
             [audio-app.components.layout :as layout]
+            [audio-app.components.status :as status]
             [components.setting :as setting]))
 
 ;; =============================================================================
@@ -23,17 +24,13 @@
     .body
     (cond
       (and loading? (nil? user))
-      (m/Center .child (m/CircularProgressIndicator))
+      (status/loading-center)
       
       (and error (nil? user))
-      (m/Center 
-       .child (m/Column 
-               .mainAxisAlignment m/MainAxisAlignment.center
-               .children 
-               [(m/Text "Network error")
-                (m/SizedBox .height 16.0)
-                (m/ElevatedButton .onPressed #(srv/load-data! state/profile-state) 
-                                  .child (m/Text "Retry"))]))
+      (status/error-with-retry
+       {:on-retry #(srv/load-data! state/profile-state)
+        :message "Network error"
+        :retry-text "Retry"})
       
       :else
       (m/Padding
@@ -55,7 +52,7 @@
                                            .style (m/TextStyle .fontSize 24.0 .fontWeight m/FontWeight.bold)))]))
          
          (m/SizedBox .width 16.0)
-         (layout/v-divider :height double/infinity)
+         (layout/v-divider :height dart:core/double.infinity)
          (m/SizedBox .width 16.0)
          
          (setting/settings-section

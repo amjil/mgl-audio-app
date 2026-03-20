@@ -1,13 +1,12 @@
 (ns audio-app.pages.search
   (:require ["package:flutter/material.dart" :as m]
-            ["package:mongol/mongol.dart" :as mgl]
             [cljd.flutter :as f]
             [audio-app.state :as state]
             [audio-app.services.search :as srv]
-            [audio-app.components.media :as media]
             [audio-app.components.layout :as layout]
             [audio-app.components.cards :as cards]
             [audio-app.components.status :as status]
+            [audio-app.components.horizontal-infinite-list :as inf]
             [audio-app.pages.book-detail :as book-detail]
             [components.search-bar :as search-bar]
             [components.input-dialog :as input-dialog]))
@@ -37,7 +36,7 @@
   (let [keyword-atom (atom "")]
     (f/widget
      :context ctx
-     :get {{{:flds [surface onSurface outlineVariant]} .-colorScheme} m/Theme}
+    :get {{{:flds [surface]} .-colorScheme} m/Theme}
      :managed [scroll-ctrl (as-> (m/ScrollController.) ctrl
                              (doto ctrl
                                (.addListener
@@ -81,29 +80,21 @@
                "No results"))
             
             :else
-            (m/ListView.builder
-             .controller scroll-ctrl
-             .scrollDirection m/Axis.horizontal
-             .physics (m/BouncingScrollPhysics.)
-             .padding (m/EdgeInsets.all 24.0)
-             .itemCount (inc (count items))
-             .itemBuilder
-             (f/build [i]
-               (if (= i (count items))
-                 (m/Container
-                  .width 80.0
-                  .child (m/Center
-                          .child
-                          (cond
-                            error     (m/Text "Load failed" .style (m/TextStyle .color m/Colors.red))
-                            loading?  (m/CircularProgressIndicator .strokeWidth 2.0)
-                            has-more? (m/SizedBox.shrink)
-                            :else     (mgl/MongolText "No more"
-                                                      .style (m/TextStyle .color outlineVariant)))))
-                 
-                 (let [book (nth items i)]
-                   (m/GestureDetector
-                    .onTap (fn [] 
-                             (m/Navigator.push ctx (m/MaterialPageRoute .builder (fn [_] (book-detail/page book))))
-                             nil) 
-                    .child (cards/book-card book :width 140.0 :height double/infinity :border-radius 12.0 :title-font-size 18.0))))))))]))))))
+            (inf/horizontal-infinite-list
+             scroll-ctrl
+             items
+             (fn [book ctx]
+               (m/GestureDetector
+                .onTap (fn []
+                         (m/Navigator.push ctx
+                                            (m/MaterialPageRoute
+                                             .builder (fn [_] (book-detail/page book))))
+                         nil)
+                .child (cards/book-card book
+                                         :width 140.0
+                                         :height dart:core/double.infinity
+                                         :border-radius 12.0
+                                         :title-font-size 18.0)))
+             loading?
+             has-more?
+             error)))]))))))

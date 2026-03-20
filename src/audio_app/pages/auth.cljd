@@ -3,7 +3,7 @@
             ["package:mongol/mongol.dart" :as mgl]
             [cljd.flutter :as f]
             [audio-app.services.auth :as srv]
-            [audio-app.components.layout :as layout]))
+            [audio-app.components.auth-form :as auth-form]))
 
 (defn page []
   ;; Local isolated state: control form inputs and mode switching
@@ -12,14 +12,8 @@
                           :error nil})]
     (f/widget
      :context ctx
-     :get {{{:flds [primary surface onSurface onSurfaceVariant outlineVariant]} .-colorScheme} m/Theme}
-     
-     ;; Use :managed to manage controllers' lifecycle
-     :managed [user-ctrl (m/TextEditingController)
-               pwd-ctrl  (m/TextEditingController)]
-     
-     ;; Watch local state to drive UI updates
-     :watch [{:keys [mode loading? error]} auth-state]
+     :get {{{:flds [primary surface outlineVariant]} .-colorScheme} m/Theme}
+     :watch [{:keys [mode]} auth-state]
      
      (m/Scaffold
       .backgroundColor surface
@@ -51,72 +45,4 @@
          ;; ==========================================
          (m/Expanded
           .flex 3
-          .child (m/Padding
-                  .padding (m/EdgeInsets.all 48.0)
-                  .child (m/Column
-                          .mainAxisAlignment m/MainAxisAlignment.center
-                          .crossAxisAlignment m/CrossAxisAlignment.start
-                          .children
-                          [
-                           ;; Error area (use empty placeholder when no error)
-                           (if error
-                             (m/Padding
-                              .padding (m/EdgeInsets.only .bottom 24.0)
-                              .child (m/Text (str "⚠️ " error) .style (m/TextStyle .color m/Colors.red)))
-                             (m/SizedBox.shrink))
-                           
-                           ;; Account input
-                           (m/TextField
-                            .controller user-ctrl
-                            .decoration (m/InputDecoration 
-                                         .labelText "Email"
-                                         .prefixIcon (m/Icon m/Icons.person)
-                                         .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 12.0))))
-                           
-                           (m/SizedBox .height 24.0)
-                           
-                           ;; Password input
-                           (m/TextField
-                            .controller pwd-ctrl
-                            .obscureText true ;; hide password
-                            .decoration (m/InputDecoration 
-                                         .labelText "Password"
-                                         .prefixIcon (m/Icon m/Icons.lock)
-                                         .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 12.0))))
-                           
-                           (m/SizedBox .height 40.0)
-                           
-                           ;; Submit and mode toggle buttons (vertical layout)
-                           (m/Column
-                            .mainAxisSize m/MainAxisSize.min
-                            .crossAxisAlignment m/CrossAxisAlignment.start
-                            .children
-                            [
-                             ;; Primary submit button
-                             (mgl/MongolElevatedButton
-                              .style (mgl/MongolElevatedButton.styleFrom
-                                      .backgroundColor primary
-                                      .foregroundColor surface
-                                      .padding (m/EdgeInsets.symmetric .vertical 32.0 .horizontal 24.0)
-                                      .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 16.0)))
-                              .onPressed (if loading?
-                                           nil
-                                           #(srv/authenticate! auth-state mode (.-text user-ctrl) (.-text pwd-ctrl)))
-                              .child (if loading? 
-                                       (m/CircularProgressIndicator .color surface)
-                                       (mgl/MongolText (if (= mode :login) "Sign in" "Sign up")
-                                                       .style (m/TextStyle .fontSize 20.0 .fontWeight m/FontWeight.bold))))
-                             
-                             (m/SizedBox .height 16.0)
-                             
-                             ;; Mode toggle button (text button)
-                             (mgl/MongolTextButton
-                              .onPressed #(do 
-                                            (.clear user-ctrl)
-                                            (.clear pwd-ctrl)
-                                            (swap! auth-state assoc 
-                                                   :mode (if (= mode :login) :register :login)
-                                                   :error nil))
-                              .child (mgl/MongolText (if (= mode :login) "New user? Sign up" "Already have an account? Sign in")
-                                                     .style (m/TextStyle .fontSize 16.0 .color onSurfaceVariant)))])
-                           ])))]))))))
+          .child (auth-form/auth-form auth-state srv/authenticate!))]))))))

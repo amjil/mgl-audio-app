@@ -12,16 +12,27 @@
 ;; 2. Center error with retry button
 ;; =============================================================================
 (defn error-with-retry 
-  [{:keys [on-retry]}]
+  [{:keys [on-retry message retry-text]
+    :or {message "Network error" retry-text "Retry"}}]
   (m/Center
    .child (m/Column
            .mainAxisAlignment m/MainAxisAlignment.center
            .children
-           [(m/Text "Network error")
+           [(m/Text message)
             (m/SizedBox .height 16.0)
             (m/ElevatedButton
              .onPressed (or on-retry #(identity nil))
-             .child (m/Text "Retry"))])))
+             .child (m/Text retry-text))])))
+
+;; =============================================================================
+;; 2.5. Inline error banner (used by forms)
+;; =============================================================================
+(defn inline-error
+  [msg & {:keys [bottom] :or {bottom 24.0}}]
+  (m/Padding
+   .padding (m/EdgeInsets.only .bottom bottom)
+   .child (m/Text (str "⚠️ " msg)
+                   .style (m/TextStyle .color m/Colors.red))))
 
 ;; =============================================================================
 ;; 3. Center empty placeholder (Mongolian text)
