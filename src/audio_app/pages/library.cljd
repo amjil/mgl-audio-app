@@ -3,11 +3,14 @@
             [cljd.flutter :as f]
             [audio-app.state :as state]
             [audio-app.services.library :as srv]
+            [audio-app.services.playback :as playback-srv]
+            [audio-app.services.player :as player]
             [audio-app.components.layout :as layout]
             [audio-app.components.horizontal-list :as hlist]
             [audio-app.components.cards :as cards]
             [audio-app.components.status :as status]
-            [audio-app.pages.book-detail :as book-detail]))
+            [audio-app.pages.book-detail :as book-detail]
+            [audio-app.pages.player-full :as pf]))
 
 ;; =============================================================================
 ;; 1. Pure render components: book cards and horizontal list with empty state
@@ -15,9 +18,37 @@
 (defn- library-book-card 
   [book ctx]
   (m/GestureDetector
-   .onTap (fn [] 
-            (m/Navigator.push ctx (m/MaterialPageRoute .builder (fn [_] (book-detail/page book))))
-            nil)
+   .onTap
+   (fn []
+     (let [book-id (:id book)]
+       (-> (playback-srv/fetch-resume-data! book-id)
+           (.then (fn [resume]
+                    (if resume
+                      (let [book-ui (:book resume)
+                            chapter (:chapter resume)
+                            chapters (:playlist resume)
+                            idx (:index resume)
+                            start-sec (:start-position-sec resume)]
+                        (player/load-chapter! book-ui chapter (:audio_url chapter)
+                                               :playlist chapters
+                                               :index idx
+                                               :start-position-sec start-sec)
+                        (m/Navigator.push
+                         ctx
+                         (m/MaterialPageRoute
+                          .fullscreenDialog true
+                          .builder (fn [_] (pf/player-page book-ui (or (:segments chapter) [])))))
+                        nil)
+                      ;; Fallback: open detail page and let user press Continue there.
+                      (m/Navigator.push ctx
+                                         (m/MaterialPageRoute
+                                          .builder (fn [_] (book-detail/page book)))))
+                    nil))
+           (.catchError
+            (fn [_e]
+              (m/Navigator.push ctx
+                                 (m/MaterialPageRoute
+                                  .builder (fn [_] (book-detail/page book)))))))))
    .child (cards/book-card book :width 140.0 :height dart:core/double.infinity :border-radius 12.0 :title-font-size 18.0)))
 
 ;; =============================================================================

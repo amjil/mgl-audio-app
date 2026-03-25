@@ -1,0 +1,59 @@
+(ns audio-app.services.favorites
+  (:require [audio-app.services.gql :as gql]
+            [audio-app.services.library :as library-srv]))
+
+;; =============================================================================
+;; GraphQL (favorites)
+;; =============================================================================
+
+(def ^:private is-favorite-query
+  "query IsFavorite($bookId: ID!) {
+     is_favorite(book_id: $bookId)
+   }")
+
+(def ^:private add-favorite-mutation
+  "mutation AddFavorite($bookId: ID!) {
+     add_favorite(book_id: $bookId) { id }
+   }")
+
+(def ^:private remove-favorite-mutation
+  "mutation RemoveFavorite($bookId: ID!) {
+     remove_favorite(book_id: $bookId)
+   }")
+
+;; =============================================================================
+;; Public API
+;; =============================================================================
+
+(defn load-is-favorite!
+  "Load whether `book-id` is in current user's favorites into `state-atom`.
+   state-atom shape: {:loading? boolean :error any :data boolean|nil}"
+  [state-atom book-id]
+  (swap! state-atom assoc :loading? true :error nil :data nil)
+  (-> (gql/query is-favorite-query {:bookId book-id})
+      (.then (fn [resp]
+               (if (:error resp)
+                 (swap! state-atom assoc :loading? false :error (:error resp))
+                 (swap! state-atom assoc
+                        :loading? false
+                        :error nil
+                        :data (get resp :is_favorite)))))
+      (.catchError (fn [e]
+                     (swap! state-atom assoc :loading? false :error e)))))
+
+(defn toggle-favorite!
+  "Toggle favorite status and refresh both:
+   - the passed `fav-state-atom`
+   - the global `library-state-atom` (to update My shelf list)"
+  [fav-state-atom book-id library-state-atom]
+  (let [is-fav (boolean (:data @fav-state-atom))]
+    (swap! fav-state-atom assoc :loading? true :error nil)
+    (let [mutation (if is-fav add-favorite-mutation remove-favorite-mutation)]
+      (-> (gql/mutate mutation {:bookId book-id})
+          (.then (fn [_resp]
+                   (load-is-favorite! fav-state-atom book-id)
+                   (when library-state-atom
+                     (library-srv/load-data! library-state-atom))))
+          (.catchError (fn [e]
+                         (swap! fav-state-atom assoc :loading? false :error e)))))))
+

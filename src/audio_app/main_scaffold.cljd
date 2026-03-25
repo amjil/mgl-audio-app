@@ -7,6 +7,7 @@
             [audio-app.services.library :as library-srv]
             [audio-app.services.profile :as profile-srv]
             [audio-app.components.bottom-nav :as bottom-nav]
+            [audio-app.components.mini-player :as mini-player]
             [audio-app.pages.auth :as auth]
             [audio-app.pages.discovery :as discovery]
             [audio-app.pages.library :as library]
@@ -45,15 +46,20 @@
     
     (f/widget
      :watch [tab-idx current-tab]
-     :get {{{:flds [surface primary onSurfaceVariant]} .-colorScheme} m/Theme}
      
      (m/Scaffold
-      .body (m/IndexedStack
-             .index tab-idx
-             .children [(discovery/page)
-                        (library/page)
-                        (search/page)
-                        (profile/page)])
+      .body
+      (m/Stack
+       .children [(m/IndexedStack
+                    .index tab-idx
+                    .children [(discovery/page)
+                               (library/page)
+                               (search/page)
+                               (profile/page)])
+                   ;; Floating mini player for quick resume.
+                   (m/Align
+                    .alignment m/Alignment.bottomCenter
+                    .child (mini-player/widget))])
 
       .bottomNavigationBar
       (bottom-nav/widget

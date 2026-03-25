@@ -13,7 +13,7 @@
    :watch [_ state/root-refresh-atom]
    :let [info (merge keyboard-options/keyboard-option
                      {:keyboard/mongol-font-family "OyunQaganTig"})
-         ;; Theme seed (used to build consistent浅/深 ColorSchemes).
+        ;; Theme seed (used to build consistent light/dark ColorSchemes).
          seedColor m/Colors.indigo
          lightScheme (m/ColorScheme.fromSeed
                        .seedColor seedColor

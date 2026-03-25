@@ -1,5 +1,6 @@
 (ns audio-app.services.player
   (:require ["package:audioplayers/audioplayers.dart" :as ap]
+            ["dart:async" :as da]
             ["dart:core" :as dart]
             [audio-app.services.gql :as gql])) ;; If we ever need to sync playback progress to the backend, we can import it here.
 
@@ -13,12 +14,110 @@
          :current-book nil      ;; Current book info being played
          :current-chapter nil   ;; Current chapter info being played
          :playlist []           ;; Playlist (all chapters of the current book)
-         :current-index 0}))    ;; Index in the current playlist
+         :current-index 0       ;; Index in the current playlist
+         :last-synced-position-sec nil ;; Throttle for progress sync
+         :speed 1.0                   ;; Playback rate
+         :sleep-remaining-sec nil      ;; Sleep timer countdown (seconds)
+         :auto-next? true              ;; Auto play next when completed
+         :repeat-mode :off}))          ;; :off | :one | :all
+
+;; Forward declarations for listener closures.
+(declare sync-progress-to-server! next! seek! set-speed! cancel-sleep-timer! handle-completed! load-chapter!)
+
+;; Sync policy: reduce backend write rate.
+(def ^:private min-sync-interval-seconds 15)
+
+;; Backend mutation: upsert playback progress.
+(def ^:private sync-progress-mutation
+  "mutation SyncProgress($bookId: ID!, $chapterId: ID!, $positionMs: Int!) {
+     sync_playback_progress(book_id: $bookId, chapter_id: $chapterId, position_ms: $positionMs) {
+       id
+       position_ms
+       updated_at
+     }
+   }")
 
 ;; =============================================================================
 ;; 2. Underlying player instance (singleton)
 ;; =============================================================================
 (def ^:private audio-player (ap/AudioPlayer.))
+
+;; Sleep timer implementation: keep the Timer handle outside of reactive state.
+(def ^:private sleep-timer (atom nil))
+
+;; Playback speed presets (cycle in UI).
+(def ^:private speed-presets [0.8 1.0 1.25 1.5 2.0])
+
+;; Repeat mode cycle order.
+(def ^:private repeat-modes [:off :one :all])
+
+;; =============================================================================
+;; Playback strategy helpers
+;; =============================================================================
+
+(defn toggle-auto-next!
+  "Toggle whether to auto-play the next item when current completes."
+  []
+  (swap! player-state update :auto-next? not))
+
+(defn cycle-repeat-mode!
+  "Cycle repeat mode: :off -> :one -> :all -> :off."
+  []
+  (let [cur (:repeat-mode @player-state)
+        idx (or (first (keep-indexed #(when (= %2 cur) %1) repeat-modes)) 0)
+        next-idx (mod (inc idx) (count repeat-modes))]
+    (swap! player-state assoc :repeat-mode (nth repeat-modes next-idx))))
+
+(defn- handle-completed!
+  "Handle chapter completion according to repeat/auto-next policy.
+   Returns true when playback continues (auto-next/repeat), else false."
+  []
+  (let [{:keys [repeat-mode auto-next? playlist current-index current-book current-chapter]} @player-state
+        playlist (or playlist [])
+        n (count playlist)
+        has-items? (pos? n)
+        ;; Find current item index if it drifted (defensive).
+        idx (cond
+              (and has-items? (<= 0 current-index) (< current-index n)) current-index
+              (and has-items? current-chapter)
+              (or (first (keep-indexed #(when (= (:id %2) (:id current-chapter)) %1) playlist)) 0)
+              :else 0)]
+    (cond
+      ;; Repeat current item (single)
+      (= repeat-mode :one)
+      (do
+        (seek! 0)
+        (.resume audio-player)
+        true)
+
+      ;; No playlist: nothing to do.
+      (not has-items?)
+      false
+
+      ;; Advance to next in playlist
+      (< (inc idx) n)
+      (let [next-idx (inc idx)
+            next-chapter (nth playlist next-idx)]
+        (load-chapter! current-book next-chapter (:audio_url next-chapter)
+                       :playlist playlist
+                       :index next-idx)
+        true)
+
+      ;; Repeat whole playlist (independent from auto-next)
+      (= repeat-mode :all)
+      (let [next-idx 0
+            next-chapter (nth playlist 0)]
+        (load-chapter! current-book next-chapter (:audio_url next-chapter)
+                       :playlist playlist
+                       :index next-idx)
+        true)
+
+      ;; Auto-next disabled: stop here.
+      (not auto-next?)
+      false
+
+      :else
+      false)))
 
 ;; =============================================================================
 ;; 3. Core listeners: convert Dart streams into reactive atoms
@@ -36,16 +135,29 @@
                                 :else :stopped)]
                    (swap! player-state assoc :status status)
                    
-                   ;; When playback is completed, we can auto-play the next chapter
-                   (when (= status :completed)
-                    ;; Here we can call (next!) for auto-play, but we need to declare next! first.
-                    ;; To avoid circular dependencies, use a delayed call or dispatch.
-                     (dart:core/print "🎵 Current chapter finished playback"))))))
+                   (cond
+                     (= status :paused)
+                     (sync-progress-to-server!)
+
+                     (= status :completed)
+                     (do
+                       (sync-progress-to-server!)
+                       (dart:core/print "🎵 Current chapter finished playback")
+                       ;; Only cancel sleep-timer if we are actually stopping.
+                       (when (not (handle-completed!))
+                         (cancel-sleep-timer!)))
+
+                     :else
+                     nil)))))
 
   ;; Listen for current playback position (fires every few hundred milliseconds)
   (-> audio-player .-onPositionChanged
       (.listen (fn [^dart:core/Duration d]
-                 (swap! player-state assoc :position (.-inSeconds d)))))
+                 (let [pos (.-inSeconds d)]
+                   (swap! player-state assoc :position pos)
+                   ;; Sync frequently but throttle writes inside sync-progress-to-server!.
+                   (when (= :playing (:status @player-state))
+                     (sync-progress-to-server!))))))
 
   ;; Listen for total duration (usually fires once when audio is loaded)
   (-> audio-player .-onDurationChanged
@@ -62,20 +174,29 @@
 
 (defn load-chapter! 
   "Load and play a specific chapter"
-  [book chapter audio-url & {:keys [playlist index] :or {playlist [] index 0}}]
+  [book chapter audio-url & {:keys [playlist index start-position-sec] :or {playlist [] index 0}}]
   ;; 1. Put UI into loading state and reset progress
+  (let [start-sec (or start-position-sec 0)]
   (swap! player-state assoc
          :current-book book
          :current-chapter chapter
          :playlist playlist
          :current-index index
          :status :loading
-         :position 0
-         :duration (:duration_seconds chapter 0))
+         :position start-sec
+         :duration (:duration_seconds chapter 0)
+         :last-synced-position-sec nil)
   
   ;; 2. Command the underlying player to load and play the URL
   ;; (UrlSource automatically handles buffering network audio)
-  (.play audio-player (ap/UrlSource. audio-url)))
+  (.play audio-player (ap/UrlSource. audio-url))
+
+  ;; 2.5 Apply last-selected playback speed.
+  (set-speed! (:speed @player-state))
+  
+  ;; 3. Apply resume seek after issuing play command.
+  (when (and start-position-sec (pos? start-sec))
+    (seek! start-sec))))
 
 (defn toggle-play! 
   "Toggle between play and pause"
@@ -90,6 +211,63 @@
   [seconds]
   (let [target-duration (dart:core/Duration. .seconds (int seconds))]
     (.seek audio-player target-duration)))
+
+(defn set-speed!
+  "Set playback speed (rate)."
+  [rate]
+  (let [r (double (or rate 1.0))]
+    (swap! player-state assoc :speed r)
+    (try
+      ;; audioplayers v5: setPlaybackRate(rate: double)
+      ;; Some versions accept a single positional arg; keep it defensive.
+      (try
+        (.setPlaybackRate audio-player .playbackRate r)
+        (catch dynamic _e
+          (.setPlaybackRate audio-player r)))
+      (catch dynamic e
+        (dart:core/print (str "⚠️ setPlaybackRate failed: " e))))))
+
+(defn cycle-speed!
+  "Cycle through speed presets."
+  []
+  (let [cur (:speed @player-state)
+        idx (or (first (keep-indexed #(when (= %2 cur) %1) speed-presets)) 1)
+        next-idx (mod (inc idx) (count speed-presets))]
+    (set-speed! (nth speed-presets next-idx))))
+
+(defn cancel-sleep-timer!
+  "Cancel sleep timer and clear countdown."
+  []
+  (when-let [t @sleep-timer]
+    (try (.cancel ^da/Timer t)
+         (catch dynamic _e nil)))
+  (reset! sleep-timer nil)
+  (swap! player-state assoc :sleep-remaining-sec nil))
+
+(defn start-sleep-timer!
+  "Start a sleep timer for N minutes; pauses playback when countdown reaches 0."
+  [minutes]
+  (cancel-sleep-timer!)
+  (let [total-sec (* (int minutes) 60)]
+    (swap! player-state assoc :sleep-remaining-sec total-sec)
+    (reset! sleep-timer
+            (da/Timer.periodic
+             (dart:core/Duration. .seconds 1)
+             (fn [^da/Timer _t]
+               (let [remaining (:sleep-remaining-sec @player-state)
+                     next (when (number? remaining) (dec (int remaining)))]
+                 (cond
+                   (nil? remaining)
+                   (cancel-sleep-timer!)
+
+                   (<= next 0)
+                   (do
+                     (swap! player-state assoc :sleep-remaining-sec 0)
+                     (.pause audio-player)
+                     (cancel-sleep-timer!))
+
+                   :else
+                   (swap! player-state assoc :sleep-remaining-sec next))))))))
 
 (defn next! 
   "Play the next chapter (depends on playlist state)"
@@ -115,12 +293,23 @@
       (seek! 0))))
 
 ;; =============================================================================
-;; 5. Extended feature: background progress sync (pseudo code example)
+;; 6. Progress sync to backend (upsert)
 ;; =============================================================================
 (defn sync-progress-to-server! 
-  "Sync current playback progress to the backend (e.g. when leaving the page or via a timer)"
+  "Sync current playback progress to the backend.
+   Throttled to avoid excessive writes."
   []
-  (let [{:keys [current-chapter position]} @player-state]
-    (when (and current-chapter (> position 10))
-      (gql/mutate "mutation SyncProgress($id: ID!, $pos: Int!) { ... }" 
-                  {:id (:id current-chapter) :pos position}))))
+  (let [{:keys [current-book current-chapter position last-synced-position-sec]} @player-state]
+    (when (and current-book current-chapter (>= position 10))
+      (let [should-sync?
+            (or (nil? last-synced-position-sec)
+                (>= (- position last-synced-position-sec) min-sync-interval-seconds))]
+        (when should-sync?
+          (swap! player-state assoc :last-synced-position-sec position)
+          (-> (gql/mutate sync-progress-mutation
+                           {:bookId (:id current-book)
+                            :chapterId (:id current-chapter)
+                            :positionMs (int (* position 1000))})
+              (.catchError (fn [e]
+                             (dart:core/print
+                              (str "⚠️ SyncProgress failed (ignored): " e))))))))))

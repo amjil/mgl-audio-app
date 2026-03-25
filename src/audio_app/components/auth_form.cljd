@@ -19,7 +19,7 @@
    :get {{{:flds [primary surface onSurfaceVariant]} .-colorScheme} m/Theme}
 
    :managed [user-ctrl (m/TextEditingController)
-              pwd-ctrl  (m/TextEditingController)]
+             pwd-ctrl  (m/TextEditingController)]
 
    :watch [{:keys [mode loading? error]} auth-state]
 
@@ -30,8 +30,7 @@
      .mainAxisAlignment m/MainAxisAlignment.center
      .crossAxisAlignment m/CrossAxisAlignment.start
      .children
-     [
-      ;; Error area (empty when no error)
+     [;; Error area (empty when no error)
       (if error
         (status/inline-error error)
         (m/SizedBox.shrink))
@@ -62,8 +61,7 @@
        .mainAxisSize m/MainAxisSize.min
        .crossAxisAlignment m/CrossAxisAlignment.start
        .children
-       [
-        (mgl/MongolElevatedButton
+       [(mgl/MongolElevatedButton
          .style (mgl/MongolElevatedButton.styleFrom
                  .backgroundColor primary
                  .foregroundColor surface
@@ -77,17 +75,17 @@
          .child (if loading?
                   (m/CircularProgressIndicator .color surface)
                   (mgl/MongolText (if (= mode :login) "Sign in" "Sign up")
-                                   .style (m/TextStyle .fontSize 20.0 .fontWeight m/FontWeight.bold))))
+                                  .style (m/TextStyle .fontSize 20.0 .fontWeight m/FontWeight.bold))))
 
         (m/SizedBox .height 16.0)
 
         (mgl/MongolTextButton
          .onPressed #(do
-                        (.clear user-ctrl)
-                        (.clear pwd-ctrl)
-                        (swap! auth-state assoc
-                               :mode (if (= mode :login) :register :login)
-                               :error nil))
+                       (.clear user-ctrl)
+                       (.clear pwd-ctrl)
+                       (swap! auth-state assoc
+                              :mode (if (= mode :login) :register :login)
+                              :error nil))
          .child (mgl/MongolText
                  (if (= mode :login)
                    "New user? Sign up"

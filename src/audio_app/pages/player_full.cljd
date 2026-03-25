@@ -21,7 +21,7 @@
    :get {{{:flds [surface onSurface primary outlineVariant surfaceContainerHighest]} .-colorScheme} m/Theme}
    
    ;; 💡 Core: purely listen to the global player state
-   :watch [{:keys [status position duration]} player/player-state]
+   :watch [{:keys [status position duration speed sleep-remaining-sec auto-next? repeat-mode]} player/player-state]
    
    (m/Scaffold
     .backgroundColor surface
@@ -55,6 +55,80 @@
                                          :width 280.0 :height 280.0 :border-radius 24.0)))
        
        (m/SizedBox .height 40.0)
+
+       ;; ==========================================
+       ;; 2.5 Speed + Sleep timer quick actions
+       ;; ==========================================
+       (let [sleep-label (if (number? sleep-remaining-sec)
+                           (let [s (int sleep-remaining-sec)
+                                 mm (quot s 60)
+                                 ss (rem s 60)]
+                             (str "Sleep: "
+                                  (.padLeft (.toString mm) 2 "0")
+                                  ":"
+                                  (.padLeft (.toString ss) 2 "0")))
+                           "Sleep timer")]
+         (m/Row
+          .mainAxisAlignment m/MainAxisAlignment.spaceBetween
+          .children
+          [(m/OutlinedButton
+            .onPressed #(player/cycle-speed!)
+            .child (m/Text (str (double speed) "x")))
+
+           (m/OutlinedButton
+            .onPressed #(player/cycle-repeat-mode!)
+            .child (m/Text
+                    (case repeat-mode
+                      :one "Repeat 1"
+                      :all "Repeat all"
+                      "Repeat off")))
+
+           (m/OutlinedButton
+            .onPressed #(player/toggle-auto-next!)
+            .child (m/Text (if auto-next? "Auto next: On" "Auto next: Off")))
+
+           (m/OutlinedButton
+            .onPressed
+            (fn []
+              (m/showModalBottomSheet
+               .context ctx
+               .builder
+               (fn [sheet-ctx]
+                 (m/SafeArea
+                  .child
+                  (m/ListView
+                   .shrinkWrap true
+                   .children
+                   [(m/ListTile
+                     .leading (m/Icon m/Icons.timer_off)
+                     .title (m/Text "Cancel timer")
+                     .onTap (fn []
+                              (player/cancel-sleep-timer!)
+                              (-> (m/Navigator.of sheet-ctx) (.pop))
+                              nil))
+                    (m/ListTile
+                     .leading (m/Icon m/Icons.timer)
+                     .title (m/Text "15 minutes")
+                     .onTap (fn []
+                              (player/start-sleep-timer! 15)
+                              (-> (m/Navigator.of sheet-ctx) (.pop))
+                              nil))
+                    (m/ListTile
+                     .leading (m/Icon m/Icons.timer)
+                     .title (m/Text "30 minutes")
+                     .onTap (fn []
+                              (player/start-sleep-timer! 30)
+                              (-> (m/Navigator.of sheet-ctx) (.pop))
+                              nil))
+                    (m/ListTile
+                     .leading (m/Icon m/Icons.timer)
+                     .title (m/Text "60 minutes")
+                     .onTap (fn []
+                              (player/start-sleep-timer! 60)
+                              (-> (m/Navigator.of sheet-ctx) (.pop))
+                              nil))]))))
+              nil)
+            .child (m/Text sleep-label))]))
        
        ;; ==========================================
        ;; 2. Synchronized transcript area (scrolling canvas)

@@ -1,0 +1,96 @@
+(ns audio-app.services.playback
+  (:require [audio-app.services.gql :as gql]
+            [audio-app.models.book :as book-m]))
+
+;; =============================================================================
+;; 1. GraphQL queries
+;; =============================================================================
+(def ^:private my-last-progress-query
+  "query MyLastProgress($bookId: ID!) {
+     my_playback_progress(book_id: $bookId) {
+       chapter_id
+       position_ms
+     }
+   }")
+
+(def ^:private resume-book-query
+  "query ResumeBook($bookId: ID!) {
+     book(id: $bookId) {
+       id
+       title
+       cover_url
+       description
+       author { name }
+       reciter { name }
+       chapters {
+         id
+         title
+         audio_url
+         duration_seconds
+         segments {
+           id
+           text
+           start_ms
+           end_ms
+           index
+         }
+       }
+     }
+     my_playback_progress(book_id: $bookId) {
+       chapter_id
+       position_ms
+     }
+   }")
+
+;; =============================================================================
+;; 2. Public API
+;; =============================================================================
+(defn load-last-progress!
+  "Load the latest playback progress for `book-id` into `state-atom`.
+   state-atom shape: {:loading? boolean :error any :data {:chapter_id ... :position_ms ...}|nil}"
+  [state-atom book-id]
+  (swap! state-atom assoc :loading? true :error nil :data nil)
+  (-> (gql/query my-last-progress-query {:bookId book-id})
+      (.then (fn [resp]
+               (if (:error resp)
+                 (swap! state-atom assoc :loading? false :error (:error resp))
+                 (swap! state-atom assoc
+                        :loading? false
+                        :error nil
+                        :data (get resp :my_playback_progress)))))
+      (.catchError (fn [e]
+                     (swap! state-atom assoc :loading? false :error e)))))
+
+;; =============================================================================
+;; 3. Resume playback from library click
+;; =============================================================================
+
+(defn fetch-resume-data!
+  "Fetch a book + latest playback progress and compute the saved chapter + start position.
+   Returns a Future resolving to:
+   - nil (no resume possible)
+   - {:book ... :chapter ... :start-position-sec ... :playlist ... :index ...}"
+  [book-id]
+  (let [q resume-book-query]
+    (-> (gql/query q {:bookId book-id})
+        (.then (fn [resp]
+                 (if (:error resp)
+                   nil
+                   (let [book-ui (book-m/book-detail-api->ui (:book resp))
+                         progress (:my_playback_progress resp)
+                         chapters (:chapters book-ui)
+                         saved-chapter-id (get progress :chapter_id)
+                         saved-pos-ms (get progress :position_ms)
+                         saved-pos-sec (when (and saved-pos-ms (> saved-pos-ms 0))
+                                          (quot saved-pos-ms 1000))]
+                     (when (and chapters saved-chapter-id saved-pos-sec)
+                       (let [saved-chapter (first (keep #(when (= (:id %) saved-chapter-id) %) chapters))
+                             saved-idx (first (keep-indexed #(when (= (:id %2) saved-chapter-id) %1) chapters))]
+                         (when (and saved-chapter saved-idx (not (neg? saved-pos-sec)))
+                           {:book book-ui
+                            :chapter saved-chapter
+                            :start-position-sec saved-pos-sec
+                            :playlist chapters
+                            :index saved-idx}))))))))
+        (.catchError (fn [_e] nil))))
+

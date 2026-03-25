@@ -7,7 +7,10 @@
             [audio-app.components.media :as media]
             [audio-app.components.detail-page :as detail-page]
             [audio-app.services.player :as player]
-            [audio-app.pages.player-full :as pf]))
+            [audio-app.services.favorites :as favorites-srv]
+            [audio-app.services.playback :as playback-srv]
+            [audio-app.pages.player-full :as pf]
+            [audio-app.state :as state]))
 
 ;; =============================================================================
 ;; 1. Chapter card component (adaptive size, no hard-coded constraints)
@@ -64,39 +67,145 @@
                                          .style (m/TextStyle .color onSurfaceVariant .fontSize 14.0))])])))))))
 
 ;; =============================================================================
+;; Favorites (toggle button)
+;; =============================================================================
+(defn- favorite-toggle-widget
+  [book-id fav-state-atom library-state-atom]
+  (f/widget
+   :watch [{:keys [loading? error data]} fav-state-atom]
+   (let [is-fav (boolean data)]
+     (cond
+       loading?
+       (m/Row
+        .mainAxisSize m/MainAxisSize.min
+        .children [(m/CircularProgressIndicator .strokeWidth 2.0)]
+        )
+
+       error
+       (mgl/MongolElevatedButton
+        .onPressed (fn []
+                     (favorites-srv/load-is-favorite! fav-state-atom book-id))
+        .child (mgl/MongolText "Favorite (Retry)"))
+
+       is-fav
+       (m/ElevatedButton
+        .onPressed (fn []
+                     (favorites-srv/toggle-favorite!
+                      fav-state-atom book-id library-state-atom))
+        .child (m/Row
+                .mainAxisSize m/MainAxisSize.min
+                .children
+                [(m/Icon m/Icons.favorite)
+                 (m/SizedBox .width 8.0)
+                 (m/Text "Favorited")]))
+
+       :else
+       (m/ElevatedButton
+        .onPressed (fn []
+                     (favorites-srv/toggle-favorite!
+                      fav-state-atom book-id library-state-atom))
+        .child (m/Row
+                .mainAxisSize m/MainAxisSize.min
+                .children
+                [(m/Icon m/Icons.favorite_border)
+                 (m/SizedBox .width 8.0)
+                 (m/Text "Favorite")]))))))
+
+;; =============================================================================
 ;; 2. Main page (driven by local state)
 ;; =============================================================================
 (defn page
   "Book detail page. Uses incoming book-summary for instant header render, then loads full detail asynchronously."
   [book-summary]
-  (let [summary (or (book-m/book-summary-api->ui book-summary) book-summary)]
-    (detail-page/horizontal-detail-page
-     summary
-     srv/load-detail!
-     (fn [summary data error]
-       (m/Row
-        .crossAxisAlignment m/CrossAxisAlignment.start
-        .children
-        [(media/hero-cover (:id summary) (:cover_url summary)
-                           :width 120.0 :height 180.0 :border-radius 16.0)
-         (m/SizedBox .width 32.0)
-         (m/SizedBox
-          .height 180.0
-          .child (mgl/MongolText (:title summary)
-                                 .style (m/TextStyle .fontSize 36.0 .height 1.2 .fontWeight m/FontWeight.bold)))
-         (m/SizedBox .width 24.0)
-         (if (and data (not error))
-           (m/SizedBox
-            .height 180.0
-            .child (m/Row
-                    .children
-                    [(mgl/MongolText (str "Author: " (get-in data [:author :name]))
-                                     .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))
-                     (m/SizedBox .width 20.0)
-                     (mgl/MongolText (str "Narrator: " (get-in data [:reciter :name]))
-                                     .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))]))
-           (m/SizedBox.shrink))]))
-     (fn [data] (:description data))
-     "Full\ntranscript"
-     (fn [data] (:chapters data))
-     (fn [chapter data ctx] (chapter-card-tile data chapter ctx)))))
+  (let [summary (or (book-m/book-summary-api->ui book-summary) book-summary)
+        ;; Latest progress for "Continue listening".
+        progress-state (atom {:loading? true :error nil :data nil})
+        ;; Latest favorite status for this book.
+        favorite-state (atom {:loading? true :error nil :data nil})]
+    (playback-srv/load-last-progress! progress-state (:id summary))
+    (favorites-srv/load-is-favorite! favorite-state (:id summary))
+    (let [header-fn
+          (fn [summary detail-data detail-error]
+            (f/widget
+             :watch [{:keys [loading? error data]} progress-state]
+             (let [chapters (:chapters detail-data)
+                   saved-chapter-id (:chapter_id data)
+                   saved-progress-pos-ms (:position_ms data)
+                   saved-pos-sec (when (and saved-progress-pos-ms (> saved-progress-pos-ms 0))
+                                    (quot saved-progress-pos-ms 1000))
+                   saved-chapter (when (and chapters saved-chapter-id)
+                                    (first (keep #(when (= (:id %) saved-chapter-id) %) chapters)))
+                   saved-idx (when (and chapters saved-chapter-id)
+                               (first (keep-indexed
+                                       #(when (= (:id %2) saved-chapter-id) %1)
+                                       chapters)))
+                   show-continue? (and (not loading?) (nil? error) saved-chapter saved-pos-sec)
+
+                   continue-widget
+                   (if show-continue?
+                     (m/ElevatedButton
+                      .onPressed
+                      (fn []
+                        (player/load-chapter! detail-data saved-chapter
+                                               (:audio_url saved-chapter)
+                                               :playlist chapters
+                                               :index (or saved-idx 0)
+                                               :start-position-sec saved-pos-sec)
+                        nil)
+                      .child
+                      (m/Row
+                       .mainAxisSize m/MainAxisSize.min
+                       .children
+                       [(m/Icon m/Icons.play_arrow)
+                        (m/SizedBox .width 8.0)
+                        (m/Text
+                         (let [s (int saved-pos-sec)
+                               mm (quot s 60)
+                               ss (rem s 60)]
+                           (str "Continue: "
+                                (.padLeft (.toString mm) 2 "0")
+                                ":"
+                                (.padLeft (.toString ss) 2 "0"))))]))
+                     (m/SizedBox.shrink))
+
+                   author-widget
+                   (if (and detail-data (not detail-error))
+                     (m/Row
+                      .children
+                      [(mgl/MongolText
+                        (str "Author: " (get-in detail-data [:author :name]))
+                        .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))
+                       (m/SizedBox .width 20.0)
+                       (mgl/MongolText
+                        (str "Narrator: " (get-in detail-data [:reciter :name]))
+                        .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))])
+                     (m/SizedBox.shrink))]
+               (m/Row
+                .crossAxisAlignment m/CrossAxisAlignment.start
+                .children
+                [(media/hero-cover (:id summary) (:cover_url summary)
+                                   :width 120.0 :height 180.0 :border-radius 16.0)
+                 (m/SizedBox .width 32.0)
+                 (m/SizedBox
+                  .height 180.0
+                  .child (mgl/MongolText (:title summary)
+                                         .style (m/TextStyle .fontSize 36.0 .height 1.2 .fontWeight m/FontWeight.bold)))
+                 (m/SizedBox .width 24.0)
+                 (m/Column
+                  .crossAxisAlignment m/CrossAxisAlignment.start
+                  .children
+                  [continue-widget
+                   (m/SizedBox .height 12.0)
+                   (favorite-toggle-widget (:id summary)
+                                           favorite-state
+                                           state/library-state)
+                   (m/SizedBox .height 12.0)
+                   author-widget])]))))]
+      (detail-page/horizontal-detail-page
+       summary
+       srv/load-detail!
+       header-fn
+       (fn [data] (:description data))
+       "Full\ntranscript"
+       (fn [data] (:chapters data))
+       (fn [chapter data ctx] (chapter-card-tile data chapter ctx))))))
