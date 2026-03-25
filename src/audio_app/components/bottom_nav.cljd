@@ -14,7 +14,7 @@
    - on-index-change: (fn [idx] ...) called when user taps a tab"
   [current-index on-index-change]
   (f/widget
-   :get {{{:flds [primary onSurfaceVariant surfaceContainerHighest]} .-colorScheme} m/Theme}
+   :get {{{:flds [primary onSurfaceVariant onSurface surfaceContainerHighest]} .-colorScheme} m/Theme}
    (let [items [{:idx 0 :icon m/Icons.explore :label "Discover"}
                 {:idx 1 :icon m/Icons.library_books :label "Library"}
                 {:idx 2 :icon m/Icons.search :label "Search"}
@@ -30,7 +30,8 @@
         .decoration (m/BoxDecoration
                      .color surfaceContainerHighest
                      .boxShadow [(m/BoxShadow
-                                  .color (.withOpacity m/Colors.black 0.12)
+                                   ;; Avoid hard-coded black; derive shadow from theme for cleaner look.
+                                   .color (.withOpacity onSurface 0.10)
                                   .blurRadius 14.0
                                   .offset (m/Offset 0 8.0))])
         .child

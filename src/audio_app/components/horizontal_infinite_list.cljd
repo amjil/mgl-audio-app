@@ -15,10 +15,10 @@
    - items: seq of results
    - item->widget: (fn [item ctx] -> widget)
    - loading?/has-more?/error: state used for footer rendering"
-  [scroll-ctrl items item->widget loading? has-more? error]
+  [scroll-ctrl items item->widget loading? has-more? page-error?]
   (f/widget
    :context ctx
-   :get {{{:flds [outlineVariant]} .-colorScheme} m/Theme}
+   :get {{{:flds [outlineVariant error]} .-colorScheme} m/Theme}
    (m/ListView.builder
     .controller scroll-ctrl
     .scrollDirection m/Axis.horizontal
@@ -34,9 +34,9 @@
          (m/Center
           .child
           (cond
-            error
+            page-error?
             (m/Text "Load failed"
-                    .style (m/TextStyle .color m/Colors.red))
+                    .style (m/TextStyle .color error))
 
             loading?
             (m/CircularProgressIndicator .strokeWidth 2.0)

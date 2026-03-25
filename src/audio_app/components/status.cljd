@@ -1,6 +1,7 @@
 (ns audio-app.components.status
   (:require ["package:flutter/material.dart" :as m]
-            ["package:mongol/mongol.dart" :as mgl]))
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]))
 
 ;; =============================================================================
 ;; 1. Center loading indicator
@@ -29,18 +30,22 @@
 ;; =============================================================================
 (defn inline-error
   [msg & {:keys [bottom] :or {bottom 24.0}}]
-  (m/Padding
-   .padding (m/EdgeInsets.only .bottom bottom)
-   .child (m/Text (str "⚠️ " msg)
-                   .style (m/TextStyle .color m/Colors.red))))
+  (f/widget
+   :get {{{:flds [error]} .-colorScheme} m/Theme}
+   (m/Padding
+    .padding (m/EdgeInsets.only .bottom bottom)
+    .child (m/Text (str "⚠️ " msg)
+                    .style (m/TextStyle .color error)))))
 
 ;; =============================================================================
 ;; 3. Center empty placeholder (Mongolian text)
 ;; =============================================================================
 (defn empty-center 
   [msg]
-  (m/Center
-   .child (mgl/MongolText
-           msg
-           .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))))
+  (f/widget
+   :get {{{:flds [onSurfaceVariant]} .-colorScheme} m/Theme}
+   (m/Center
+    .child (mgl/MongolText
+            msg
+            .style (m/TextStyle .fontSize 18.0 .color onSurfaceVariant)))))
 

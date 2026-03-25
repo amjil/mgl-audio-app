@@ -13,6 +13,7 @@
    - child: the right-side content widget (usually wrapped in Expanded)"
   [title child]
   (f/widget
+   :get {{{:flds [onSurfaceVariant]} .-colorScheme} m/Theme}
    (m/Row
     .crossAxisAlignment m/CrossAxisAlignment.start
     .children
@@ -23,12 +24,12 @@
       .decoration (m/BoxDecoration
                    .border (m/Border
                             .right (m/BorderSide
-                                    .color (.withOpacity m/Colors.grey 0.2)
+                                    .color (.withOpacity onSurfaceVariant 0.2)
                                     .width 1.0)))
       .child (mgl/MongolText title
-                             .style (m/TextStyle .fontSize 24.0
-                                                 .fontWeight m/FontWeight.bold
-                                                 )))
+                              .style (m/TextStyle .fontSize 24.0
+                                                  .fontWeight m/FontWeight.bold
+                                                  )))
 
      ;; 2. Right side: content area
      child])))
@@ -51,10 +52,12 @@
 (defn v-divider 
   "Elegant short divider line for separating vertical elements in horizontal layouts"
   [& {:keys [height color-opacity] :or {height 100.0 color-opacity 0.2}}]
-  (m/Container
-   .height height
-   .width 1.0
-   .color (.withOpacity m/Colors.grey color-opacity)))
+  (f/widget
+   :get {{{:flds [onSurfaceVariant]} .-colorScheme} m/Theme}
+   (m/Container
+    .height height
+    .width 1.0
+    .color (.withOpacity onSurfaceVariant color-opacity))))
 
 ;; =============================================================================
 ;; 4. Helper layout: horizontal section padding

@@ -12,13 +12,28 @@
   (f/widget
    :watch [_ state/root-refresh-atom]
    :let [info (merge keyboard-options/keyboard-option
-                     {:keyboard/mongol-font-family "OyunQaganTig"})]
+                     {:keyboard/mongol-font-family "OyunQaganTig"})
+         ;; Theme seed (used to build consistent浅/深 ColorSchemes).
+         seedColor m/Colors.indigo
+         lightScheme (m/ColorScheme.fromSeed
+                       .seedColor seedColor
+                       .brightness m/Brightness.light)
+         darkScheme  (m/ColorScheme.fromSeed
+                       .seedColor seedColor
+                       .brightness m/Brightness.dark)]
    :bind {:info info}
    (m/MaterialApp
     .title "Nom-un Dalai"
-    .theme (m/ThemeData. .primarySwatch m/Colors.blue
-                         .fontFamily "OyunQaganTig"
-                         .brightness m/Brightness.dark)
+    ;; Material3 + system theme mode for "clean & consistent" visuals.
+    .theme (m/ThemeData.
+            .useMaterial3 true
+            .fontFamily "OyunQaganTig"
+            .colorScheme lightScheme)
+    .darkTheme (m/ThemeData.
+                 .useMaterial3 true
+                 .fontFamily "OyunQaganTig"
+                 .colorScheme darkScheme)
+    .themeMode m/ThemeMode.system
     .debugShowCheckedModeBanner false
     ;; StyledToast must be inside MaterialApp so Overlay has WidgetsLocalizations.
     .builder (fn [^:dynamic _context child]

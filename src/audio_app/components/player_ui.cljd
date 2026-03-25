@@ -48,6 +48,5 @@
   (m/Text (format-time seconds)
           .style (m/TextStyle
                   .color color
-                  .fontFamily "Courier"
                   .fontWeight m/FontWeight.w600)))
 
