@@ -2,6 +2,7 @@
   (:require ["package:flutter/material.dart" :as m]
             ["package:mongol/mongol.dart" :as mgl]
             [audio-app.services.author :as srv]
+            [audio-app.models.author :as author-m]
             [audio-app.components.media :as media]
             [audio-app.components.detail-page :as detail-page]
             [audio-app.pages.book-detail :as book-detail]))
@@ -44,20 +45,21 @@
 (defn page 
   "Receive author summary from previous page to instantly render Hero animation."
   [author-summary]
-  (detail-page/horizontal-detail-page
-   author-summary
-   srv/load-detail!
-   (fn [summary _data _error]
-     (m/Row
-      .crossAxisAlignment m/CrossAxisAlignment.start
-      .children
-      [(media/hero-avatar (:id summary) (:avatar_url summary) :radius 80.0)
-       (m/SizedBox .width 40.0)
-       (m/SizedBox
-        .height 360.0
-        .child (mgl/MongolText (:name summary)
-                                .style (m/TextStyle .fontSize 40.0 .height 1.2 .fontWeight m/FontWeight.bold)))]))
-   (fn [data] (:bio data))
-   "Books by\nthis author"
-   (fn [data] (:books data))
-   (fn [book _detail ctx] (author-book-card book ctx))))
+  (let [summary (or (author-m/author-summary-api->ui author-summary) author-summary)]
+    (detail-page/horizontal-detail-page
+     summary
+     srv/load-detail!
+     (fn [summary _data _error]
+       (m/Row
+        .crossAxisAlignment m/CrossAxisAlignment.start
+        .children
+        [(media/hero-avatar (:id summary) (:avatar_url summary) :radius 80.0)
+         (m/SizedBox .width 40.0)
+         (m/SizedBox
+          .height 360.0
+          .child (mgl/MongolText (:name summary)
+                                  .style (m/TextStyle .fontSize 40.0 .height 1.2 .fontWeight m/FontWeight.bold)))]))
+     (fn [data] (:bio data))
+     "Books by\nthis author"
+     (fn [data] (:books data))
+     (fn [book _detail ctx] (author-book-card book ctx)))))

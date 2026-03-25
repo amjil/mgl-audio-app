@@ -1,0 +1,11 @@
+(ns audio-app.models.profile
+  "GraphQL `me` → profile screen model."
+  (:require [audio-app.services.gql :as gql]))
+
+(defn user-api->ui
+  [u]
+  (when u
+    {:id (:id u)
+     :email (:email u)
+     :name (:name u)
+     :avatar_url (some-> (:avatar_url u) gql/resolve-url)}))

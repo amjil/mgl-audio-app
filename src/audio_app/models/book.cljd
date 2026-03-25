@@ -1,0 +1,41 @@
+(ns audio-app.models.book
+  "GraphQL / cache → maps sized for widgets and player (resolved URLs, stable keys)."
+  (:require [audio-app.services.gql :as gql]))
+
+(defn- segment-api->ui [s]
+  (when s
+    {:id (:id s)
+     :text (:text s)
+     :start_ms (or (:start_ms s) 0)
+     :end_ms (or (:end_ms s) 0)
+     :index (or (:index s) 0)}))
+
+(defn- chapter-api->ui [c]
+  (when c
+    {:id (:id c)
+     :title (:title c)
+     :audio_url (gql/resolve-url (:audio_url c))
+     :duration_seconds (or (:duration_seconds c) 0)
+     :segments (into [] (keep segment-api->ui (:segments c)))}))
+
+(defn book-summary-api->ui
+  "List / card row: id, title, cover_url (absolute), optional nested :author {:name}."
+  [m]
+  (when m
+    (cond-> {:id (:id m)
+             :title (:title m)
+             :cover_url (gql/resolve-url (:cover_url m))}
+      (get-in m [:author :name])
+      (assoc :author {:name (get-in m [:author :name])}))))
+
+(defn book-detail-api->ui
+  "Full detail + chapters for book page, cache replay, and player playlist."
+  [b]
+  (when b
+    {:id (:id b)
+     :title (:title b)
+     :cover_url (gql/resolve-url (:cover_url b))
+     :description (:description b)
+     :author (when-let [a (:author b)] {:name (:name a)})
+     :reciter (when-let [r (:reciter b)] {:name (:name r)})
+     :chapters (into [] (keep chapter-api->ui (:chapters b)))}))

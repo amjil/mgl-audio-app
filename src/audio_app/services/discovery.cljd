@@ -1,5 +1,7 @@
 (ns audio-app.services.discovery
-  (:require [audio-app.services.gql :as gql]))
+  (:require [audio-app.services.gql :as gql]
+            [audio-app.models.author :as author-ui]
+            [audio-app.models.book :as book-ui]))
 
 (def discovery-query
   "query GetDiscoveryData {
@@ -22,7 +24,9 @@
                  (swap! state-atom assoc
                         :loading? false
                         :initialized? true
-                        :authors  (get-in resp [:hotAuthors] [])
-                        :books    (get-in resp [:hotBooks] [])))))
+                        :authors (into [] (keep author-ui/author-summary-api->ui)
+                                        (get-in resp [:hotAuthors] []))
+                        :books (into [] (keep book-ui/book-summary-api->ui)
+                                      (get-in resp [:hotBooks] []))))))
       (.catchError (fn [e]
                      (swap! state-atom assoc :loading? false :error e)))))

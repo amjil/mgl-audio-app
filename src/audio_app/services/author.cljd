@@ -1,5 +1,6 @@
 (ns audio-app.services.author
-  (:require [audio-app.services.gql :as gql]))
+  (:require [audio-app.services.gql :as gql]
+            [audio-app.models.author :as author-ui]))
 
 (def get-author-details-query
   "query GetAuthorDetails($id: ID!) {
@@ -21,6 +22,7 @@
       (.then (fn [resp]
                (if (:error resp)
                  (swap! state-atom assoc :loading? false :error (:error resp))
-                 (swap! state-atom assoc :loading? false :data (:author resp)))))
+                 (swap! state-atom assoc :loading? false
+                        :data (author-ui/author-detail-api->ui (:author resp))))))
       (.catchError (fn [e]
                      (swap! state-atom assoc :loading? false :error e)))))

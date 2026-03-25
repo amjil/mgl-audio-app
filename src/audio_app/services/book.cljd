@@ -1,7 +1,7 @@
 (ns audio-app.services.book
   (:require [audio-app.services.gql :as gql]
-            ;; 🚀 Import the Hive offline engine we just built
-            [audio-app.services.hive :as hive]))
+            [audio-app.services.hive :as hive]
+            [audio-app.models.book :as book-ui]))
 
 (def get-book-details-query
   "query GetBookDetails($id: ID!) {
@@ -35,11 +35,11 @@
   ;; ==========================================
   ;; 1. Instant response: try to get cached data from local Hive
   ;; ==========================================
-  (let [cached-book (hive/get-cached-book book-id)]
+  (let [cached-book (hive/get-cached-book book-id)
+        cached-ui (when cached-book (book-ui/book-detail-api->ui cached-book))]
     (if cached-book
-      ;; Cache hit: immediately turn off loading and feed cached data to the UI
-      ;; This makes the detail page render almost instantly, achieving “visual zero latency”.
-      (swap! state-atom assoc :loading? false :error nil :data cached-book)
+      ;; Cache hit: show UI model immediately (Hive still stores raw API shape).
+      (swap! state-atom assoc :loading? false :error nil :data cached-ui)
       
       ;; Cache miss: enter loading state and wait for the network
       (swap! state-atom assoc :loading? true :error nil :data nil))
@@ -59,12 +59,9 @@
                      (dart:core/print "⚠️ Network fetch failed, continue using the local offline book cache"))
                    
                    ;; [Network success]
-                   (let [fresh-book (:book resp)]
-                     ;; A. Push the latest data to the UI. If chapters are added/removed, the UI refreshes smoothly
-                     ;; like flowing water.
-                     (swap! state-atom assoc :loading? false :error nil :data fresh-book)
-                     
-                     ;; B. ✨ Core magic: put the newly fetched data into Hive to overwrite the old cache!
+                   (let [fresh-book (:book resp)
+                         ui-book (book-ui/book-detail-api->ui fresh-book)]
+                     (swap! state-atom assoc :loading? false :error nil :data ui-book)
                      (hive/cache-book! fresh-book)))))
         (.catchError (fn [e]
                        (if-not cached-book

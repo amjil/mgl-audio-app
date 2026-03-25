@@ -3,6 +3,7 @@
             ["package:mongol/mongol.dart" :as mgl]
             [cljd.flutter :as f]
             [audio-app.services.book :as srv]
+            [audio-app.models.book :as book-m]
             [audio-app.components.media :as media]
             [audio-app.components.detail-page :as detail-page]
             [audio-app.services.player :as player]
@@ -65,36 +66,37 @@
 ;; =============================================================================
 ;; 2. Main page (driven by local state)
 ;; =============================================================================
-(defn page 
+(defn page
   "Book detail page. Uses incoming book-summary for instant header render, then loads full detail asynchronously."
   [book-summary]
-  (detail-page/horizontal-detail-page
-   book-summary
-   srv/load-detail!
-   (fn [summary data error]
-     (m/Row
-      .crossAxisAlignment m/CrossAxisAlignment.start
-      .children
-      [(media/hero-cover (:id summary) (:cover_url summary)
-                         :width 120.0 :height 180.0 :border-radius 16.0)
-       (m/SizedBox .width 32.0)
-       (m/SizedBox
-        .height 180.0
-        .child (mgl/MongolText (:title summary)
-                                .style (m/TextStyle .fontSize 36.0 .height 1.2 .fontWeight m/FontWeight.bold)))
-       (m/SizedBox .width 24.0)
-       (if (and data (not error))
+  (let [summary (or (book-m/book-summary-api->ui book-summary) book-summary)]
+    (detail-page/horizontal-detail-page
+     summary
+     srv/load-detail!
+     (fn [summary data error]
+       (m/Row
+        .crossAxisAlignment m/CrossAxisAlignment.start
+        .children
+        [(media/hero-cover (:id summary) (:cover_url summary)
+                           :width 120.0 :height 180.0 :border-radius 16.0)
+         (m/SizedBox .width 32.0)
          (m/SizedBox
           .height 180.0
-          .child (m/Row
-                  .children
-                  [(mgl/MongolText (str "Author: " (get-in data [:author :name]))
-                                   .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))
-                   (m/SizedBox .width 20.0)
-                   (mgl/MongolText (str "Narrator: " (get-in data [:reciter :name]))
-                                   .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))]))
-         (m/SizedBox.shrink))]))
-   (fn [data] (:description data))
-   "Full\ntranscript"
-   (fn [data] (:chapters data))
-   (fn [chapter data ctx] (chapter-card-tile data chapter ctx))))
+          .child (mgl/MongolText (:title summary)
+                                 .style (m/TextStyle .fontSize 36.0 .height 1.2 .fontWeight m/FontWeight.bold)))
+         (m/SizedBox .width 24.0)
+         (if (and data (not error))
+           (m/SizedBox
+            .height 180.0
+            .child (m/Row
+                    .children
+                    [(mgl/MongolText (str "Author: " (get-in data [:author :name]))
+                                     .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))
+                     (m/SizedBox .width 20.0)
+                     (mgl/MongolText (str "Narrator: " (get-in data [:reciter :name]))
+                                     .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))]))
+           (m/SizedBox.shrink))]))
+     (fn [data] (:description data))
+     "Full\ntranscript"
+     (fn [data] (:chapters data))
+     (fn [chapter data ctx] (chapter-card-tile data chapter ctx)))))

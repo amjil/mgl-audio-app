@@ -1,0 +1,20 @@
+(ns audio-app.models.author
+  "GraphQL → author maps for discovery header and author detail."
+  (:require [audio-app.services.gql :as gql]
+            [audio-app.models.book :as book]))
+
+(defn author-summary-api->ui
+  "Discovery strip: id, name, avatar_url (absolute)."
+  [a]
+  (when a
+    {:id (:id a)
+     :name (:name a)
+     :avatar_url (gql/resolve-url (:avatar_url a))}))
+
+(defn author-detail-api->ui
+  "Author detail: bio + book list summaries (no full chapter tree)."
+  [a]
+  (when a
+    {:id (:id a)
+     :bio (:bio a)
+     :books (into [] (keep book/book-summary-api->ui (:books a)))}))

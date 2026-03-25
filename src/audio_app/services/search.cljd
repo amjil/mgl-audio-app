@@ -1,5 +1,6 @@
 (ns audio-app.services.search
-  (:require [audio-app.services.gql :as gql]))
+  (:require [audio-app.services.gql :as gql]
+            [audio-app.models.book :as book-ui]))
 
 (def search-query
   "query SearchBooks($query: String!, $limit: Int!, $offset: Int!) {
@@ -21,12 +22,13 @@
              (fn [resp]
                (if (:error resp)
                  (swap! state-atom assoc :loading? false :error (:error resp))
-                 (let [new-items (get-in resp [:search_books :items] [])
+                 (let [raw-items (get-in resp [:search_books :items] [])
+                       new-items (into [] (keep book-ui/book-summary-api->ui) raw-items)
                        next? (get-in resp [:search_books :has_next_page] false)]
                    (swap! state-atom assoc
                           :loading? false
                           :items (if is-refresh?
-                                   (vec new-items)
+                                   new-items
                                    (vec (concat items new-items)))
                           :offset (+ current-offset limit)
                           :has-more? next?)))))

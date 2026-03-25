@@ -1,5 +1,6 @@
 (ns audio-app.services.library
-  (:require [audio-app.services.gql :as gql]))
+  (:require [audio-app.services.gql :as gql]
+            [audio-app.models.book :as book-ui]))
 
 (def get-library-query
   "query GetMyLibrary {
@@ -21,7 +22,9 @@
                  (swap! state-atom assoc
                         :loading? false
                         :initialized? true
-                        :recent-books   (get-in resp [:my_library :recent_books] [])
-                        :favorite-books (get-in resp [:my_library :favorite_books] [])))))
+                        :recent-books (into [] (keep book-ui/book-summary-api->ui)
+                                            (get-in resp [:my_library :recent_books] []))
+                        :favorite-books (into [] (keep book-ui/book-summary-api->ui)
+                                              (get-in resp [:my_library :favorite_books] []))))))
       (.catchError (fn [e]
                      (swap! state-atom assoc :loading? false :error e)))))

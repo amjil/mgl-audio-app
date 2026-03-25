@@ -1,6 +1,7 @@
 (ns audio-app.services.profile
   (:require [audio-app.services.gql :as gql]
-            [audio-app.nav :as nav]))
+            [audio-app.nav :as nav]
+            [audio-app.models.profile :as profile-ui]))
 
 (def get-profile-query
   "query GetMyProfile {
@@ -22,7 +23,7 @@
                  (swap! state-atom assoc
                         :loading? false
                         :initialized? true
-                        :user (:me resp)))))
+                        :user (profile-ui/user-api->ui (:me resp))))))
       (.catchError (fn [e]
                      (swap! state-atom assoc :loading? false :error e)))))
 
