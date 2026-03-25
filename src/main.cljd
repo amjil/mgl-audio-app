@@ -1,64 +1,9 @@
 (ns main
   (:require ["package:flutter/material.dart" :as m]
-            ["package:flutter_styled_toast/flutter_styled_toast.dart" :as st]
-            ["package:just_audio_background/just_audio_background.dart" :as jab]
-            [cljd.flutter :as f]
-            [audio-app.state :as state]
-            [audio-app.main-scaffold :refer [main-scaffold]]
-            [audio-app.services.hive :as hive]
-            ;; Core dependencies for the virtual keyboard
-            [virtual-keyboard.zip-utils :as zip-utils]
-            [virtual-keyboard.fst-reader :as fst-reader]
-            [virtual-keyboard.keyboard-candidates :as kc]
-            [virtual-keyboard.options :as keyboard-options]
-            [virtual-keyboard.input-control :as control]))
+            [audio-app.app-root :as app-root]
+            [audio-app.bootstrap :as bootstrap]))
 
-(defn main-app []
-  (f/widget
-   :watch [_ state/root-refresh-atom]
-   :let [info (merge keyboard-options/keyboard-option
-                     {:keyboard/mongol-font-family "OyunQaganTig"})]
-   :bind {:info info}
-   (m/MaterialApp
-    .title "Nom-un Dalai"
-    .theme (m/ThemeData. .primarySwatch m/Colors.blue
-                         .fontFamily "OyunQaganTig"
-                         .brightness m/Brightness.dark)
-    .debugShowCheckedModeBanner false
-    ;; StyledToast must be placed inside MaterialApp, otherwise its Overlay
-    ;; will not have WidgetsLocalizations and system menus like text selection
-    ;; will throw: No WidgetsLocalizations found.
-    .builder (fn [^:dynamic _context child]
-               (if child
-                 (st/StyledToast .child child)
-                 child))
-    .home (main-scaffold))))
-
-;; =============================================================================
-;; Real entry point for the Flutter engine
-;; =============================================================================
 (defn main []
-  
-  ;; 1. Ensure Flutter bindings are initialized (critical for all plugins)
   (m/WidgetsFlutterBinding.ensureInitialized)
-
-  ;; 2. Initialize global input controller
-  (control/set-control)
-
-  ;; 3. Load core dictionaries and prediction models
-  ;; (Note: if read-json-from-asset-zip is async, this should also await)
-  (zip-utils/read-json-from-asset-zip kc/next "assets/next.zip")
-  (fst-reader/ensure-loaded)
-
-  ;; 4. Initialize background playback and lock screen/notification
-  (await (jab/JustAudioBackground.init
-          .androidNotificationChannelId "com.nomundalai.app.audio"
-          .androidNotificationChannelName "Nom-un Dalai playback"
-          .androidNotificationOngoing true))
-            
-  ;; 5. 🚀 Start Hive offline database engine
-  ;; ✅ Must await until Box is mounted before rendering UI
-  (await (hive/init!))
-  
-  ;; 6. Everything ready, push UI tree to screen
-  (m/runApp (main-app)))
+  (bootstrap/init-app!)
+  (m/runApp (app-root/main-app)))

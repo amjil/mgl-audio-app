@@ -1,0 +1,20 @@
+(ns audio-app.bootstrap
+  (:require ["package:just_audio_background/just_audio_background.dart" :as jab]
+            [audio-app.services.hive :as hive]
+            [virtual-keyboard.zip-utils :as zip-utils]
+            [virtual-keyboard.fst-reader :as fst-reader]
+            [virtual-keyboard.keyboard-candidates :as kc]
+            [virtual-keyboard.input-control :as control]))
+
+(defn init-app!
+  "One-shot startup: input control, dictionaries, background audio, Hive.
+  Call after `WidgetsFlutterBinding.ensureInitialized`."
+  []
+  (control/set-control)
+  (zip-utils/read-json-from-asset-zip kc/next "assets/next.zip")
+  (fst-reader/ensure-loaded)
+  (await (jab/JustAudioBackground.init
+          .androidNotificationChannelId "com.nomundalai.app.audio"
+          .androidNotificationChannelName "Nom-un Dalai playback"
+          .androidNotificationOngoing true))
+  (await (hive/init!)))

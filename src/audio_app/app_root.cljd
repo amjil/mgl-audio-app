@@ -1,0 +1,28 @@
+(ns audio-app.app-root
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:flutter_styled_toast/flutter_styled_toast.dart" :as st]
+            [cljd.flutter :as f]
+            [audio-app.state :as state]
+            [audio-app.main-scaffold :refer [main-scaffold]]
+            [virtual-keyboard.options :as keyboard-options]))
+
+(defn main-app
+  "Root widget: theme, toast wrapper, keyboard context, home shell."
+  []
+  (f/widget
+   :watch [_ state/root-refresh-atom]
+   :let [info (merge keyboard-options/keyboard-option
+                     {:keyboard/mongol-font-family "OyunQaganTig"})]
+   :bind {:info info}
+   (m/MaterialApp
+    .title "Nom-un Dalai"
+    .theme (m/ThemeData. .primarySwatch m/Colors.blue
+                         .fontFamily "OyunQaganTig"
+                         .brightness m/Brightness.dark)
+    .debugShowCheckedModeBanner false
+    ;; StyledToast must be inside MaterialApp so Overlay has WidgetsLocalizations.
+    .builder (fn [^:dynamic _context child]
+               (if child
+                 (st/StyledToast .child child)
+                 child))
+    .home (main-scaffold))))

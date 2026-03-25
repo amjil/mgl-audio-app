@@ -19,18 +19,24 @@
            .width 160.0
            .margin (m/EdgeInsets.only .right 24.0)
            .child (m/Column
-                   .crossAxisAlignment m/CrossAxisAlignment.start
+                   .crossAxisAlignment m/CrossAxisAlignment.center
                    .children
-                   [(m/Expanded 
-                     .flex 3 
-                     .child (media/hero-cover (:id book) (:cover_url book) 
-                                              :width 160.0 :height dart:core/double.infinity :border-radius 16.0))
+                   [;; Fixed 1:1 cover so Expanded does not stretch to full viewport height in horizontal lists
+                    (m/SizedBox
+                     .width 160.0
+                     .height 160.0
+                     .child (media/hero-cover (:id book) (:cover_url book)
+                                              :width 160.0 :height 160.0 :border-radius 16.0))
                     (m/SizedBox .height 16.0)
-                    (m/Expanded 
-                     .flex 2 
-                     .child (m/ClipRect 
-                             .child (mgl/MongolText (:title book) 
-                                                    .style (m/TextStyle .fontSize 20.0 .fontWeight m/FontWeight.w600))))]))))
+                    (m/Expanded
+                     .child
+                     (m/Align
+                      .alignment m/Alignment.topCenter
+                      .child
+                      (m/ClipRect
+                       .child
+                       (mgl/MongolText (:title book)
+                                        .style (m/TextStyle .fontSize 20.0 .fontWeight m/FontWeight.w600)))))]))))
 
 ;; =============================================================================
 ;; 2. Main page (driven by per-entry local state)

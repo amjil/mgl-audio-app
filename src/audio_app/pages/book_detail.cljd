@@ -16,9 +16,9 @@
   (f/widget
    :get {{{:flds [primary surfaceContainerHighest onSurfaceVariant]} .-colorScheme} m/Theme}
    
-   (m/Center
-    .child
-    (m/Container
+   (m/Align
+    .alignment m/Alignment.topCenter
+    .child (m/Container
      .margin (m/EdgeInsets.only .right 20.0)
      .decoration (m/BoxDecoration 
                   .color surfaceContainerHighest
@@ -54,7 +54,7 @@
                        
                        (m/Row
                         .mainAxisSize m/MainAxisSize.min
-                        .crossAxisAlignment m/CrossAxisAlignment.start
+                        .crossAxisAlignment m/CrossAxisAlignment.center
                         .children
                         [(mgl/MongolText (:title chapter) 
                                          .style (m/TextStyle .fontSize 18.0 .fontWeight m/FontWeight.w600))
