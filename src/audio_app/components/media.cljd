@@ -56,70 +56,73 @@
   "Book cover widget with local cache, skeleton placeholder and Hero animation.
    - id: unique identifier for the Hero animation (e.g. book-id)
    - url: network image URL
-   - optional: width, height, border-radius"
-  [id url & {:keys [width height border-radius]
-             :or {width 120.0 height 160.0 border-radius 12.0}}]
+   - optional: width, height, border-radius, hero?"
+  [id url & {:keys [width height border-radius hero?]
+             :or {width 120.0 height 160.0 border-radius 12.0 hero? true}}]
   (let [url (gql/resolve-url url)]
     (f/widget
      :get {{{:flds [onSurfaceVariant]} .-colorScheme} m/Theme}
      (let [placeholder-color (.withOpacity onSurfaceVariant 0.12)
-           error-color (.withOpacity onSurfaceVariant 0.65)]
-       (m/Hero
-        .tag (str "book-cover-" id)
-        .child
-        (m/ClipRRect
-         .borderRadius (m/BorderRadius.circular border-radius)
-         .child
-         (if (and url (not (empty? url)))
-           (network-image {:url url
-                            :width width
-                            :height height
-                            :fit m/BoxFit.cover
-                            :icon m/Icons.broken_image
-                            :placeholder-color placeholder-color
-                            :error-color error-color})
-           
-           ;; Extreme case: no URL at all, show a default placeholder
-           (m/Container
-            .width width
-            .height height
-            .color placeholder-color
-            .child (m/Icon m/Icons.book .color error-color)))))))))
+           error-color (.withOpacity onSurfaceVariant 0.65)
+           cover-child (m/ClipRRect
+                        .borderRadius (m/BorderRadius.circular border-radius)
+                        .child
+                        (if (and url (not (empty? url)))
+                          (network-image {:url url
+                                          :width width
+                                          :height height
+                                          :fit m/BoxFit.cover
+                                          :icon m/Icons.broken_image
+                                          :placeholder-color placeholder-color
+                                          :error-color error-color})
+                          ;; Extreme case: no URL at all, show a default placeholder
+                          (m/Container
+                           .width width
+                           .height height
+                           .color placeholder-color
+                           .child (m/Icon m/Icons.book .color error-color))))]
+       (if hero?
+         (m/Hero
+          .tag (str "book-cover-" id)
+          .child cover-child)
+         cover-child)))))
 
 (defn hero-cover-avatar
   "Book cover widget in circular avatar style (Hero + cached image).
    Uses the same Hero tag as `hero-cover` so transitions keep working.
    - id: book id for Hero tag
    - url: cover URL
-   - optional: radius"
-  [id url & {:keys [radius] :or {radius 40.0}}]
+   - optional: radius, hero?"
+  [id url & {:keys [radius hero?] :or {radius 40.0 hero? true}}]
   (let [url (gql/resolve-url url)
         diameter (* radius 2.0)]
     (f/widget
      :get {{{:flds [onSurfaceVariant]} .-colorScheme} m/Theme}
      (let [placeholder-color (.withOpacity onSurfaceVariant 0.12)
-           error-color (.withOpacity onSurfaceVariant 0.65)]
-       (m/Hero
-        .tag (str "book-cover-" id)
-        .child
-        (if (and url (not (empty? url)))
-          (m/ClipOval
-           .child
-           (network-image {:url url
-                            :width diameter
-                            :height diameter
-                            :fit m/BoxFit.cover
-                            :shape m/BoxShape.circle
-                            :icon m/Icons.broken_image
-                            :placeholder-color placeholder-color
-                            :error-color error-color}))
-          (m/Container
-           .width diameter
-           .height diameter
-           .decoration (m/BoxDecoration
-                        .color placeholder-color
-                        .shape m/BoxShape.circle)
-           .child (m/Icon m/Icons.book .color error-color))))))))
+           error-color (.withOpacity onSurfaceVariant 0.65)
+           avatar-child (if (and url (not (empty? url)))
+                          (m/ClipOval
+                           .child
+                           (network-image {:url url
+                                           :width diameter
+                                           :height diameter
+                                           :fit m/BoxFit.cover
+                                           :shape m/BoxShape.circle
+                                           :icon m/Icons.broken_image
+                                           :placeholder-color placeholder-color
+                                           :error-color error-color}))
+                          (m/Container
+                           .width diameter
+                           .height diameter
+                           .decoration (m/BoxDecoration
+                                        .color placeholder-color
+                                        .shape m/BoxShape.circle)
+                           .child (m/Icon m/Icons.book .color error-color)))]
+       (if hero?
+         (m/Hero
+          .tag (str "book-cover-" id)
+          .child avatar-child)
+         avatar-child)))))
 
 ;; =============================================================================
 ;; 2. Avatar component (perfect circle)

@@ -75,7 +75,7 @@
                  .children
                  [(media/hero-cover (:id current-book)
                                     (or (:cover_url current-book) "https://picsum.photos/100")
-                                    :width 48.0 :height 48.0)
+                                    :width 48.0 :height 48.0 :hero? false)
                   (m/SizedBox .width 16.0)
                   (m/Expanded
                    .child (m/ClipRect
