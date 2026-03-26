@@ -18,16 +18,15 @@
 (defn- chapter-card-tile 
   [book chapter ctx]
   (f/widget
-   :get {{{:flds [primary surfaceContainerHighest onSurfaceVariant]} .-colorScheme} m/Theme}
+   :get {{{:flds [primary onSurfaceVariant]} .-colorScheme} m/Theme}
    
    (m/Align
     .alignment m/Alignment.topCenter
     .child (m/Container
      .margin (m/EdgeInsets.only .right 20.0)
      .decoration (m/BoxDecoration 
-                  .color surfaceContainerHighest
-                  .borderRadius (m/BorderRadius.circular 20.0)
-                  .border (m/Border.all .color (.withOpacity m/Colors.grey 0.15)))
+                  .color (.withOpacity primary 0.05)
+                  .borderRadius (m/BorderRadius.circular 24.0))
      .child
      (m/InkWell
       .onTap (fn []
@@ -41,30 +40,20 @@
                   (m/MaterialPageRoute
                    .builder (fn [_] (pf/player-page book (or (:segments chapter) []))))))
                nil)
-      .borderRadius (m/BorderRadius.circular 20.0)
+      .borderRadius (m/BorderRadius.circular 24.0)
       .child (m/Padding
-              .padding (m/EdgeInsets.symmetric .horizontal 20.0 .vertical 28.0)
+              .padding (m/EdgeInsets.symmetric .horizontal 24.0 .vertical 32.0)
               .child (m/Column
                       .mainAxisSize m/MainAxisSize.min
                       .crossAxisAlignment m/CrossAxisAlignment.center
                       .children
-                      [
-                       (m/Container
-                        .padding (m/EdgeInsets.all 12.0)
-                        .decoration (m/BoxDecoration .color (.withOpacity primary 0.1) .shape m/BoxShape.circle)
-                        .child (m/Icon m/Icons.play_arrow .color primary .size 28.0))
-                       
+                      [(m/Icon m/Icons.play_circle_fill .color primary .size 40.0)
                        (m/SizedBox .height 24.0)
-                       
-                       (m/Row
-                        .mainAxisSize m/MainAxisSize.min
-                        .crossAxisAlignment m/CrossAxisAlignment.center
-                        .children
-                        [(mgl/MongolText (:title chapter) 
-                                         .style (m/TextStyle .fontSize 18.0 .fontWeight m/FontWeight.w600))
-                         (m/SizedBox .width 12.0)
-                         (mgl/MongolText (str (quot (:duration_seconds chapter 0) 60) " min")
-                                         .style (m/TextStyle .color onSurfaceVariant .fontSize 14.0))])])))))))
+                       (mgl/MongolText (:title chapter) 
+                                       .style (m/TextStyle .fontSize 18.0 .fontWeight m/FontWeight.w600))
+                       (m/SizedBox .height 12.0)
+                       (mgl/MongolText (str (quot (:duration_seconds chapter 0) 60) " min")
+                                       .style (m/TextStyle .color onSurfaceVariant .fontSize 14.0))])))))))
 
 ;; =============================================================================
 ;; Favorites (toggle button)
@@ -78,8 +67,7 @@
        loading?
        (m/Row
         .mainAxisSize m/MainAxisSize.min
-        .children [(m/CircularProgressIndicator .strokeWidth 2.0)]
-        )
+        .children [(m/CircularProgressIndicator .strokeWidth 2.0)])
 
        error
        (mgl/MongolElevatedButton
@@ -88,28 +76,28 @@
         .child (mgl/MongolText "Favorite (Retry)"))
 
        is-fav
-       (m/ElevatedButton
+       (mgl/MongolElevatedButton
         .onPressed (fn []
                      (favorites-srv/toggle-favorite!
                       fav-state-atom book-id library-state-atom))
-        .child (m/Row
+        .child (m/Column
                 .mainAxisSize m/MainAxisSize.min
                 .children
                 [(m/Icon m/Icons.favorite)
-                 (m/SizedBox .width 8.0)
-                 (m/Text "Favorited")]))
+                 (m/SizedBox .height 8.0)
+                 (mgl/MongolText "Favorited")]))
 
        :else
-       (m/ElevatedButton
+       (mgl/MongolElevatedButton
         .onPressed (fn []
                      (favorites-srv/toggle-favorite!
                       fav-state-atom book-id library-state-atom))
-        .child (m/Row
+        .child (m/Column
                 .mainAxisSize m/MainAxisSize.min
                 .children
                 [(m/Icon m/Icons.favorite_border)
-                 (m/SizedBox .width 8.0)
-                 (m/Text "Favorite")]))))))
+                 (m/SizedBox .height 8.0)
+                 (mgl/MongolText "Favorite")]))))))
 
 ;; =============================================================================
 ;; 2. Main page (driven by local state)

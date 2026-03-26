@@ -57,7 +57,7 @@
 (defn page []
   (f/widget
    :context ctx
-   :get {{{:flds [surface outlineVariant]} .-colorScheme} m/Theme}
+   :get {{{:flds [surface]} .-colorScheme} m/Theme}
    :watch [{:keys [recent-books favorite-books loading? error]} state/library-state]
 
    (m/Scaffold
@@ -89,9 +89,7 @@
                       "Nothing here yet"
                       #(library-book-card % ctx))))
             
-            (m/Padding
-             .padding (m/EdgeInsets.symmetric .horizontal 24.0)
-             .child (m/Divider .color outlineVariant .height 1.0))
+            (m/SizedBox .height 32.0)
             
             (m/Expanded
              .flex 1

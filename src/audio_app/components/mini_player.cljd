@@ -18,7 +18,7 @@
   []
   (f/widget
    :context ctx
-   :get {{{:flds [primary surfaceContainerHighest onSurface]} .-colorScheme} m/Theme}
+   :get {{{:flds [primary surface onSurface]} .-colorScheme} m/Theme}
    :watch [{:keys [status position duration current-book current-chapter]} player-state]
 
    (if (nil? current-book)
@@ -39,51 +39,53 @@
                    .builder (fn [_] (player-page current-book segments))))
                  nil)
 
-        .child (m/Container
-                .height 72.0
-                .decoration (m/BoxDecoration
-                             .color surfaceContainerHighest
-                             .boxShadow [(m/BoxShadow
-                                          .color (.withOpacity m/Colors.black 0.05)
-                                          .blurRadius 8.0
-                                          .offset (m/Offset 0 -2.0))])
-                .child (m/Stack
-                        .children
-                        [
-                         ;; 1. Minimal progress bar (pinned at the bottom)
-                         (m/Positioned
-                          .bottom 0.0 .left 0.0 .right 0.0
-                          .child (m/LinearProgressIndicator
-                                  .value (float progress)
-                                  .backgroundColor m/Colors.transparent
-                                  .color primary
-                                  .minHeight 2.0))
+         .child
+         (m/Padding
+          .padding (m/EdgeInsets.symmetric .horizontal 40.0)
+          .child
+          (m/Container
+           .decoration (m/BoxDecoration
+                        .borderRadius (m/BorderRadius.circular 32.0)
+                        .boxShadow [(m/BoxShadow
+                                     .color (.withOpacity m/Colors.black 0.04)
+                                     .blurRadius 20.0
+                                     .offset (m/Offset 0 8.0))])
+           .child
+           (m/ClipRRect
+            .borderRadius (m/BorderRadius.circular 32.0)
+            .child
+            (m/Container
+             .height 72.0
+             .color (.withOpacity surface 0.95)
+             .child
+             (m/Stack
+              .children
+              [(m/Positioned
+                .bottom 0.0 .left 0.0 .right 0.0
+                .child (m/LinearProgressIndicator
+                        .value (float progress)
+                        .backgroundColor m/Colors.transparent
+                        .color primary
+                        .minHeight 2.0))
 
-                         ;; 2. Core content area
-                         (m/Padding
-                          .padding (m/EdgeInsets.symmetric .horizontal 16.0 .vertical 8.0)
-                          .child (m/Row
-                                  .children
-                                  [
-                                   ;; Cover (Hero animation that flies into the fullscreen player)
-                                   (media/hero-cover (:id current-book)
-                                                    (or (:cover_url current-book) "https://picsum.photos/100")
-                                                    :width 48.0 :height 48.0)
-
-                                   (m/SizedBox .width 16.0)
-
-                                   ;; Book title and chapter title (Mongolian vertical layout, clipped when long)
-                                   (m/Expanded
-                                    .child (m/ClipRect
-                                            .child (mgl/MongolText
-                                                    (str (:title current-book) " - " chapter-title)
-                                                    .style (m/TextStyle
-                                                            .fontSize 16.0
-                                                            .color onSurface
-                                                            .fontWeight m/FontWeight.w500))))
-
-                                   ;; Play / pause
-                                   (player-ui/play-pause-icon-button
-                                    status
-                                    toggle-play!
-                                    {:color primary :icon-size 32.0})]))])))))))
+               (m/Padding
+                .padding (m/EdgeInsets.symmetric .horizontal 16.0 .vertical 8.0)
+                .child
+                (m/Row
+                 .children
+                 [(media/hero-cover (:id current-book)
+                                    (or (:cover_url current-book) "https://picsum.photos/100")
+                                    :width 48.0 :height 48.0)
+                  (m/SizedBox .width 16.0)
+                  (m/Expanded
+                   .child (m/ClipRect
+                           .child (mgl/MongolText
+                                   (str (:title current-book) " - " chapter-title)
+                                   .style (m/TextStyle
+                                           .fontSize 16.0
+                                           .color onSurface
+                                           .fontWeight m/FontWeight.w500))))
+                  (player-ui/play-pause-icon-button
+                   status
+                   toggle-play!
+                   {:color primary :icon-size 32.0})]))]))))))))))

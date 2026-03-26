@@ -38,7 +38,7 @@ dependencies:
   cached_network_image: ^3.3.0
   flutter_svg: ^2.2.0
 
-  # 后台播放与锁屏/通知栏媒体控制
+  # Background playback and lock screen / notification media controls
   just_audio: ^0.9.40
   just_audio_background: ^0.0.1-beta.14
   audio_session: ^0.1.21
@@ -75,8 +75,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section.
-  # 目前虚拟键盘需要从 assets/fst/token_table.bin 加载词表文件，
-  # 请确保该文件已放置到对应路径。
+  # The virtual keyboard loads the token table from assets/fst/token_table.bin;
+  # ensure that file exists at this path.
   assets:
     - assets/.env
     - assets/fonts/OyunQaganTig.ttf

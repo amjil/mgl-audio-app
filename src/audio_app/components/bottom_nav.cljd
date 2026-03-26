@@ -3,62 +3,49 @@
             [cljd.flutter :as f]))
 
 ;; =============================================================================
-;; Custom bottom navigation bar (UI-only).
-;; Kept tab index mapping identical to existing app:
-;; 0 Discover / 1 Library / 2 Search / 3 Profile.
+;; Floating pill bottom nav (keeps the existing tab index mapping:
+;; 0 Discover / 1 Library / 2 Search / 3 Profile)
 ;; =============================================================================
 
 (defn widget
-  "Bottom navigation bar UI.
-   - current-index: active tab index
-   - on-index-change: (fn [idx] ...) called when user taps a tab"
+  "Floating pill-style minimalist navigation bar"
   [current-index on-index-change]
   (f/widget
-   :get {{{:flds [primary onSurfaceVariant onSurface surfaceContainerHighest]} .-colorScheme} m/Theme}
-   (let [items [{:idx 0 :icon m/Icons.explore :label "Discover"}
-                {:idx 1 :icon m/Icons.library_books :label "Library"}
-                {:idx 2 :icon m/Icons.search :label "Search"}
-                {:idx 3 :icon m/Icons.person :label "Profile"}]]
-     (m/Padding
-      .padding (m/EdgeInsets.only .left 16.0 .right 16.0 .bottom 16.0)
+   :get {{{:flds [primary onSurfaceVariant surface]} .-colorScheme} m/Theme}
+   (let [items [{:idx 0 :icon m/Icons.explore}
+                {:idx 1 :icon m/Icons.library_books}
+                {:idx 2 :icon m/Icons.search}
+                {:idx 3 :icon m/Icons.person}]]
+     (m/SafeArea
       .child
-      (m/ClipRRect
-       .borderRadius (m/BorderRadius.circular 24.0)
+      (m/Padding
+       .padding (m/EdgeInsets.only .left 40.0 .right 40.0 .bottom 24.0)
        .child
        (m/Container
-        .height 72.0
+        .height 64.0
         .decoration (m/BoxDecoration
-                     .color surfaceContainerHighest
+                     .color (.withOpacity surface 0.95)
+                     .borderRadius (m/BorderRadius.circular 32.0)
                      .boxShadow [(m/BoxShadow
-                                   ;; Avoid hard-coded black; derive shadow from theme for cleaner look.
-                                   .color (.withOpacity onSurface 0.10)
-                                  .blurRadius 14.0
-                                  .offset (m/Offset 0 8.0))])
+                                  .color (.withOpacity m/Colors.black 0.04)
+                                  .blurRadius 20.0
+                                  .offset (m/Offset 0 10.0))])
         .child
         (m/Row
-         .mainAxisAlignment m/MainAxisAlignment.spaceAround
+         .mainAxisAlignment m/MainAxisAlignment.spaceEvenly
          .children
-        (vec
-         (map
-          (fn [{:keys [idx icon]}]
-            (let [selected? (= idx current-index)
-                  fg-color (if selected? primary onSurfaceVariant)]
-              (m/Expanded
-               .child
+         (vec
+          (map
+           (fn [{:keys [idx icon]}]
+             (let [selected? (= idx current-index)
+                   fg-color (if selected? primary (.withOpacity onSurfaceVariant 0.5))]
                (m/GestureDetector
                 .onTap (fn [] (on-index-change idx))
                 .child
                 (m/Container
-                 .padding (m/EdgeInsets.symmetric .vertical 10.0 .horizontal 4.0)
-                 .decoration (when selected?
-                               (m/BoxDecoration
-                                .color (.withOpacity primary 0.18)
-                                .borderRadius (m/BorderRadius.circular 18.0)))
-                 .child
-                 (m/Column
-                  .mainAxisAlignment m/MainAxisAlignment.center
-                  .children
-                  [(m/Icon icon .color fg-color .size 26.0)
-                   (m/SizedBox .height 6.0)]))))))
-          items)))))))))
-
+                 .color m/Colors.transparent
+                 .padding (m/EdgeInsets.symmetric .horizontal 16.0 .vertical 8.0)
+                 .child (m/Icon icon
+                                .color fg-color
+                                .size (if selected? 28.0 24.0))))))
+           items)))))))))

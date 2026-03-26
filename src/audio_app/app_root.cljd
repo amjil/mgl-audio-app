@@ -28,11 +28,13 @@
     .theme (m/ThemeData.
             .useMaterial3 true
             .fontFamily "OyunQaganTig"
-            .colorScheme lightScheme)
+            .colorScheme lightScheme
+            .scaffoldBackgroundColor (.-surface lightScheme))
     .darkTheme (m/ThemeData.
                  .useMaterial3 true
                  .fontFamily "OyunQaganTig"
-                 .colorScheme darkScheme)
+                 .colorScheme darkScheme
+                 .scaffoldBackgroundColor (.-surface darkScheme))
     .themeMode m/ThemeMode.system
     .debugShowCheckedModeBanner false
     ;; StyledToast must be inside MaterialApp so Overlay has WidgetsLocalizations.
