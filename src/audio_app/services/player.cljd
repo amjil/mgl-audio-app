@@ -206,6 +206,22 @@
       (.pause audio-player)
       (.resume audio-player))))
 
+(defn dismiss-player!
+  "Stop playback and clear current media so mini player is hidden."
+  []
+  (sync-progress-to-server!)
+  (cancel-sleep-timer!)
+  (.stop audio-player)
+  (swap! player-state assoc
+         :status :stopped
+         :position 0
+         :duration 0
+         :current-book nil
+         :current-chapter nil
+         :playlist []
+         :current-index 0
+         :last-synced-position-sec nil))
+
 (defn seek! 
   "Seek to the specified second (used by the slider)"
   [seconds]

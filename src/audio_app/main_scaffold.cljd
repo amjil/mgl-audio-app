@@ -57,9 +57,7 @@
                                (search/page)
                                (profile/page)])
                    ;; Floating mini player for quick resume.
-                   (m/Align
-                    .alignment m/Alignment.bottomCenter
-                    .child (mini-player/widget))])
+                   (mini-player/widget)])
 
       .bottomNavigationBar
       (bottom-nav/widget
