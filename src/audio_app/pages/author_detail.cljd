@@ -17,18 +17,18 @@
             (m/Navigator.push ctx (m/MaterialPageRoute .builder (fn [_] (book-detail/page book))))
             nil) 
    .child (m/Container
-           .width 160.0
-           .margin (m/EdgeInsets.only .right 24.0)
+           .width 120.0
+           .margin (m/EdgeInsets.only .right 12.0)
            .child (m/Column
                    .crossAxisAlignment m/CrossAxisAlignment.center
                    .children
                    [;; Fixed 1:1 cover so Expanded does not stretch to full viewport height in horizontal lists
                     (m/SizedBox
-                     .width 160.0
-                     .height 160.0
+                     .width 120.0
+                     .height 120.0
                      .child (media/hero-cover (:id book) (:cover_url book)
-                                              :width 160.0 :height 160.0 :border-radius 16.0))
-                    (m/SizedBox .height 16.0)
+                                              :width 120.0 :height 120.0 :border-radius 8.0))
+                    (m/SizedBox .height 8.0)
                     (m/Expanded
                      .child
                      (m/Align
@@ -37,7 +37,7 @@
                       (m/ClipRect
                        .child
                        (mgl/MongolText (:title book)
-                                        .style (m/TextStyle .fontSize 20.0 .fontWeight m/FontWeight.w600)))))]))))
+                                        .style (m/TextStyle .fontSize 16.0 .fontWeight m/FontWeight.w500)))))]))))
 
 ;; =============================================================================
 ;; 2. Main page (driven by per-entry local state)
@@ -53,13 +53,13 @@
        (m/Row
         .crossAxisAlignment m/CrossAxisAlignment.start
         .children
-        [(media/hero-avatar (:id summary) (:avatar_url summary) :radius 80.0)
-         (m/SizedBox .width 40.0)
+        [(media/hero-avatar (:id summary) (:avatar_url summary) :radius 56.0)
+         (m/SizedBox .width 20.0)
          (m/SizedBox
-          .height 360.0
+          .height 280.0
           .child (mgl/MongolText (:name summary)
-                                  .style (m/TextStyle .fontSize 40.0 .height 1.2 .fontWeight m/FontWeight.bold)))]))
+                                  .style (m/TextStyle .fontSize 26.0 .height 1.2 .fontWeight m/FontWeight.w600)))]))
      (fn [data] (:bio data))
-     "Books by\nthis author"
+     "Books"
      (fn [data] (:books data))
      (fn [book _detail ctx] (author-book-card book ctx)))))

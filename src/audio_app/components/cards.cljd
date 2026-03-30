@@ -58,7 +58,7 @@
                                                    :height ch
                                                    :border-radius border-radius))))
                
-               (m/SizedBox .height 16.0)
+               (m/SizedBox .height 8.0)
                
                ;; Bottom: vertical book title
                (m/Expanded 
@@ -68,4 +68,4 @@
                         .child (mgl/MongolText (:title book) 
                                                .style (m/TextStyle
                                                        .fontSize title-font-size 
-                                                       .fontWeight m/FontWeight.w600))))]))))) 
+                                                       .fontWeight m/FontWeight.w500))))]))))) 

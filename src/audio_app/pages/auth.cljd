@@ -12,7 +12,7 @@
                           :error nil})]
     (f/widget
      :context ctx
-     :get {{{:flds [primary surface outlineVariant]} .-colorScheme} m/Theme}
+     :get {{{:flds [primary surface]} .-colorScheme} m/Theme}
      :watch [{:keys [mode]} auth-state]
      
      (m/Scaffold
@@ -30,15 +30,13 @@
          (m/Expanded
           .flex 2
           .child (m/Center
-                  .child (m/Container
-                          .padding (m/EdgeInsets.only .left 24.0 .right 16.0 .top 60.0 .bottom 60.0)
-                          .decoration (m/BoxDecoration 
-                                       .border (m/Border .right (m/BorderSide .color outlineVariant .width 1.0)))
+                  .child (m/Padding
+                          .padding (m/EdgeInsets.symmetric .horizontal 20.0 .vertical 40.0)
                           .child (mgl/MongolText 
                                   (if (= mode :login) 
-                                    "Welcome to\nNom-un Dalai"
-                                    "Create an account")
-                                  .style (m/TextStyle .fontSize 36.0 .fontWeight m/FontWeight.bold .height 1.2 .color primary)))))
+                                    "Nom-un\nDalai"
+                                    "Account")
+                                  .style (m/TextStyle .fontSize 26.0 .fontWeight m/FontWeight.w600 .height 1.25 .color primary)))))
          
          ;; ==========================================
          ;; Right: account/password form area

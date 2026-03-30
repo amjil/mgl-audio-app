@@ -23,10 +23,10 @@
    (m/Align
     .alignment m/Alignment.topCenter
     .child (m/Container
-     .margin (m/EdgeInsets.only .right 20.0)
-     .decoration (m/BoxDecoration 
-                  .color (.withOpacity primary 0.05)
-                  .borderRadius (m/BorderRadius.circular 24.0))
+     .margin (m/EdgeInsets.only .right 12.0)
+     .decoration (m/BoxDecoration
+                  .border (m/Border.all .color (.withOpacity primary 0.25) .width 1.0)
+                  .borderRadius (m/BorderRadius.circular 12.0))
      .child
      (m/InkWell
       .onTap (fn []
@@ -40,20 +40,20 @@
                   (m/MaterialPageRoute
                    .builder (fn [_] (pf/player-page book (or (:segments chapter) []))))))
                nil)
-      .borderRadius (m/BorderRadius.circular 24.0)
+      .borderRadius (m/BorderRadius.circular 12.0)
       .child (m/Padding
-              .padding (m/EdgeInsets.symmetric .horizontal 24.0 .vertical 32.0)
+              .padding (m/EdgeInsets.symmetric .horizontal 16.0 .vertical 20.0)
               .child (m/Column
                       .mainAxisSize m/MainAxisSize.min
                       .crossAxisAlignment m/CrossAxisAlignment.center
                       .children
-                      [(m/Icon m/Icons.play_circle_fill .color primary .size 40.0)
-                       (m/SizedBox .height 24.0)
-                       (mgl/MongolText (:title chapter) 
-                                       .style (m/TextStyle .fontSize 18.0 .fontWeight m/FontWeight.w600))
+                      [(m/Icon m/Icons.play_circle_outline .color primary .size 28.0)
                        (m/SizedBox .height 12.0)
-                       (mgl/MongolText (str (quot (:duration_seconds chapter 0) 60) " min")
-                                       .style (m/TextStyle .color onSurfaceVariant .fontSize 14.0))])))))))
+                       (mgl/MongolText (:title chapter)
+                                       .style (m/TextStyle .fontSize 16.0 .fontWeight m/FontWeight.w500))
+                       (m/SizedBox .height 8.0)
+                       (mgl/MongolText (str (quot (:duration_seconds chapter 0) 60) "′")
+                                       .style (m/TextStyle .color onSurfaceVariant .fontSize 13.0))])))))))
 
 ;; =============================================================================
 ;; Favorites (toggle button)
@@ -61,43 +61,38 @@
 (defn- favorite-toggle-widget
   [book-id fav-state-atom library-state-atom]
   (f/widget
+   :get {{{:flds [primary]} .-colorScheme} m/Theme}
    :watch [{:keys [loading? error data]} fav-state-atom]
    (let [is-fav (boolean data)]
      (cond
        loading?
-       (m/Row
-        .mainAxisSize m/MainAxisSize.min
-        .children [(m/CircularProgressIndicator .strokeWidth 2.0)])
+       (m/SizedBox
+        .width 24.0
+        .height 24.0
+        .child (m/CircularProgressIndicator .strokeWidth 2.0))
 
        error
-       (mgl/MongolElevatedButton
+       (m/TextButton
         .onPressed (fn []
-                     (favorites-srv/load-is-favorite! fav-state-atom book-id))
-        .child (mgl/MongolText "Favorite (Retry)"))
+                     (favorites-srv/load-is-favorite! fav-state-atom book-id)
+                     nil)
+        .child (m/Text "↻" .style (m/TextStyle .fontSize 18.0 .color primary)))
 
        is-fav
-       (mgl/MongolElevatedButton
+       (m/IconButton
+        .icon (m/Icon m/Icons.favorite .color primary)
         .onPressed (fn []
-                     (favorites-srv/toggle-favorite!
-                      fav-state-atom book-id library-state-atom))
-        .child (m/Column
-                .mainAxisSize m/MainAxisSize.min
-                .children
-                [(m/Icon m/Icons.favorite)
-                 (m/SizedBox .height 8.0)
-                 (mgl/MongolText "Favorited")]))
+                    (favorites-srv/toggle-favorite!
+                     fav-state-atom book-id library-state-atom)
+                    nil))
 
        :else
-       (mgl/MongolElevatedButton
+       (m/IconButton
+        .icon (m/Icon m/Icons.favorite_border .color primary)
         .onPressed (fn []
-                     (favorites-srv/toggle-favorite!
-                      fav-state-atom book-id library-state-atom))
-        .child (m/Column
-                .mainAxisSize m/MainAxisSize.min
-                .children
-                [(m/Icon m/Icons.favorite_border)
-                 (m/SizedBox .height 8.0)
-                 (mgl/MongolText "Favorite")]))))))
+                    (favorites-srv/toggle-favorite!
+                     fav-state-atom book-id library-state-atom)
+                    nil))))))
 
 ;; =============================================================================
 ;; 2. Main page (driven by local state)
@@ -131,7 +126,7 @@
 
                    continue-widget
                    (if show-continue?
-                     (m/ElevatedButton
+                     (m/TextButton
                       .onPressed
                       (fn []
                         (player/load-chapter! detail-data saved-chapter
@@ -144,56 +139,52 @@
                       (m/Row
                        .mainAxisSize m/MainAxisSize.min
                        .children
-                       [(m/Icon m/Icons.play_arrow)
-                        (m/SizedBox .width 8.0)
+                       [(m/Icon m/Icons.play_arrow .size 20.0)
+                        (m/SizedBox .width 6.0)
                         (m/Text
                          (let [s (int saved-pos-sec)
                                mm (quot s 60)
                                ss (rem s 60)]
-                           (str "Continue: "
-                                (.padLeft (.toString mm) 2 "0")
+                           (str (.padLeft (.toString mm) 2 "0")
                                 ":"
-                                (.padLeft (.toString ss) 2 "0"))))]))
+                                (.padLeft (.toString ss) 2 "0")))
+                         .style (m/TextStyle .fontSize 14.0))]))
                      (m/SizedBox.shrink))
 
                    author-widget
                    (if (and detail-data (not detail-error))
-                     (m/Row
-                      .children
-                      [(mgl/MongolText
-                        (str "Author: " (get-in detail-data [:author :name]))
-                        .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))
-                       (m/SizedBox .width 20.0)
-                       (mgl/MongolText
-                        (str "Narrator: " (get-in detail-data [:reciter :name]))
-                        .style (m/TextStyle .fontSize 18.0 .color m/Colors.grey))])
+                     (mgl/MongolText
+                      (str (get-in detail-data [:author :name])
+                           " · "
+                           (get-in detail-data [:reciter :name]))
+                      .style (m/TextStyle .fontSize 15.0 .color m/Colors.grey))
                      (m/SizedBox.shrink))]
                (m/Row
                 .crossAxisAlignment m/CrossAxisAlignment.start
                 .children
                 [(media/hero-cover (:id summary) (:cover_url summary)
-                                   :width 120.0 :height 180.0 :border-radius 16.0)
-                 (m/SizedBox .width 32.0)
+                                   :width 96.0 :height 144.0 :border-radius 8.0)
+                 (m/SizedBox .width 20.0)
                  (m/SizedBox
-                  .height 180.0
+                  .height 144.0
                   .child (mgl/MongolText (:title summary)
-                                         .style (m/TextStyle .fontSize 36.0 .height 1.2 .fontWeight m/FontWeight.bold)))
-                 (m/SizedBox .width 24.0)
+                                         .style (m/TextStyle .fontSize 26.0 .height 1.25 .fontWeight m/FontWeight.w600)))
+                 (m/SizedBox .width 16.0)
                  (m/Column
                   .crossAxisAlignment m/CrossAxisAlignment.start
                   .children
                   [continue-widget
-                   (m/SizedBox .height 12.0)
+                   (m/SizedBox .height 4.0)
                    (favorite-toggle-widget (:id summary)
                                            favorite-state
                                            state/library-state)
-                   (m/SizedBox .height 12.0)
+                   (m/SizedBox .height 8.0)
                    author-widget])]))))]
       (detail-page/horizontal-detail-page
        summary
        srv/load-detail!
        header-fn
        (fn [data] (:description data))
-       "Full\ntranscript"
+       "Chapters"
        (fn [data] (:chapters data))
        (fn [chapter data ctx] (chapter-card-tile data chapter ctx))))))

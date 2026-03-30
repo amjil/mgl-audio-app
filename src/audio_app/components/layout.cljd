@@ -16,11 +16,10 @@
    .children
    [;; Left side: clean title area
     (m/Container
-     .padding (m/EdgeInsets.only .left 32.0 .right 24.0 .top 24.0 .bottom 24.0)
+     .padding (m/EdgeInsets.only .left 20.0 .right 16.0 .top 16.0 .bottom 16.0)
      .child (mgl/MongolText title
-                           .style (m/TextStyle .fontSize 24.0
-                                               .letterSpacing 1.5
-                                               .fontWeight m/FontWeight.w700)))
+                           .style (m/TextStyle .fontSize 18.0
+                                               .fontWeight m/FontWeight.w500)))
     ;; Right side: content area
     child]))
 
@@ -56,5 +55,5 @@
   "Standard padding wrapper for SliverToBoxAdapter sections within the horizontal canvas"
   [child]
   (m/Padding
-   .padding (m/EdgeInsets.only .left 32.0 .right 24.0 .top 16.0 .bottom 32.0)
+   .padding (m/EdgeInsets.only .left 20.0 .right 16.0 .top 12.0 .bottom 20.0)
    .child child))

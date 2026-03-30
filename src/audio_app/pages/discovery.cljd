@@ -23,15 +23,15 @@
             (m/Navigator.push ctx (m/MaterialPageRoute .builder (fn [_] (author-detail/page author))))
             nil) 
    .child (m/Container
-           .width 80.0 
-           .margin (m/EdgeInsets.only .right 24.0)
+           .width 72.0
+           .margin (m/EdgeInsets.only .right 14.0)
            .child (m/Column
                    .children 
-                   [(media/hero-avatar (:id author) (:avatar_url author) :radius 40.0)
-                    (m/SizedBox .height 16.0)
+                   [(media/hero-avatar (:id author) (:avatar_url author) :radius 36.0)
+                    (m/SizedBox .height 8.0)
                     (m/Expanded 
                      .child (mgl/MongolText (:name author) 
-                                            .style (m/TextStyle .fontSize 18.0 .fontWeight m/FontWeight.w500)))]))))
+                                            .style (m/TextStyle .fontSize 16.0 .fontWeight m/FontWeight.w400)))]))))
 
 (defn- book-card 
   "Hot book card (rounded Hero cover + vertical title)"
@@ -41,14 +41,12 @@
             (m/Navigator.push ctx (m/MaterialPageRoute .builder (fn [_] (book-detail/page book))))
             nil) 
    .child (cards/book-card book
-                           ;; Tighten card width to match the circular cover (radius 40 => diameter 80),
-                           ;; reducing the perceived left/right blank space inside each item.
-                           :width 88.0
-                           :margin-right 12.0
+                           :width 80.0
+                           :margin-right 8.0
                            :cover-variant :avatar
                            :height dart:core/double.infinity
-                           :border-radius 12.0
-                           :title-font-size 18.0)))
+                           :border-radius 8.0
+                           :title-font-size 16.0)))
 
 ;; =============================================================================
 ;; 2. Main page (driven entirely by injected state)

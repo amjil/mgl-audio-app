@@ -24,14 +24,13 @@
    :watch [{:keys [mode loading? error]} auth-state]
 
    (m/Padding
-    .padding (m/EdgeInsets.all 48.0)
+    .padding (m/EdgeInsets.symmetric .horizontal 28.0 .vertical 32.0)
     .child
     (m/Column
      .mainAxisAlignment m/MainAxisAlignment.center
-     .crossAxisAlignment m/CrossAxisAlignment.start
+     .crossAxisAlignment m/CrossAxisAlignment.stretch
      .children
-     [;; Error area (empty when no error)
-      (if error
+     [(if error
         (status/inline-error error)
         (m/SizedBox.shrink))
 
@@ -40,10 +39,10 @@
        .decoration
        (m/InputDecoration
         .labelText "Email"
-        .prefixIcon (m/Icon m/Icons.person)
-        .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 12.0))))
+        .border (m/UnderlineInputBorder)
+        .isDense true))
 
-      (m/SizedBox .height 24.0)
+      (m/SizedBox .height 16.0)
 
       (m/TextField
        .controller pwd-ctrl
@@ -51,44 +50,38 @@
        .decoration
        (m/InputDecoration
         .labelText "Password"
-        .prefixIcon (m/Icon m/Icons.lock)
-        .border (m/OutlineInputBorder .borderRadius (m/BorderRadius.circular 12.0))))
+        .border (m/UnderlineInputBorder)
+        .isDense true))
 
-      (m/SizedBox .height 40.0)
+      (m/SizedBox .height 28.0)
 
-      ;; Submit and mode toggle buttons (vertical layout)
-      (m/Column
-       .mainAxisSize m/MainAxisSize.min
-       .crossAxisAlignment m/CrossAxisAlignment.start
-       .children
-       [(mgl/MongolElevatedButton
-         .style (mgl/MongolElevatedButton.styleFrom
-                 .backgroundColor primary
-                 .foregroundColor surface
-                 .padding (m/EdgeInsets.symmetric .vertical 32.0 .horizontal 24.0)
-                 .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 16.0)))
-         .onPressed (if loading?
-                      nil
-                      #(on-authenticate! auth-state mode
-                                         (.-text user-ctrl)
-                                         (.-text pwd-ctrl)))
-         .child (if loading?
-                  (m/CircularProgressIndicator .color surface)
-                  (mgl/MongolText (if (= mode :login) "Sign in" "Sign up")
-                                  .style (m/TextStyle .fontSize 20.0 .fontWeight m/FontWeight.bold))))
+      (mgl/MongolElevatedButton
+       .style (mgl/MongolElevatedButton.styleFrom
+               .backgroundColor primary
+               .foregroundColor surface
+               .padding (m/EdgeInsets.symmetric .vertical 20.0 .horizontal 20.0)
+               .elevation 0
+               .shape (m/RoundedRectangleBorder .borderRadius (m/BorderRadius.circular 8.0)))
+       .onPressed (if loading?
+                    nil
+                    #(on-authenticate! auth-state mode
+                                       (.-text user-ctrl)
+                                       (.-text pwd-ctrl)))
+       .child (if loading?
+                (m/CircularProgressIndicator .color surface .strokeWidth 2.0)
+                (mgl/MongolText (if (= mode :login) "Sign in" "Sign up")
+                                .style (m/TextStyle .fontSize 17.0 .fontWeight m/FontWeight.w500))))
 
-        (m/SizedBox .height 16.0)
+      (m/SizedBox .height 8.0)
 
-        (mgl/MongolTextButton
-         .onPressed #(do
-                       (.clear user-ctrl)
-                       (.clear pwd-ctrl)
-                       (swap! auth-state assoc
-                              :mode (if (= mode :login) :register :login)
-                              :error nil))
-         .child (mgl/MongolText
-                 (if (= mode :login)
-                   "New user? Sign up"
-                   "Already have an account? Sign in")
-                 .style (m/TextStyle .fontSize 16.0 .color onSurfaceVariant)))])]))))
+      (mgl/MongolTextButton
+       .onPressed #(do
+                     (.clear user-ctrl)
+                     (.clear pwd-ctrl)
+                     (swap! auth-state assoc
+                            :mode (if (= mode :login) :register :login)
+                            :error nil))
+       .child (mgl/MongolText
+               (if (= mode :login) "Sign up" "Sign in")
+               .style (m/TextStyle .fontSize 14.0 .color onSurfaceVariant)))]))))
 
