@@ -1,0 +1,22 @@
+(ns audio-app.models.feed-post
+  (:require [audio-app.services.gql :as gql]))
+
+(defn- segment-api->ui [s]
+  (when s
+    {:id (:id s)
+     :text (:text s)
+     :start_ms (or (:start_ms s) 0)
+     :end_ms (or (:end_ms s) 0)
+     :index (or (:index s) 0)}))
+
+(defn feed-post-api->ui
+  "GraphQL feed_post → UI map (absolute media URLs, segment list for player)."
+  [m]
+  (when m
+    {:id (:id m)
+     :title (:title m)
+     :text (:text m)
+     :audio_url (gql/resolve-url (:audio_url m))
+     :cover_url (gql/resolve-url (:cover_url m))
+     :duration_seconds (:duration_seconds m)
+     :segments (into [] (keep segment-api->ui (:segments m)))}))

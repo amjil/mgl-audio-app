@@ -1,0 +1,32 @@
+(ns audio-app.services.article-feed
+  (:require [audio-app.services.gql :as gql]
+            [audio-app.models.feed-post :as feed-ui]))
+
+(def feed-posts-query
+  "query FeedPosts($limit: Int) {
+     feed_posts(limit: $limit) {
+       id
+       title
+       text
+       audio_url
+       cover_url
+       duration_seconds
+       segments { id index start_ms end_ms text }
+     }
+   }")
+
+(defn load-data!
+  "Fetch feed_posts from GraphQL and merge into state-atom."
+  [state-atom]
+  (swap! state-atom assoc :loading? true :error nil)
+  (-> (gql/query feed-posts-query {:limit 20})
+      (.then (fn [resp]
+               (if (:error resp)
+                 (swap! state-atom assoc :loading? false :error (:error resp))
+                 (let [raw (get-in resp [:feed_posts] [])]
+                   (swap! state-atom assoc
+                          :loading? false
+                          :initialized? true
+                          :posts (into [] (keep feed-ui/feed-post-api->ui) raw))))))
+      (.catchError (fn [e]
+                     (swap! state-atom assoc :loading? false :error e)))))

@@ -23,6 +23,11 @@
          :error nil
          :initialized? false}))
 
+(def article-feed-state
+  (atom {:posts []
+         :loading? false
+         :error nil
+         :initialized? false}))
 
 (def library-state
   (atom {:recent-books [] 

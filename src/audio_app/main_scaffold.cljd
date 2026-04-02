@@ -4,11 +4,13 @@
             [audio-app.state :as state]
             [audio-app.services.gql :as gql]
             [audio-app.services.discovery :as discovery-srv]
+            [audio-app.services.article-feed :as article-feed-srv]
             [audio-app.services.library :as library-srv]
             [audio-app.services.profile :as profile-srv]
             [audio-app.components.bottom-nav :as bottom-nav]
             [audio-app.components.mini-player :as mini-player]
             [audio-app.pages.auth :as auth]
+            [audio-app.pages.article-feed :as article-feed]
             [audio-app.pages.discovery :as discovery]
             [audio-app.pages.library :as library]
             [audio-app.pages.search :as search]
@@ -22,16 +24,19 @@
    This avoids repeated requests in business scenarios where an empty list is allowed."
   [index]
   (case index
+    ;; Article feed tab
+    0 (when (not (:initialized? @state/article-feed-state))
+        (article-feed-srv/load-data! state/article-feed-state))
     ;; Discovery tab
-    0 (when (not (:initialized? @state/discovery-state))
+    1 (when (not (:initialized? @state/discovery-state))
         (discovery-srv/load-data! state/discovery-state))
     ;; Library tab
-    1 (when (not (:initialized? @state/library-state))
+    2 (when (not (:initialized? @state/library-state))
         (library-srv/load-data! state/library-state))
     ;; Search page has no default data; user input triggers loading
-    2 nil
+    3 nil
     ;; Profile tab
-    3 (when (not (:initialized? @state/profile-state))
+    4 (when (not (:initialized? @state/profile-state))
         (profile-srv/load-data! state/profile-state))
     nil))
 
@@ -41,7 +46,7 @@
 (defn- main-layout []
   (let [current-tab (atom 0)]
     
-    ;; Preload discovery data when entering the main layout
+    ;; Preload first tab (article feed) when entering the main layout
     (trigger-tab-load! 0)
     
     (f/widget
@@ -52,7 +57,8 @@
       (m/Stack
        .children [(m/IndexedStack
                     .index tab-idx
-                    .children [(discovery/page)
+                    .children [(article-feed/page)
+                               (discovery/page)
                                (library/page)
                                (search/page)
                                (profile/page)])

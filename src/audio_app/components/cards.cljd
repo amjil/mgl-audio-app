@@ -50,7 +50,7 @@
                           .child (media/hero-cover-avatar (:id book) (:cover_url book)
                                                           :radius cr)))
                  (m/Expanded 
-                  .flex 3 
+                  .flex 2 
                   ;; Pass width to hero-cover; BoxFit.cover crops irregular images cleanly
                   .child (m/Center
                           .child (media/hero-cover (:id book) (:cover_url book) 
@@ -62,7 +62,7 @@
                
                ;; Bottom: vertical book title
                (m/Expanded 
-                .flex 2 
+                .flex 3 
                 ;; Outer Container fixes width; ClipRect clips overflow if title is large or multi-line
                 .child (m/ClipRect 
                         .child (mgl/MongolText (:title book) 

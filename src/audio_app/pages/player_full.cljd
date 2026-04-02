@@ -19,7 +19,7 @@
    :context ctx
    :get {{{:flds [surface onSurface primary outlineVariant onSurfaceVariant surfaceContainerHighest]} .-colorScheme} m/Theme}
    
-   ;; 🌟 1. 引入局部沉浸状态
+  ;; 🌟 1. Introduce local immersive mode state
    :let [immersive-mode? (atom false)]
    
    ;; 💡 Core: purely listen to the global player state + immersive state
@@ -30,7 +30,7 @@
     .backgroundColor surface
     
     ;; Top app bar: transparent background + down arrow
-    ;; 🌟 沉浸模式下让返回箭头变暗，减少干扰
+   ;; 🌟 Dim the back arrow in immersive mode to reduce distraction
     .appBar (m/AppBar
              .backgroundColor m/Colors.transparent
              .elevation 0
@@ -51,7 +51,7 @@
        [
         ;; ==========================================
         ;; 1. Cover display (Hero animation)
-        ;; 🌟 沉浸模式下折叠隐藏封面
+        ;; 🌟 Collapse and hide the cover in immersive mode
         ;; ==========================================
         (if immersive?
           (m/SizedBox.shrink)
@@ -65,7 +65,7 @@
         
         ;; ==========================================
         ;; 2. Synchronized transcript area
-        ;; 🌟 点击文字区域切换沉浸模式，并且在沉浸时撑满屏幕 (flex 10)
+        ;; 🌟 Tap transcript area to toggle immersive mode; expand in immersive mode (flex 10)
         ;; ==========================================
         (m/Expanded
          .flex (if immersive? 10 3)
@@ -77,7 +77,7 @@
         (m/SizedBox .height 24.0)
         
         ;; ==========================================
-        ;; 3. Progress bar and time display (始终显示)
+        ;; 3. Progress bar and time display (always visible)
         ;; ==========================================
         (m/Column
          .children
@@ -99,7 +99,7 @@
 
         ;; ==========================================
         ;; 4. Secondary Controls (speed, repeat, auto-next, sleep timer)
-        ;; 🌟 沉浸模式下折叠隐藏次级控制栏
+        ;; 🌟 Collapse and hide secondary controls in immersive mode
         ;; ==========================================
         (if immersive?
           (m/SizedBox.shrink)
@@ -178,11 +178,11 @@
                          (m/Text sleep-text .style (m/TextStyle .fontSize 14.0 .fontWeight m/FontWeight.bold .color primary))
                          (m/Icon m/Icons.timer)))])
               
-              ;; 沉浸模式下连同这个间距也省掉
+              ;; Remove this spacing as well in immersive mode
               (m/SizedBox .height 16.0)])))
         
         ;; ==========================================
-        ;; 5. Main Playback Control Center (始终显示)
+        ;; 5. Main playback control center (always visible)
         ;; ==========================================
         (m/Row
          .mainAxisAlignment m/MainAxisAlignment.spaceEvenly

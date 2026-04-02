@@ -1,0 +1,93 @@
+(ns audio-app.pages.article-feed
+  (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            [cljd.flutter :as f]
+            [audio-app.state :as state]
+            [audio-app.services.article-feed :as srv]
+            [audio-app.components.status :as status]
+            [audio-app.components.layout :as layout]
+            [audio-app.components.cards :as cards]
+            [audio-app.pages.article-reading :as article-reading]))
+
+(defn- feed-post-card
+  "Narrow card: a single-post block tailored for horizontal-scroll reading."
+  [post ctx]
+  ;; If you keep `apple-book-card` in cards.cljd, you can switch to
+  ;; `cards/apple-book-card` here for stronger physical shadow styling.
+  (cards/book-card post
+                   :width 88.0
+                   :margin-right 32.0
+                   :cover-variant :rect
+                   :height 124.0
+                   :border-radius 8.0
+                   :title-font-size 16.0
+                   :on-tap (fn []
+                             (m/Navigator.push
+                              ctx
+                              (m/MaterialPageRoute
+                               .builder (fn [_] (article-reading/page post))))
+                             nil)))
+
+(defn- error-message [err]
+  (cond
+    (nil? err) ""
+    (string? err) err
+    (map? err) (or (:message err) (str err))
+    :else (str err)))
+
+(defn page
+  "Article/post feed tab (Apple Books scroll style)."
+  []
+  (f/widget
+   :context ctx
+   :get {{{:flds [surface]} .-colorScheme} m/Theme}
+   :watch [{:keys [posts loading? error]} state/article-feed-state]
+
+   (m/Scaffold
+    .backgroundColor surface
+    .body
+    (m/RefreshIndicator
+     .onRefresh (fn [] (srv/load-data! state/article-feed-state))
+     .child
+     (cond
+      ;; 1. Initial loading state
+       (and loading? (empty? posts))
+       (status/loading-center)
+
+      ;; 2. Load failed and no cached data
+       (and error (empty? posts))
+       (status/error-with-retry
+        {:on-retry #(srv/load-data! state/article-feed-state)
+         :message (error-message error)})
+
+      ;; 3. Render the horizontal reading canvas
+       :else
+       (layout/canvas-scroll
+       ;; Canvas intro: oversized headline
+        (m/SliverToBoxAdapter
+         .child (m/Padding
+                ;; Keep distance from top/bottom safe areas and bottom nav pill
+                 .padding (m/EdgeInsets.only .left 32.0 .right 24.0 .top 64.0 .bottom 120.0)
+                 .child (mgl/MongolText "Articles"
+                                        .style (m/TextStyle .fontSize 44.0
+                                                            .fontWeight m/FontWeight.w700
+                                                            .letterSpacing 2.0))))
+
+       ;; Main list area: render by data availability
+        (if (empty? posts)
+          (m/SliverToBoxAdapter
+           .child (m/Container
+                   .padding (m/EdgeInsets.only .top 120.0 .left 64.0)
+                   .child (status/empty-center "No articles")))
+          
+          (m/SliverList
+           .delegate (m/SliverChildBuilderDelegate
+                      (f/build [i]
+                        (m/Padding
+                        ;; Extra vertical spacing to avoid bottom floating nav pill
+                         .padding (m/EdgeInsets.only .top 24.0 .bottom 120.0)
+                         .child (feed-post-card (nth posts i) ctx)))
+                      .childCount (count posts))))
+
+       ;; End padding for the canvas tail
+        (m/SliverToBoxAdapter .child (m/SizedBox .width 80.0))))))))
