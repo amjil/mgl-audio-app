@@ -53,39 +53,57 @@
        .errorWidget (fn [_ctx _url _err] (error-widget))))))
 
 (defn hero-cover
-  "Book cover widget with local cache, skeleton placeholder and Hero animation.
-   - id: unique identifier for the Hero animation (e.g. book-id)
-   - url: network image URL
-   - optional: width, height, border-radius, hero?"
+  "Book/Article cover widget with local cache and elegant fallback.
+   - id: unique identifier for the Hero animation
+   - url: network image URL (can be nil/empty)
+   - optional: width, height, border-radius, hero? (defaults to true)"
   [id url & {:keys [width height border-radius hero?]
              :or {width 120.0 height 160.0 border-radius 12.0 hero? true}}]
   (let [url (gql/resolve-url url)]
     (f/widget
-     :get {{{:flds [onSurfaceVariant]} .-colorScheme} m/Theme}
-     (let [placeholder-color (.withOpacity onSurfaceVariant 0.12)
-           error-color (.withOpacity onSurfaceVariant 0.65)
-           cover-child (m/ClipRRect
-                        .borderRadius (m/BorderRadius.circular border-radius)
-                        .child
-                        (if (and url (not (empty? url)))
-                          (network-image {:url url
-                                          :width width
-                                          :height height
-                                          :fit m/BoxFit.cover
-                                          :icon m/Icons.broken_image
-                                          :placeholder-color placeholder-color
-                                          :error-color error-color})
-                          ;; Extreme case: no URL at all, show a default placeholder
-                          (m/Container
-                           .width width
-                           .height height
-                           .color placeholder-color
-                           .child (m/Icon m/Icons.book .color error-color))))]
+     :get {{{:flds [primary onSurfaceVariant surfaceContainerHighest]} .-colorScheme} m/Theme}
+     
+     (let [;; 🌟 1. 定义极其优雅的缺省状态颜色
+           placeholder-bg surfaceContainerHighest
+           icon-color (.withOpacity primary 0.3) ;; Use low-opacity primary color (subtle, not harsh)
+           
+           ;; 2. Elegant fallback cover
+           fallback-cover
+           (m/Container
+            .width width
+            .height height
+            .decoration (m/BoxDecoration
+                         .color placeholder-bg
+                         .borderRadius (m/BorderRadius.circular border-radius)
+                         ;; Very subtle border to outline the physical boundary
+                         .border (m/Border.all .color (.withOpacity onSurfaceVariant 0.1) .width 0.5))
+            .child (m/Center
+                    ;; Article/reading icon; size adapts to cover width
+                    .child (m/Icon m/Icons.auto_stories 
+                                   .color icon-color 
+                                   .size (if (number? width) (* width 0.35) 32.0))))
+           
+           ;; 3. Choose the final content
+           content (if (seq url)
+                     (network-image {:url url
+                                     :width width
+                                     :height height
+                                     :fit m/BoxFit.cover
+                                     :icon m/Icons.broken_image
+                                     :placeholder-color placeholder-bg
+                                     :error-color icon-color})
+                     ;; If there is no URL, render the elegant fallback cover
+                     fallback-cover)
+           
+           ;; 4. Clip to rounded corners
+           clipped-content (m/ClipRRect
+                            .borderRadius (m/BorderRadius.circular border-radius)
+                            .child content)]
+       
+       ;; 5. Optionally mount Hero animation (avoid page-specific transition bugs)
        (if hero?
-         (m/Hero
-          .tag (str "book-cover-" id)
-          .child cover-child)
-         cover-child)))))
+         (m/Hero .tag (str "book-cover-" id) .child clipped-content)
+         clipped-content)))))
 
 (defn hero-cover-avatar
   "Book cover widget in circular avatar style (Hero + cached image).

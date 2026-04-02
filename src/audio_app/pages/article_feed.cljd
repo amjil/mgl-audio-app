@@ -15,10 +15,10 @@
   ;; If you keep `apple-book-card` in cards.cljd, you can switch to
   ;; `cards/apple-book-card` here for stronger physical shadow styling.
   (cards/book-card post
-                   :width 88.0
+                   :width 68.0
                    :margin-right 32.0
                    :cover-variant :rect
-                   :height 124.0
+                   :height 84.0
                    :border-radius 8.0
                    :title-font-size 16.0
                    :on-tap (fn []
