@@ -10,7 +10,8 @@
             [audio-app.components.cards :as cards]
             [audio-app.components.status :as status]
             [audio-app.pages.book-detail :as book-detail]
-            [audio-app.pages.author-detail :as author-detail]))
+            [audio-app.pages.author-detail :as author-detail]
+            [audio-app.pages.search :as search]))
 
 ;; =============================================================================
 ;; 1. Pure render components: author card, book card and horizontal list builder
@@ -54,11 +55,25 @@
 (defn page []
   (f/widget
    :context ctx
-   :get {{{:flds [surface]} .-colorScheme} m/Theme}
+   :get {{{:flds [surface onSurface]} .-colorScheme} m/Theme}
    :watch [{:keys [authors books loading? error]} state/discovery-state]
    
    (m/Scaffold
     .backgroundColor surface
+    .appBar
+    (m/AppBar
+     .backgroundColor surface
+     .surfaceTintColor m/Colors.transparent
+     .elevation 0
+     .scrolledUnderElevation 0
+     .automaticallyImplyLeading false
+     .actions
+     [(m/IconButton
+       .icon (m/Icon m/Icons.search .color onSurface)
+       .tooltip "Search"
+       .onPressed (fn []
+                    (m/Navigator.push ctx (m/MaterialPageRoute .builder (fn [_] (search/page))))
+                    nil))])
     .body
     (m/SafeArea
      .child

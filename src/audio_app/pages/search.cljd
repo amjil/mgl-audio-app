@@ -36,7 +36,7 @@
   (let [keyword-atom (atom "")]
     (f/widget
      :context ctx
-    :get {{{:flds [surface]} .-colorScheme} m/Theme}
+    :get {{{:flds [surface onSurface]} .-colorScheme} m/Theme}
      :managed [scroll-ctrl (as-> (m/ScrollController.) ctrl
                              (doto ctrl
                                (.addListener
@@ -50,6 +50,19 @@
      
      (m/Scaffold
       .backgroundColor surface
+      .appBar
+      (m/AppBar
+       .backgroundColor surface
+       .surfaceTintColor m/Colors.transparent
+       .elevation 0
+       .scrolledUnderElevation 0
+       .leading
+       (m/IconButton
+        .icon (m/Icon m/Icons.arrow_back_ios .size 22.0)
+        .color onSurface
+        .onPressed (fn []
+                     (m/Navigator.pop ctx)
+                     nil)))
       .body
       (m/SafeArea
        .child

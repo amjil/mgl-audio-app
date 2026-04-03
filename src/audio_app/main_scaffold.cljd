@@ -13,7 +13,6 @@
             [audio-app.pages.article-feed :as article-feed]
             [audio-app.pages.discovery :as discovery]
             [audio-app.pages.library :as library]
-            [audio-app.pages.search :as search]
             [audio-app.pages.profile :as profile]))
 
 ;; =============================================================================
@@ -33,10 +32,8 @@
     ;; Library tab
     2 (when (not (:initialized? @state/library-state))
         (library-srv/load-data! state/library-state))
-    ;; Search page has no default data; user input triggers loading
-    3 nil
     ;; Profile tab
-    4 (when (not (:initialized? @state/profile-state))
+    3 (when (not (:initialized? @state/profile-state))
         (profile-srv/load-data! state/profile-state))
     nil))
 
@@ -60,7 +57,6 @@
                     .children [(article-feed/page)
                                (discovery/page)
                                (library/page)
-                               (search/page)
                                (profile/page)])
                    ;; Floating mini player for quick resume.
                    (mini-player/widget)])

@@ -4,7 +4,7 @@
 
 ;; =============================================================================
 ;; Floating pill bottom nav (tab index mapping:
-;; 0 Article feed / 1 Discover / 2 Library / 3 Search / 4 Profile)
+;; 0 Article feed / 1 Discover / 2 Library / 3 Profile)
 ;; =============================================================================
 
 (defn widget
@@ -12,11 +12,10 @@
   [current-index on-index-change]
   (f/widget
    :get {{{:flds [primary onSurfaceVariant surface]} .-colorScheme} m/Theme}
-   (let [items [{:idx 0 :icon m/Icons.article_outlined}
+     (let [items [{:idx 0 :icon m/Icons.article_outlined}
                 {:idx 1 :icon m/Icons.explore}
                 {:idx 2 :icon m/Icons.library_books}
-                {:idx 3 :icon m/Icons.search}
-                {:idx 4 :icon m/Icons.person}]]
+                {:idx 3 :icon m/Icons.person}]]
      (m/SafeArea
       .child
       (m/Padding
