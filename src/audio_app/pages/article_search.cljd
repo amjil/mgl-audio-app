@@ -1,0 +1,106 @@
+(ns audio-app.pages.article-search
+  (:require ["package:flutter/material.dart" :as m]
+            [cljd.flutter :as f]
+            [audio-app.state :as state]
+            [audio-app.services.article-search :as srv]
+            [audio-app.components.layout :as layout]
+            [audio-app.components.cards :as cards]
+            [audio-app.components.status :as status]
+            [audio-app.components.horizontal-infinite-list :as inf]
+            [audio-app.pages.article-reading :as article-reading]
+            [components.search-bar :as search-bar]
+            [components.input-dialog :as input-dialog]))
+
+(defn- open-search-dialog
+  [ctx keyword-atom]
+  (m/showDialog
+   .context ctx
+   .builder
+   (fn [dialog-ctx]
+     (input-dialog/generic-input-dialog
+      {:hint "Search articles"
+       :initial-text @keyword-atom
+       :on-submit (fn [text]
+                    (reset! keyword-atom text)
+                    (-> (m/Navigator.of dialog-ctx) (.pop))
+                    (when-not (empty? text)
+                      (srv/load-page! state/article-search-list-state text 10 true)))}))))
+
+(defn page []
+  (let [keyword-atom (atom "")]
+    (f/widget
+     :context ctx
+     :get {{{:flds [surface onSurface]} .-colorScheme} m/Theme}
+     :managed [scroll-ctrl (as-> (m/ScrollController.) ctrl
+                             (doto ctrl
+                               (.addListener
+                                (fn []
+                                  (when (>= (.-pixels (.-position ctrl))
+                                            (- (.-maxScrollExtent (.-position ctrl)) 200))
+                                    (when-not (empty? @keyword-atom)
+                                      (srv/load-page! state/article-search-list-state @keyword-atom 10 false)))))))]
+     :watch [keyword-val keyword-atom
+             {:keys [items loading? has-more? error]} state/article-search-list-state]
+
+     (m/Scaffold
+      .backgroundColor surface
+      .appBar
+      (m/AppBar
+       .backgroundColor surface
+       .surfaceTintColor m/Colors.transparent
+       .elevation 0
+       .scrolledUnderElevation 0
+       .leading
+       (m/IconButton
+        .icon (m/Icon m/Icons.arrow_back_ios .size 22.0)
+        .color onSurface
+        .onPressed (fn []
+                     (m/Navigator.pop ctx)
+                     nil)))
+      .body
+      (m/SafeArea
+       .child
+       (m/Row
+        .crossAxisAlignment m/CrossAxisAlignment.start
+        .children
+        [(m/Container
+          .width 100.0
+          .padding (m/EdgeInsets.only .left 24.0 .top 24.0 .bottom 24.0 .right 16.0)
+          .child (search-bar/fake-search-bar
+                  {:state-atom keyword-atom
+                   :label "Search"
+                   :on-tap #(open-search-dialog ctx keyword-atom)}))
+
+         (layout/v-divider)
+
+         (m/Expanded
+          .child
+          (cond
+            (and loading? (empty? items))
+            (status/loading-center)
+
+            (and (not loading?) (empty? items) (not error))
+            (status/empty-center
+             (if (empty? keyword-val)
+               "Enter a search query"
+               "No results"))
+
+            :else
+            (inf/horizontal-infinite-list
+             scroll-ctrl
+             items
+             (fn [post inner-ctx]
+               (cards/book-card post
+                                :width 140.0
+                                :height dart:core/double.infinity
+                                :border-radius 12.0
+                                :title-font-size 18.0
+                                :on-tap (fn []
+                                          (m/Navigator.push
+                                           inner-ctx
+                                           (m/MaterialPageRoute
+                                            .builder (fn [_] (article-reading/page post))))
+                                          nil)))
+             loading?
+             has-more?
+             error)))]))))))

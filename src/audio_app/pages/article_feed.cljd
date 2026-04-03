@@ -7,7 +7,8 @@
             [audio-app.components.status :as status]
             [audio-app.components.layout :as layout]
             [audio-app.components.cards :as cards]
-            [audio-app.pages.article-reading :as article-reading]))
+            [audio-app.pages.article-reading :as article-reading]
+            [audio-app.pages.article-search :as article-search]))
 
 (defn- feed-post-card
   "Narrow card: a single-post block tailored for horizontal-scroll reading."
@@ -40,7 +41,7 @@
   []
   (f/widget
    :context ctx
-   :get {{{:flds [surface outlineVariant]} .-colorScheme} m/Theme}
+   :get {{{:flds [surface outlineVariant onSurface]} .-colorScheme} m/Theme}
    :managed [scroll-ctrl (as-> (m/ScrollController.) ctrl
                            (doto ctrl
                              (.addListener
@@ -55,20 +56,23 @@
    (m/Scaffold
     .backgroundColor surface
     .body
-    (cond
-      ;; 1. Initial loading state
-      (and loading? (empty? posts))
-      (status/loading-center)
+    (m/Stack
+     .fit m/StackFit.expand
+     .children
+     [(cond
+        ;; 1. Initial loading state
+        (and loading? (empty? posts))
+        (status/loading-center)
 
-      ;; 2. Load failed and no cached data
-      (and error (empty? posts))
-      (status/error-with-retry
-       {:on-retry #(srv/load-data! state/article-feed-state)
-        :message (error-message error)})
+        ;; 2. Load failed and no cached data
+        (and error (empty? posts))
+        (status/error-with-retry
+         {:on-retry #(srv/load-data! state/article-feed-state)
+          :message (error-message error)})
 
-      ;; 3. Render the horizontal reading canvas
-      :else
-      (layout/canvas-scroll-ctrl scroll-ctrl
+        ;; 3. Render the horizontal reading canvas
+        :else
+        (layout/canvas-scroll-ctrl scroll-ctrl
                                  ;; Canvas intro: oversized headline
                                  (m/SliverToBoxAdapter
                                   .child (m/Padding
@@ -121,4 +125,26 @@
                                                .childCount (inc (count posts)))))
 
                                  ;; End padding for the canvas tail
-                                 (m/SliverToBoxAdapter .child (m/SizedBox .width 80.0)))))))
+                                 (m/SliverToBoxAdapter .child (m/SizedBox .width 80.0))))
+
+      (m/SafeArea
+       .child (m/Align
+               .alignment m/Alignment.topRight
+               .child (m/Padding
+                       .padding (m/EdgeInsets.only .top 4.0 .right 8.0)
+                       .child (m/IconButton
+                               .icon (m/Icon m/Icons.search .size 26.0)
+                               .color onSurface
+                               .tooltip "Search articles"
+                               .onPressed (fn []
+                                            (swap! state/article-search-list-state
+                                                   merge {:items []
+                                                          :offset 0
+                                                          :has-more? true
+                                                          :loading? false
+                                                          :error nil})
+                                            (m/Navigator.push
+                                             ctx
+                                            (m/MaterialPageRoute
+                                             .builder (fn [_] (article-search/page))))
+                                            nil)))))]))))

@@ -1,0 +1,46 @@
+(ns audio-app.services.article-search
+  (:require [audio-app.services.gql :as gql]
+            [audio-app.models.feed-post :as feed-ui]))
+
+(def search-feed-posts-query
+  "query SearchFeedPosts($query: String!, $limit: Int!, $offset: Int!) {
+     search_feed_posts(query: $query, limit: $limit, offset: $offset) {
+       items {
+         id
+         title
+         text
+         audio_url
+         cover_url
+         duration_seconds
+         segments { id index start_ms end_ms text }
+       }
+       has_next_page
+     }
+   }")
+
+(defn load-page!
+  "Paginated article search; `is-refresh?` replaces items and resets offset."
+  [state-atom keyword limit is-refresh?]
+  (let [{:keys [loading? has-more? offset items]} @state-atom]
+    (when (and (not loading?) (or has-more? is-refresh?))
+      (let [current-offset (if is-refresh? 0 offset)]
+        (swap! state-atom assoc :loading? true :error nil)
+        (let [fut (gql/query search-feed-posts-query {:query keyword
+                                                      :limit limit
+                                                      :offset current-offset})
+              on-ok (fn [resp]
+                      (if (:error resp)
+                        (swap! state-atom assoc :loading? false :error (:error resp))
+                        (let [raw (get-in resp [:search_feed_posts :items] [])
+                              new-items (into [] (keep feed-ui/feed-post-api->ui) raw)
+                              next? (get-in resp [:search_feed_posts :has_next_page] false)]
+                          (swap! state-atom assoc
+                                 :loading? false
+                                 :items (if is-refresh?
+                                          new-items
+                                          (vec (concat items new-items)))
+                                 :offset (+ current-offset limit)
+                                 :has-more? next?))))
+              on-err (fn [e]
+                       (swap! state-atom assoc :loading? false :error e))]
+          (.catchError (.then fut on-ok) on-err))))))

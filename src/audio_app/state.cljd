@@ -32,6 +32,15 @@
          :error nil
          :initialized? false}))
 
+(def article-search-list-state
+  (atom {:items []
+         :offset 0
+         :limit 10
+         :has-more? true
+         :loading? false
+         :error nil
+         :initialized? false}))
+
 (def library-state
   (atom {:recent-books [] 
          :favorite-books [] 
