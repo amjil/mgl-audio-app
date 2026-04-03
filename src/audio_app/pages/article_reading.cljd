@@ -57,6 +57,7 @@
         (m/SafeArea
          .child
          (m/Column
+          .crossAxisAlignment m/CrossAxisAlignment.start
           .children
           [;; ==========================================
            ;; 1. Top navigation and control bar (minimal console style)
@@ -159,57 +160,52 @@
            ;; ==========================================
            (m/Expanded
             .child
-            (m/Row
-             .children
-             [;; 2.1 True horizontal scrolling canvas (left: cover/title, right: body)
-              (m/Expanded
-               .child
-               (m/SingleChildScrollView
-                .scrollDirection m/Axis.horizontal
-                .physics (m/BouncingScrollPhysics.)
-                .padding (m/EdgeInsets.only
-                          .left 32.0
-                          .right 48.0
-                          .top 32.0
-                          .bottom 32.0)
+            (m/SingleChildScrollView
+             .scrollDirection m/Axis.horizontal
+             .physics (m/BouncingScrollPhysics.)
+             .padding (m/EdgeInsets.only
+                       .left 32.0
+                       .right 48.0
+                       .top 32.0
+                       .bottom 32.0)
+             .child
+             (m/Row
+              .crossAxisAlignment m/CrossAxisAlignment.start
+              .mainAxisAlignment m/MainAxisAlignment.start
+              .children
+              [;; Cover and title (left intro of the canvas)
+               (m/Container
+                .margin (m/EdgeInsets.only .right 48.0)
                 .child
-                (m/Row
+                (m/Column
                  .crossAxisAlignment m/CrossAxisAlignment.start
                  .children
-                 [;; Cover and title (left intro of the canvas)
-                  (m/Container
-                   .width 160.0
-                   .margin (m/EdgeInsets.only .right 48.0)
-                   .child
-                   (m/Column
-                    .crossAxisAlignment m/CrossAxisAlignment.start
-                    .children
-                    [(media/hero-cover (:id post) (:cover_url post)
-                                       :width 80.0 :height 80.0 :border-radius 12.0 :hero? false)
-                     (m/SizedBox .height 16.0)
-                     (m/Row
-                      .children
-                      [(mgl/MongolText
-                        (:title post)
-                        .style (m/TextStyle
-                                .fontSize 22.0
-                                .fontWeight m/FontWeight.w700
-                                .color onSurfaceVariant))
+                 [(media/hero-cover (:id post) (:cover_url post)
+                                    :width 80.0 :height 80.0 :border-radius 12.0 :hero? false)
+                  (m/SizedBox .height 16.0)
+                  (m/Row
+                   .children
+                   [(mgl/MongolText
+                     (:title post)
+                     .style (m/TextStyle
+                             .fontSize 22.0
+                             .fontWeight m/FontWeight.w700
+                             .color onSurfaceVariant))
 
-                       (m/SizedBox .width 16.0)
-                       ;; Numeric time remains horizontal text intentionally
-                       (mgl/MongolText
-                        (str (format-time position) " / " (format-time duration))
-                        .style (m/TextStyle
-                                .fontSize 14.0
-                                .color (.withOpacity onSurfaceVariant 0.7)))])]))
+                    (m/SizedBox .width 16.0)
+                    ;; Numeric time remains horizontal text intentionally
+                    (mgl/MongolText
+                     (str (format-time position) " / " (format-time duration))
+                     .style (m/TextStyle
+                             .fontSize 14.0
+                             .color (.withOpacity onSurfaceVariant 0.7)))])]))
 
-                  ;; Article body (extends endlessly to the right)
-                  (mgl/MongolText
-                   (:text post)
-                   .style (m/TextStyle
-                           .fontSize 18.0
-                           .color onSurfaceVariant
-                           .letterSpacing 1.0
-                           .height 1.8))])))]))])))))))
+               ;; Article body (extends endlessly to the right)
+               (mgl/MongolText
+                (:text post)
+                .style (m/TextStyle
+                        .fontSize 18.0
+                        .color onSurfaceVariant
+                        .letterSpacing 1.0
+                        .height 1.8))])))])))))))
 
