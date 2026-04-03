@@ -63,7 +63,7 @@
     (f/widget
      :get {{{:flds [primary onSurfaceVariant surfaceContainerHighest]} .-colorScheme} m/Theme}
      
-     (let [;; 🌟 1. 定义极其优雅的缺省状态颜色
+     (let [;; 1. Default placeholder colors for empty state
            placeholder-bg surfaceContainerHighest
            icon-color (.withOpacity primary 0.3) ;; Use low-opacity primary color (subtle, not harsh)
            

@@ -3,8 +3,8 @@
             [audio-app.models.feed-post :as feed-ui]))
 
 (def feed-posts-query
-  "query FeedPosts($limit: Int) {
-     feed_posts(limit: $limit) {
+  "query FeedPosts($limit: Int!, $offset: Int!) {
+    feed_posts(limit: $limit, offset: $offset) {
        id
        title
        text
@@ -15,18 +15,39 @@
      }
    }")
 
+(defn load-page!
+  "Pagination loader for feed posts.
+   - is-refresh? true: replace posts and reset offset to 0
+   - is-refresh? false: append posts and advance offset"
+  [state-atom limit is-refresh?]
+  (let [{:keys [loading? has-more? offset posts]} @state-atom
+        current-offset (if is-refresh? 0 offset)
+        page-limit (or limit 20)]
+    (when (and (not loading?)
+               (or has-more? is-refresh?))
+      (swap! state-atom assoc :loading? true :error nil)
+      (-> (gql/query feed-posts-query {:limit page-limit
+                                       :offset current-offset})
+          (.then
+           (fn [resp]
+             (if (:error resp)
+               (swap! state-atom assoc :loading? false :error (:error resp))
+               (let [raw (get-in resp [:feed_posts] [])
+                     new-posts (into [] (keep feed-ui/feed-post-api->ui) raw)
+                     next? (= (count raw) page-limit)]
+                 (swap! state-atom assoc
+                        :loading? false
+                        :initialized? true
+                        :posts (if is-refresh?
+                                 new-posts
+                                 (vec (concat posts new-posts)))
+                        :offset (+ current-offset page-limit)
+                        :has-more? next?))))))
+          (.catchError
+           (fn [e]
+             (swap! state-atom assoc :loading? false :error e))))))
+
 (defn load-data!
-  "Fetch feed_posts from GraphQL and merge into state-atom."
+  "Initial load (refresh) wrapper."
   [state-atom]
-  (swap! state-atom assoc :loading? true :error nil)
-  (-> (gql/query feed-posts-query {:limit 20})
-      (.then (fn [resp]
-               (if (:error resp)
-                 (swap! state-atom assoc :loading? false :error (:error resp))
-                 (let [raw (get-in resp [:feed_posts] [])]
-                   (swap! state-atom assoc
-                          :loading? false
-                          :initialized? true
-                          :posts (into [] (keep feed-ui/feed-post-api->ui) raw))))))
-      (.catchError (fn [e]
-                     (swap! state-atom assoc :loading? false :error e)))))
+  (load-page! state-atom (:limit @state-atom) true))

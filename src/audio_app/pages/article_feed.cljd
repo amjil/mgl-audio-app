@@ -40,54 +40,85 @@
   []
   (f/widget
    :context ctx
-   :get {{{:flds [surface]} .-colorScheme} m/Theme}
-   :watch [{:keys [posts loading? error]} state/article-feed-state]
+   :get {{{:flds [surface outlineVariant]} .-colorScheme} m/Theme}
+   :managed [scroll-ctrl (as-> (m/ScrollController.) ctrl
+                           (doto ctrl
+                             (.addListener
+                              (fn []
+                                (when (and (:initialized? @state/article-feed-state)
+                                           (>= (.-pixels (.-position ctrl))
+                                               (- (.-maxScrollExtent (.-position ctrl)) 200)))
+                                  (srv/load-page! state/article-feed-state 20 false)))))
+                           ctrl)]
+   :watch [{:keys [posts loading? error has-more?]} state/article-feed-state]
 
    (m/Scaffold
     .backgroundColor surface
     .body
-    (m/RefreshIndicator
-     .onRefresh (fn [] (srv/load-data! state/article-feed-state))
-     .child
-     (cond
+    (cond
       ;; 1. Initial loading state
-       (and loading? (empty? posts))
-       (status/loading-center)
+      (and loading? (empty? posts))
+      (status/loading-center)
 
       ;; 2. Load failed and no cached data
-       (and error (empty? posts))
-       (status/error-with-retry
-        {:on-retry #(srv/load-data! state/article-feed-state)
-         :message (error-message error)})
+      (and error (empty? posts))
+      (status/error-with-retry
+       {:on-retry #(srv/load-data! state/article-feed-state)
+        :message (error-message error)})
 
       ;; 3. Render the horizontal reading canvas
-       :else
-       (layout/canvas-scroll
-       ;; Canvas intro: oversized headline
-        (m/SliverToBoxAdapter
-         .child (m/Padding
-                ;; Keep distance from top/bottom safe areas and bottom nav pill
-                 .padding (m/EdgeInsets.only .left 32.0 .right 24.0 .top 64.0 .bottom 120.0)
-                 .child (mgl/MongolText "Articles"
-                                        .style (m/TextStyle .fontSize 44.0
-                                                            .fontWeight m/FontWeight.w700
-                                                            .letterSpacing 2.0))))
+      :else
+      (layout/canvas-scroll-ctrl scroll-ctrl
+                                 ;; Canvas intro: oversized headline
+                                 (m/SliverToBoxAdapter
+                                  .child (m/Padding
+                                          ;; Keep distance from top/bottom safe areas and bottom nav pill
+                                          .padding (m/EdgeInsets.only .left 32.0 .right 24.0 .top 64.0 .bottom 120.0)
+                                          .child (mgl/MongolText "Articles"
+                                                                 .style (m/TextStyle .fontSize 44.0
+                                                                                     .fontWeight m/FontWeight.w700
+                                                                                     .letterSpacing 2.0))))
 
-       ;; Main list area: render by data availability
-        (if (empty? posts)
-          (m/SliverToBoxAdapter
-           .child (m/Container
-                   .padding (m/EdgeInsets.only .top 120.0 .left 64.0)
-                   .child (status/empty-center "No articles")))
-          
-          (m/SliverList
-           .delegate (m/SliverChildBuilderDelegate
-                      (f/build [i]
-                        (m/Padding
-                        ;; Extra vertical spacing to avoid bottom floating nav pill
-                         .padding (m/EdgeInsets.only .top 24.0 .bottom 120.0)
-                         .child (feed-post-card (nth posts i) ctx)))
-                      .childCount (count posts))))
+                                 ;; Main list area: render by data availability
+                                 (if (empty? posts)
+                                   (m/SliverToBoxAdapter
+                                    .child (m/Container
+                                            .padding (m/EdgeInsets.only .top 120.0 .left 64.0)
+                                            .child (status/empty-center "No articles")))
 
-       ;; End padding for the canvas tail
-        (m/SliverToBoxAdapter .child (m/SizedBox .width 80.0))))))))
+                                   (m/SliverList
+                                    .delegate (m/SliverChildBuilderDelegate
+                                               (f/build [i]
+                                                        (if (< i (count posts))
+                                                          (m/Padding
+                                                           ;; Extra vertical spacing to avoid bottom floating nav pill
+                                                           .padding (m/EdgeInsets.only .top 24.0 .bottom 120.0)
+                                                           .child (feed-post-card (nth posts i) ctx))
+                                                          (m/Container
+                                                           .width 80.0
+                                                           .padding (m/EdgeInsets.only .top 24.0 .bottom 120.0)
+                                                           .child
+                                                           (m/Center
+                                                            .child
+                                                            (cond
+                                                              error
+                                                              (status/error-with-retry
+                                                               {:on-retry #(srv/load-page! state/article-feed-state 20 false)
+                                                                :message (error-message error)})
+
+                                                              loading?
+                                                              (m/CircularProgressIndicator .strokeWidth 2.0)
+
+                                                              has-more?
+                                                              (mgl/MongolText
+                                                               "Load more"
+                                                               .style (m/TextStyle .color outlineVariant))
+
+                                                              :else
+                                                              (mgl/MongolText
+                                                               "No more"
+                                                               .style (m/TextStyle .color outlineVariant)))))))
+                                               .childCount (inc (count posts)))))
+
+                                 ;; End padding for the canvas tail
+                                 (m/SliverToBoxAdapter .child (m/SizedBox .width 80.0)))))))

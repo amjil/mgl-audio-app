@@ -36,6 +36,19 @@
    .slivers slivers))
 
 ;; =============================================================================
+;; 2.1 Page-level horizontal scroll (with controller)
+;; =============================================================================
+(defn canvas-scroll-ctrl
+  "Same as `canvas-scroll`, but also accepts a ScrollController.
+   Useful for infinite/paginated loading triggered by scroll position."
+  [scroll-ctrl & slivers]
+  (m/CustomScrollView
+   .controller scroll-ctrl
+   .scrollDirection m/Axis.horizontal
+   .physics (m/BouncingScrollPhysics.)
+   .slivers slivers))
+
+;; =============================================================================
 ;; 3. Helper layout: vertical divider
 ;; =============================================================================
 (defn v-divider 

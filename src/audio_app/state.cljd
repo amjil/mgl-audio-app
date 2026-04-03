@@ -25,6 +25,9 @@
 
 (def article-feed-state
   (atom {:posts []
+         :offset 0
+         :limit 20
+         :has-more? true
          :loading? false
          :error nil
          :initialized? false}))
