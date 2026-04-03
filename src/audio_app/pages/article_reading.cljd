@@ -50,9 +50,7 @@
            post-id (:id post)
            this-article? (and post-id (= cur-id post-id))
            active-idx (active-segment-idx segments position)
-           seg-count (count segments)
-           active-seg-text (when (and (>= active-idx 0) (< active-idx seg-count))
-                             (:text (nth segments active-idx)))]
+           seg-count (count segments)]
        (m/Scaffold
         .backgroundColor surface
         .body
@@ -60,9 +58,8 @@
          .child
          (m/Column
           .children
-          [
-           ;; ==========================================
-          ;; 1. Top navigation and control bar (minimal console style)
+          [;; ==========================================
+           ;; 1. Top navigation and control bar (minimal console style)
            ;; ==========================================
            (m/Container
             .height 56.0
@@ -158,83 +155,61 @@
                               nil))])]))
 
            ;; ==========================================
-          ;; 2. Content area (horizontal reading canvas + right highlight strip)
+           ;; 2. Content area (horizontal reading canvas + right highlight strip)
            ;; ==========================================
            (m/Expanded
             .child
             (m/Row
              .children
-             (vec
-              (keep identity
-                    [
-                    ;; 2.1 True horizontal scrolling canvas (left: cover/title, right: body)
-                     (m/Expanded
-                      .child
-                      (m/SingleChildScrollView
-                       .scrollDirection m/Axis.horizontal
-                       .physics (m/BouncingScrollPhysics.)
-                       .padding (m/EdgeInsets.only
-                                  .left 32.0
-                                  .right 48.0
-                                  .top 32.0
-                                  .bottom 32.0)
-                       .child
-                       (m/Row
-                        .crossAxisAlignment m/CrossAxisAlignment.start
-                        .children
-                        [
-                        ;; Cover and title (left intro of the canvas)
-                         (m/Container
-                          .width 160.0
-                          .margin (m/EdgeInsets.only .right 48.0)
-                          .child
-                          (m/Column
-                           .crossAxisAlignment m/CrossAxisAlignment.start
-                           .children
-                           [
-                            (media/hero-cover (:id post) (:cover_url post)
-                                               :width 80.0 :height 80.0 :border-radius 12.0 :hero? false)
-                            (m/SizedBox .height 16.0)
-                            (mgl/MongolText
-                             (:title post)
-                             .style (m/TextStyle
-                                     .fontSize 22.0
-                                     .fontWeight m/FontWeight.w700
-                                     .color onSurfaceVariant))
-                            (m/SizedBox .height 16.0)
-                           ;; Numeric time remains horizontal text intentionally
-                            (m/Text
-                             (str (format-time position) " / " (format-time duration))
-                             .style (m/TextStyle
-                                     .fontSize 14.0
-                                     .color (.withOpacity onSurfaceVariant 0.7)))]))
+             [;; 2.1 True horizontal scrolling canvas (left: cover/title, right: body)
+              (m/Expanded
+               .child
+               (m/SingleChildScrollView
+                .scrollDirection m/Axis.horizontal
+                .physics (m/BouncingScrollPhysics.)
+                .padding (m/EdgeInsets.only
+                          .left 32.0
+                          .right 48.0
+                          .top 32.0
+                          .bottom 32.0)
+                .child
+                (m/Row
+                 .crossAxisAlignment m/CrossAxisAlignment.start
+                 .children
+                 [;; Cover and title (left intro of the canvas)
+                  (m/Container
+                   .width 160.0
+                   .margin (m/EdgeInsets.only .right 48.0)
+                   .child
+                   (m/Column
+                    .crossAxisAlignment m/CrossAxisAlignment.start
+                    .children
+                    [(media/hero-cover (:id post) (:cover_url post)
+                                       :width 80.0 :height 80.0 :border-radius 12.0 :hero? false)
+                     (m/SizedBox .height 16.0)
+                     (m/Row
+                      .children
+                      [(mgl/MongolText
+                        (:title post)
+                        .style (m/TextStyle
+                                .fontSize 22.0
+                                .fontWeight m/FontWeight.w700
+                                .color onSurfaceVariant))
 
-                        ;; Article body (extends endlessly to the right)
-                         (mgl/MongolText
-                          (:text post)
-                          .style (m/TextStyle
-                                  .fontSize 18.0
-                                  .color onSurfaceVariant
-                                  .letterSpacing 1.0
-                                  .height 1.8))])))
+                       (m/SizedBox .width 16.0)
+                       ;; Numeric time remains horizontal text intentionally
+                       (mgl/MongolText
+                        (str (format-time position) " / " (format-time duration))
+                        .style (m/TextStyle
+                                .fontSize 14.0
+                                .color (.withOpacity onSurfaceVariant 0.7)))])]))
 
-                    ;; 2.2 Right-side vertical follow-along strip (replaces bottom horizontal text)
-                     (when active-seg-text
-                       (m/Container
-                        .width 64.0
-                        .decoration (m/BoxDecoration
-                                     .color (.withOpacity primary 0.04)
-                                     .border (m/Border
-                                              .left (m/BorderSide
-                                                     .color (.withOpacity outlineVariant 0.2))))
-                        .padding (m/EdgeInsets.symmetric .vertical 32.0)
-                        .child (m/Center
-                                .child (m/ClipRect
-                                        .child (mgl/MongolText
-                                               active-seg-text
-                                               .style (m/TextStyle
-                                                       .fontSize 20.0
-                                                       .color primary
-                                                       .fontWeight m/FontWeight.w600))))))]))))
-           ])))))))
+                  ;; Article body (extends endlessly to the right)
+                  (mgl/MongolText
+                   (:text post)
+                   .style (m/TextStyle
+                           .fontSize 18.0
+                           .color onSurfaceVariant
+                           .letterSpacing 1.0
+                           .height 1.8))])))]))])))))))
 

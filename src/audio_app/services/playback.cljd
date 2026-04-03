@@ -50,16 +50,17 @@
    state-atom shape: {:loading? boolean :error any :data {:chapter_id ... :position_ms ...}|nil}"
   [state-atom book-id]
   (swap! state-atom assoc :loading? true :error nil :data nil)
-  (-> (gql/query my-last-progress-query {:bookId book-id})
-      (.then (fn [resp]
-               (if (:error resp)
-                 (swap! state-atom assoc :loading? false :error (:error resp))
-                 (swap! state-atom assoc
-                        :loading? false
-                        :error nil
-                        :data (get resp :my_playback_progress)))))
-      (.catchError (fn [e]
-                     (swap! state-atom assoc :loading? false :error e)))))
+  (let [fut (gql/query my-last-progress-query {:bookId book-id})
+        on-ok (fn [resp]
+                (if (:error resp)
+                  (swap! state-atom assoc :loading? false :error (:error resp))
+                  (swap! state-atom assoc
+                         :loading? false
+                         :error nil
+                         :data (get resp :my_playback_progress))))
+        on-err (fn [e]
+                 (swap! state-atom assoc :loading? false :error e))]
+    (.catchError (.then fut on-ok) on-err)))
 
 ;; =============================================================================
 ;; 3. Resume playback from library click
@@ -71,26 +72,27 @@
    - nil (no resume possible)
    - {:book ... :chapter ... :start-position-sec ... :playlist ... :index ...}"
   [book-id]
-  (let [q resume-book-query]
-    (-> (gql/query q {:bookId book-id})
-        (.then (fn [resp]
-                 (if (:error resp)
-                   nil
-                   (let [book-ui (book-m/book-detail-api->ui (:book resp))
-                         progress (:my_playback_progress resp)
-                         chapters (:chapters book-ui)
-                         saved-chapter-id (get progress :chapter_id)
-                         saved-pos-ms (get progress :position_ms)
-                         saved-pos-sec (when (and saved-pos-ms (> saved-pos-ms 0))
-                                          (quot saved-pos-ms 1000))]
-                     (when (and chapters saved-chapter-id saved-pos-sec)
-                       (let [saved-chapter (first (keep #(when (= (:id %) saved-chapter-id) %) chapters))
-                             saved-idx (first (keep-indexed #(when (= (:id %2) saved-chapter-id) %1) chapters))]
-                         (when (and saved-chapter saved-idx (not (neg? saved-pos-sec)))
-                           {:book book-ui
-                            :chapter saved-chapter
-                            :start-position-sec saved-pos-sec
-                            :playlist chapters
-                            :index saved-idx}))))))))
-        (.catchError (fn [_e] nil))))
+  (let [q resume-book-query
+        fut (gql/query q {:bookId book-id})
+        on-ok (fn [resp]
+                (if (:error resp)
+                  nil
+                  (let [book-ui (book-m/book-detail-api->ui (:book resp))
+                        progress (:my_playback_progress resp)
+                        chapters (:chapters book-ui)
+                        saved-chapter-id (get progress :chapter_id)
+                        saved-pos-ms (get progress :position_ms)
+                        saved-pos-sec (when (and saved-pos-ms (> saved-pos-ms 0))
+                                         (quot saved-pos-ms 1000))]
+                    (when (and chapters saved-chapter-id saved-pos-sec)
+                      (let [saved-chapter (first (keep #(when (= (:id %) saved-chapter-id) %) chapters))
+                            saved-idx (first (keep-indexed #(when (= (:id %2) saved-chapter-id) %1) chapters))]
+                        (when (and saved-chapter saved-idx (not (neg? saved-pos-sec)))
+                          {:book book-ui
+                           :chapter saved-chapter
+                           :start-position-sec saved-pos-sec
+                           :playlist chapters
+                           :index saved-idx}))))))
+        on-err (fn [_e] nil)]
+    (.catchError (.then fut on-ok) on-err)))
 
