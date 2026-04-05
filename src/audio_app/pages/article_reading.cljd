@@ -2,34 +2,12 @@
   (:require ["package:flutter/material.dart" :as m]
             ["package:mongol/mongol.dart" :as mgl]
             [cljd.flutter :as f]
-            [audio-app.components.media :as media]
             [audio-app.components.player-ui :as player-ui]
             [audio-app.services.player :as player]))
 
 ;; =============================================================================
 ;; Article reading page
 ;; =============================================================================
-
-(defn- format-time
-  [seconds]
-  (let [s (int (or seconds 0))
-        mm (quot s 60)
-        rs (rem s 60)]
-    (str (.padLeft (.toString mm) 2 "0")
-         ":"
-         (.padLeft (.toString rs) 2 "0"))))
-
-(defn- active-segment-idx
-  "Find the last segment whose start_ms <= position-sec."
-  [segments position-sec]
-  (let [idx (->> segments
-                  (keep-indexed
-                   (fn [i seg]
-                     (let [start-ms (:start_ms seg)
-                           start-s (if (number? start-ms) (/ start-ms 1000.0) 0.0)]
-                       (when (<= start-s (double (or position-sec 0.0))) i))))
-                  last)]
-    (or idx -1)))
 
 (defn- chapter-for-post
   "Minimal chapter map to satisfy player/load-chapter! requirements.
@@ -41,16 +19,13 @@
 
 (defn page
   [post]
-  (let [segments (or (:segments post) [])]
-    (f/widget
-     :context ctx
-     :get {{{:flds [surface primary outlineVariant onSurfaceVariant]} .-colorScheme} m/Theme}
-     :watch [{:keys [status position duration speed current-chapter]} player/player-state]
-     (let [cur-id (when (and current-chapter (map? current-chapter)) (:id current-chapter))
-           post-id (:id post)
-           this-article? (and post-id (= cur-id post-id))
-           active-idx (active-segment-idx segments position)
-           seg-count (count segments)]
+  (f/widget
+   :context ctx
+   :get {{{:flds [surface primary outlineVariant onSurfaceVariant]} .-colorScheme} m/Theme}
+   :watch [{:keys [status speed current-chapter]} player/player-state]
+   (let [cur-id (when (and current-chapter (map? current-chapter)) (:id current-chapter))
+         post-id (:id post)
+         this-article? (and post-id (= cur-id post-id))]
        (m/Scaffold
         .backgroundColor surface
         .body
@@ -104,56 +79,15 @@
                                       .shape m/BoxShape.circle)
                          .child (player-ui/play-pause-icon status :color primary :size 28.0)))])
 
-              ;; Right group: Speed & Skips
-              (m/Row
-               .children
-               [(m/TextButton
-                 .onPressed #(player/cycle-speed!)
-                 .child (m/Text
-                         (str (double speed) "x")
-                         .style (m/TextStyle
-                                 .fontSize 14.0
-                                 .color primary
-                                 .fontWeight m/FontWeight.w700)))
-
-                (m/IconButton
-                 .icon (m/Icon m/Icons.skip_previous .color onSurfaceVariant .size 24.0)
-                 .onPressed (fn []
-                              (when (pos? seg-count)
-                                (let [target-idx (if (<= active-idx 0) 0 (dec active-idx))
-                                      seg (nth segments target-idx)
-                                      start-s (if (number? (:start_ms seg)) (/ (:start_ms seg) 1000.0) 0.0)]
-                                  (if this-article?
-                                    (player/seek! start-s)
-                                    (player/load-chapter!
-                                     nil
-                                     (chapter-for-post post)
-                                     (:audio_url post)
-                                     :playlist []
-                                     :index 0
-                                     :start-position-sec start-s))))
-                              nil))
-
-                (m/IconButton
-                 .icon (m/Icon m/Icons.skip_next .color onSurfaceVariant .size 24.0)
-                 .onPressed (fn []
-                              (when (pos? seg-count)
-                                (let [target-idx (cond
-                                                   (< active-idx 0) 0
-                                                   (< active-idx (dec seg-count)) (inc active-idx)
-                                                   :else (dec seg-count))
-                                      seg (nth segments target-idx)
-                                      start-s (if (number? (:start_ms seg)) (/ (:start_ms seg) 1000.0) 0.0)]
-                                  (if this-article?
-                                    (player/seek! start-s)
-                                    (player/load-chapter!
-                                     nil
-                                     (chapter-for-post post)
-                                     (:audio_url post)
-                                     :playlist []
-                                     :index 0
-                                     :start-position-sec start-s))))
-                              nil))])]))
+              ;; Right group: Speed
+              (m/TextButton
+               .onPressed #(player/cycle-speed!)
+               .child (m/Text
+                       (str (double speed) "x")
+                       .style (m/TextStyle
+                               .fontSize 14.0
+                               .color primary
+                               .fontWeight m/FontWeight.w700)))]))
 
            ;; ==========================================
            ;; 2. Content area (horizontal reading canvas + right highlight strip)
@@ -173,32 +107,16 @@
               .crossAxisAlignment m/CrossAxisAlignment.start
               .mainAxisAlignment m/MainAxisAlignment.start
               .children
-              [;; Cover and title (left intro of the canvas)
+              [;; Title (left intro of the canvas)
                (m/Container
-                .margin (m/EdgeInsets.only .right 48.0)
+                .margin (m/EdgeInsets.only .right 16.0)
                 .child
-                (m/Column
-                 .crossAxisAlignment m/CrossAxisAlignment.start
-                 .children
-                 [(media/hero-cover (:id post) (:cover_url post)
-                                    :width 80.0 :height 80.0 :border-radius 12.0 :hero? false)
-                  (m/SizedBox .height 16.0)
-                  (m/Row
-                   .children
-                   [(mgl/MongolText
-                     (:title post)
-                     .style (m/TextStyle
-                             .fontSize 22.0
-                             .fontWeight m/FontWeight.w700
-                             .color onSurfaceVariant))
-
-                    (m/SizedBox .width 16.0)
-                    ;; Numeric time remains horizontal text intentionally
-                    (mgl/MongolText
-                     (str (format-time position) " / " (format-time duration))
-                     .style (m/TextStyle
-                             .fontSize 14.0
-                             .color (.withOpacity onSurfaceVariant 0.7)))])]))
+                (mgl/MongolText
+                 (:title post)
+                 .style (m/TextStyle
+                         .fontSize 22.0
+                         .fontWeight m/FontWeight.w700
+                         .color onSurfaceVariant)))
 
                ;; Article body (extends endlessly to the right)
                (mgl/MongolText
@@ -207,5 +125,5 @@
                         .fontSize 18.0
                         .color onSurfaceVariant
                         .letterSpacing 1.0
-                        .height 1.8))])))])))))))
+                        .height 1.8))])))]))))))
 
