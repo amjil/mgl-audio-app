@@ -77,9 +77,9 @@
                                  (m/SliverToBoxAdapter
                                   .child (m/Padding
                                           ;; Keep distance from top/bottom safe areas and bottom nav pill
-                                          .padding (m/EdgeInsets.only .left 32.0 .right 24.0 .top 76.0 .bottom 120.0)
+                                          .padding (m/EdgeInsets.only .left 32.0 .right 24.0 .top 86.0 .bottom 120.0)
                                           .child (mgl/MongolText "Articles"
-                                                                 .style (m/TextStyle .fontSize 44.0
+                                                                 .style (m/TextStyle .fontSize 36.0
                                                                                      .fontWeight m/FontWeight.w700
                                                                                      .letterSpacing 2.0))))
 

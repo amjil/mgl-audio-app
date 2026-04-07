@@ -6,7 +6,6 @@
             [audio-app.services.discovery :as srv]
             [audio-app.components.media :as media]
             [audio-app.components.horizontal-list :as hlist]
-            [audio-app.components.layout :as layout]
             [audio-app.components.cards :as cards]
             [audio-app.components.status :as status]
             [audio-app.pages.book-detail :as book-detail]
@@ -77,36 +76,39 @@
     .body
     (m/SafeArea
      .child
-     (m/Column
-      .children
-      [
-       (m/Expanded
-        .child
-        (m/RefreshIndicator
-         .onRefresh (fn [] (srv/load-data! state/discovery-state))
+     (m/DefaultTabController
+      .length 2
+      .initialIndex 1
+      .child
+      (m/Row
+       .children
+       [(m/RotatedBox
+         .quarterTurns 1
+         .child (m/TabBar
+                 .isScrollable true
+                 .labelColor onSurface
+                 .tabs [(m/Tab .text "Books")
+                        (m/Tab .text "Authors")]))
+        (m/Expanded
          .child
-         (cond
-           ;; A: Initial loading (command sent but data not yet returned)
-           (and loading? (empty? authors) (empty? books))
-           (status/loading-center)
-           
-           ;; B: Network error with no local cache
-           (and error (empty? authors) (empty? books))
-           (status/error-with-retry {:on-retry #(srv/load-data! state/discovery-state)})
-           
-           ;; C: Data loaded successfully, render gallery layout
-           :else
-           (m/Column
-            .children
-            [
-             ;; Upper half: hot authors gallery
-             (m/Expanded 
-              .flex 1 
-              .child (layout/gallery-section "Authors"
-                                              (hlist/h-list authors #(author-card % ctx))))
-             
-             ;; Lower half: hot books gallery
-             (m/Expanded 
-              .flex 1 
-              .child (layout/gallery-section "Books"
-                                              (hlist/h-list books #(book-card % ctx))))]))))])))))
+          (cond
+            ;; A: Initial loading (command sent but data not yet returned)
+            (and loading? (empty? authors) (empty? books))
+            (status/loading-center)
+
+            ;; B: Network error with no local cache
+            (and error (empty? authors) (empty? books))
+            (status/error-with-retry {:on-retry #(srv/load-data! state/discovery-state)})
+
+            ;; C: Data loaded successfully, render tab pages
+            :else
+            (m/TabBarView
+             .children
+             [(m/Column
+               .crossAxisAlignment m/CrossAxisAlignment.stretch
+               .children
+               [(hlist/h-list books #(book-card % ctx))])
+              (m/Column
+               .crossAxisAlignment m/CrossAxisAlignment.stretch
+               .children
+               [(hlist/h-list authors #(author-card % ctx))])])))]))))))
