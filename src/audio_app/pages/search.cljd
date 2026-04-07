@@ -78,8 +78,6 @@
                    :label "Search"
                    :on-tap #(open-search-dialog ctx keyword-atom)}))
          
-         (layout/v-divider)
-         
          (m/Expanded
           .child 
           (cond
