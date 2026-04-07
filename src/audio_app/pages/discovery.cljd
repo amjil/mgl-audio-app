@@ -78,37 +78,40 @@
      .child
      (m/DefaultTabController
       .length 2
-      .initialIndex 1
+      .initialIndex 0
       .child
       (m/Row
+      .crossAxisAlignment m/CrossAxisAlignment.start
        .children
        [(m/RotatedBox
          .quarterTurns 1
          .child (m/TabBar
                  .isScrollable true
                  .labelColor onSurface
+                 .dividerColor m/Colors.transparent
+                 .dividerHeight 0.0
                  .tabs [(m/Tab .text "Books")
                         (m/Tab .text "Authors")]))
         (m/Expanded
          .child
-          (cond
-            ;; A: Initial loading (command sent but data not yet returned)
-            (and loading? (empty? authors) (empty? books))
-            (status/loading-center)
+         (cond
+           ;; A: Initial loading (command sent but data not yet returned)
+           (and loading? (empty? authors) (empty? books))
+           (status/loading-center)
 
-            ;; B: Network error with no local cache
-            (and error (empty? authors) (empty? books))
-            (status/error-with-retry {:on-retry #(srv/load-data! state/discovery-state)})
+           ;; B: Network error with no local cache
+           (and error (empty? authors) (empty? books))
+           (status/error-with-retry {:on-retry #(srv/load-data! state/discovery-state)})
 
-            ;; C: Data loaded successfully, render tab pages
-            :else
-            (m/TabBarView
-             .children
-             [(m/Column
-               .crossAxisAlignment m/CrossAxisAlignment.stretch
-               .children
-               [(hlist/h-list books #(book-card % ctx))])
-              (m/Column
-               .crossAxisAlignment m/CrossAxisAlignment.stretch
-               .children
-               [(hlist/h-list authors #(author-card % ctx))])])))]))))))
+           ;; C: Data loaded successfully, render tab pages
+           :else
+           (m/TabBarView
+            .children
+            [(m/Column
+              .crossAxisAlignment m/CrossAxisAlignment.stretch
+              .children
+              [(hlist/h-list books #(book-card % ctx))])
+             (m/Column
+              .crossAxisAlignment m/CrossAxisAlignment.stretch
+              .children
+              [(hlist/h-list authors #(author-card % ctx))])])))]))))))

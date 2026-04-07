@@ -68,11 +68,14 @@
       .length 2
       .child
       (m/Row
+       .crossAxisAlignment m/CrossAxisAlignment.start
        .children
        [(m/RotatedBox
          .quarterTurns 1
          .child (m/TabBar
                  .isScrollable true
+                 .dividerColor m/Colors.transparent
+                 .dividerHeight 0.0
                  .tabs [(m/Tab .text "Recently played")
                         (m/Tab .text "My shelf")]))
         (m/Expanded
