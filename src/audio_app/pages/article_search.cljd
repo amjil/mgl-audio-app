@@ -1,46 +1,75 @@
 (ns audio-app.pages.article-search
   (:require ["package:flutter/material.dart" :as m]
+            ["package:mongol/mongol.dart" :as mgl]
+            ["dart:async" :as da]
+            [clojure.string :as str]
             [cljd.flutter :as f]
             [audio-app.state :as state]
             [audio-app.services.article-search :as srv]
-            [audio-app.components.layout :as layout]
             [audio-app.components.cards :as cards]
-            [audio-app.components.status :as status]
             [audio-app.components.horizontal-infinite-list :as inf]
             [audio-app.pages.article-reading :as article-reading]
-            [components.search-bar :as search-bar]
-            [components.input-dialog :as input-dialog]))
+            [components.text-field :as text-field]
+            [virtual-keyboard.keyboard :as keyboard]))
 
-(defn- open-search-dialog
-  [ctx keyword-atom]
-  (m/showDialog
-   .context ctx
-   .builder
-   (fn [dialog-ctx]
-     (input-dialog/generic-input-dialog
-      {:hint "Search articles"
-       :initial-text @keyword-atom
-       :on-submit (fn [text]
-                    (reset! keyword-atom text)
-                    (-> (m/Navigator.of dialog-ctx) (.pop))
-                    (when-not (empty? text)
-                      (srv/load-page! state/article-search-list-state text 10 true)))}))))
+(defn- list-state-initial []
+  {:items [] :offset 0 :limit 10 :has-more? true :loading? false :error nil :initialized? false})
+
+(defn- preview-error-text [err]
+  (cond
+    (nil? err) ""
+    (string? err) err
+    (map? err) (or (:message err) (str err))
+    :else (str err)))
+
+(defn- schedule-preview!
+  [debounce-atom preview-atom text]
+  (when-let [^da/Timer t @debounce-atom]
+    (.cancel t))
+  (if (empty? (str/trim (or text "")))
+    (do
+      (swap! preview-atom assoc :items [] :loading? false :error nil)
+      (reset! debounce-atom nil))
+    (reset! debounce-atom
+            (da/Timer. (Duration .milliseconds 320)
+                       (fn []
+                         (srv/fetch-preview! preview-atom text 10)
+                         (reset! debounce-atom nil))))))
+
+(defn- run-committed-search! [draft active-query-atom]
+  (let [q (str/trim (or draft ""))]
+    (when-not (empty? q)
+      (reset! active-query-atom q)
+      (srv/load-page! state/article-search-list-state q 10 true))))
 
 (defn page []
-  (let [keyword-atom (atom "")]
+  (let [draft-atom (atom "")
+        active-query-atom (atom "")
+        preview-atom (atom {:items [] :loading? false :error nil})
+        debounce-timer-atom (atom nil)]
     (f/widget
      :context ctx
-     :get {{{:flds [surface onSurface]} .-colorScheme} m/Theme}
+     :get {{{:flds [surface onSurface outlineVariant]} .-colorScheme} m/Theme}
      :managed [scroll-ctrl (as-> (m/ScrollController.) ctrl
                              (doto ctrl
                                (.addListener
                                 (fn []
                                   (when (>= (.-pixels (.-position ctrl))
                                             (- (.-maxScrollExtent (.-position ctrl)) 200))
-                                    (when-not (empty? @keyword-atom)
-                                      (srv/load-page! state/article-search-list-state @keyword-atom 10 false)))))))]
-     :watch [keyword-val keyword-atom
+                                    (when-not (empty? @active-query-atom)
+                                      (srv/load-page! state/article-search-list-state @active-query-atom 10 false))))))
+                             ctrl)
+               controller (m/TextEditingController .text "")]
+     :watch [draft draft-atom
+             active-q active-query-atom
+             preview preview-atom
              {:keys [items loading? has-more? error]} state/article-search-list-state]
+     :let [show-results? (and (not (empty? active-q))
+                               (= draft active-q))
+           display-items (if show-results? items (:items preview))
+           preview-mode? (not show-results?)
+           p-loading? (:loading? preview)
+           p-err (:error preview)]
 
      (m/Scaffold
       .backgroundColor surface
@@ -60,45 +89,112 @@
       .body
       (m/SafeArea
        .child
-       (m/Row
-        .crossAxisAlignment m/CrossAxisAlignment.start
+       (m/Column
         .children
-        [(m/Container
-          .width 100.0
-          .padding (m/EdgeInsets.only .left 24.0 .top 24.0 .bottom 24.0 .right 16.0)
-          .child (search-bar/fake-search-bar
-                  {:state-atom keyword-atom
-                   :label "Search"
-                   :on-tap #(open-search-dialog ctx keyword-atom)}))
-
-         (m/Expanded
+        [(m/Expanded
           .child
-          (cond
-            (and loading? (empty? items))
-            (status/loading-center)
+          (m/Padding
+           .padding (m/EdgeInsets.symmetric .horizontal 12.0 .vertical 8.0)
+           .child
+           (m/Stack
+            .children
+            [(m/Row
+              .crossAxisAlignment m/CrossAxisAlignment.stretch
+              .children
+              [(m/IntrinsicWidth
+                .child
+                (m/Container
+                 .constraints (m/BoxConstraints .minWidth 72.0 .maxWidth 132.0)
+                 .padding (m/EdgeInsets.all 8.0)
+                 .decoration (m/BoxDecoration
+                              .border (m/Border.all .color outlineVariant)
+                              .borderRadius (m/BorderRadius.circular 10.0))
+                 .child (text-field/text-field
+                         {:controller controller
+                          :hint "ᠪᠢᠴᠢᠬᠦ ᠁"
+                          :autofocus true
+                          :max-lines 1
+                          :on-changed (fn [t]
+                                        (reset! draft-atom t)
+                                        (schedule-preview! debounce-timer-atom preview-atom t)
+                                        nil)})))
 
-            (and (not loading?) (empty? items) (not error))
-            (status/empty-center
-             (if (empty? keyword-val)
-               "Enter a search query"
-               "No results"))
+               (m/SizedBox .width 8.0)
 
-            :else
-            (inf/horizontal-infinite-list
-             scroll-ctrl
-             items
-             (fn [post inner-ctx]
-               (cards/book-card post
-                                :width 140.0
-                                :height dart:core/double.infinity
-                                :border-radius 12.0
-                                :title-font-size 18.0
-                                :on-tap (fn []
-                                          (m/Navigator.push
-                                           inner-ctx
-                                           (m/MaterialPageRoute
-                                            .builder (fn [_] (article-reading/page post))))
-                                          nil)))
-             loading?
-             has-more?
-             error)))]))))))
+               (m/Expanded
+                .child
+                (cond
+                  (and preview-mode? p-loading? (empty? (:items preview)))
+                  (m/Center .child (m/CircularProgressIndicator .strokeWidth 2.0))
+
+                  (and preview-mode? p-err)
+                  (m/Center
+                   .child
+                   (m/Padding
+                    .padding (m/EdgeInsets.symmetric .horizontal 8.0)
+                    .child (mgl/MongolText (preview-error-text p-err)
+                                          .style (m/TextStyle .fontSize 14.0 .color onSurface))))
+
+                  (empty? display-items)
+                  (m/Center
+                   .child
+                   (mgl/MongolText
+                    (cond
+                      (empty? (str/trim (or draft "")))
+                      "ᠪᠢᠴᠢᠯᠭᠡ ᠣᠷᠣᠭᠤᠯᠤᠭᠠᠷᠠᠢ"
+                      show-results?
+                      "ᠢᠯᠠᠭᠳᠠᠯ ᠥᠬᠡᠢ"
+                      :else
+                      "ᠬᠠᠢᠯᠲᠠ ᠠᠯᠠᠭᠰᠠᠨ ᠥᠬᠡᠢ")
+                    .style (m/TextStyle .fontSize 15.0 .color (.withOpacity onSurface 0.5))))
+
+                  show-results?
+                  (inf/horizontal-infinite-list
+                   scroll-ctrl
+                   display-items
+                   (fn [post inner-ctx]
+                     (cards/book-card post
+                                      :width 132.0
+                                      :height dart:core/double.infinity
+                                      :border-radius 10.0
+                                      :title-font-size 16.0
+                                      :on-tap (fn []
+                                                (m/Navigator.push
+                                                 inner-ctx
+                                                 (m/MaterialPageRoute
+                                                  .builder (fn [_] (article-reading/page post))))
+                                                nil)))
+                   loading?
+                   has-more?
+                   error)
+
+                  :else
+                  (m/ListView.builder
+                   .scrollDirection m/Axis.horizontal
+                   .padding (m/EdgeInsets.symmetric .vertical 12.0 .horizontal 8.0)
+                   .itemCount (count display-items)
+                   .itemBuilder
+                   (fn [lctx idx]
+                     (let [post (nth display-items idx)]
+                       (m/Padding
+                        .padding (m/EdgeInsets.only .right 10.0)
+                        .child
+                        (cards/book-card post
+                                         :width 124.0
+                                         :height dart:core/double.infinity
+                                         :border-radius 10.0
+                                         :title-font-size 15.0
+                                         :on-tap (fn []
+                                                   (m/Navigator.push
+                                                    lctx
+                                                   (m/MaterialPageRoute
+                                                    .builder (fn [_] (article-reading/page post))))
+                                                   nil))))))))
+
+               ])
+
+             (keyboard/candidates nil)])))
+
+         (m/SizedBox .height 8.0)
+
+         (keyboard/keyboard {})]))))))

@@ -1,5 +1,6 @@
 (ns audio-app.services.search
-  (:require [audio-app.services.gql :as gql]
+  (:require [clojure.string :as str]
+            [audio-app.services.gql :as gql]
             [audio-app.models.book :as book-ui]))
 
 (def search-query
@@ -10,7 +11,22 @@
      }
    }")
 
-(defn load-page! 
+(defn- apply-books-page-to-state!
+  [state-atom limit current-offset is-refresh? items resp]
+  (if (:error resp)
+    (swap! state-atom assoc :loading? false :error (:error resp))
+    (let [raw-items (get-in resp [:search_books :items] [])
+          new-items (into [] (keep book-ui/book-summary-api->ui) raw-items)
+          next? (get-in resp [:search_books :has_next_page] false)]
+      (swap! state-atom assoc
+             :loading? false
+             :items (if is-refresh?
+                      new-items
+                      (vec (concat items new-items)))
+             :offset (+ current-offset limit)
+             :has-more? next?))))
+
+(defn load-page!
   "Handle pagination logic and automatically update the provided state-atom with results"
   [state-atom keyword limit is-refresh?]
   (let [{:keys [loading? has-more? offset items]} @state-atom]
@@ -20,17 +36,25 @@
         (-> (gql/query search-query {:query keyword :limit limit :offset current-offset})
             (.then
              (fn [resp]
-               (if (:error resp)
-                 (swap! state-atom assoc :loading? false :error (:error resp))
-                 (let [raw-items (get-in resp [:search_books :items] [])
-                       new-items (into [] (keep book-ui/book-summary-api->ui) raw-items)
-                       next? (get-in resp [:search_books :has_next_page] false)]
-                   (swap! state-atom assoc
-                          :loading? false
-                          :items (if is-refresh?
-                                   new-items
-                                   (vec (concat items new-items)))
-                          :offset (+ current-offset limit)
-                          :has-more? next?)))))
+               (apply-books-page-to-state! state-atom limit current-offset is-refresh? items resp)))
             (.catchError (fn [e]
                            (swap! state-atom assoc :loading? false :error e))))))))
+
+(defn fetch-preview!
+  "First-page book search for debounced inline preview; updates `preview-atom`
+   as {:items ... :loading? ... :error ...}."
+  [preview-atom query limit]
+  (let [q (str/trim (or query ""))]
+    (if (empty? q)
+      (swap! preview-atom assoc :items [] :loading? false :error nil)
+      (do
+        (swap! preview-atom assoc :loading? true :error nil)
+        (-> (gql/query search-query {:query q :limit limit :offset 0})
+            (.then
+             (fn [resp]
+               (if (:error resp)
+                 (swap! preview-atom assoc :loading? false :error (:error resp))
+                 (let [raw-items (get-in resp [:search_books :items] [])
+                       new-items (into [] (keep book-ui/book-summary-api->ui) raw-items)]
+                   (swap! preview-atom assoc :loading? false :error nil :items new-items)))))
+            (.catchError (fn [e] (swap! preview-atom assoc :loading? false :error e))))))))

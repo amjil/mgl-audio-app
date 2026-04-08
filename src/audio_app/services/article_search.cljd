@@ -1,5 +1,6 @@
 (ns audio-app.services.article-search
-  (:require [audio-app.services.gql :as gql]
+  (:require [clojure.string :as str]
+            [audio-app.services.gql :as gql]
             [audio-app.models.feed-post :as feed-ui]))
 
 (def search-feed-posts-query
@@ -18,6 +19,21 @@
      }
    }")
 
+(defn- apply-search-page-to-state!
+  [state-atom limit current-offset is-refresh? items resp]
+  (if (:error resp)
+    (swap! state-atom assoc :loading? false :error (:error resp))
+    (let [raw (get-in resp [:search_feed_posts :items] [])
+          new-items (into [] (keep feed-ui/feed-post-api->ui) raw)
+          next? (get-in resp [:search_feed_posts :has_next_page] false)]
+      (swap! state-atom assoc
+             :loading? false
+             :items (if is-refresh?
+                      new-items
+                      (vec (concat items new-items)))
+             :offset (+ current-offset limit)
+             :has-more? next?))))
+
 (defn load-page!
   "Paginated article search; `is-refresh?` replaces items and resets offset."
   [state-atom keyword limit is-refresh?]
@@ -28,19 +44,26 @@
         (let [fut (gql/query search-feed-posts-query {:query keyword
                                                       :limit limit
                                                       :offset current-offset})
-              on-ok (fn [resp]
-                      (if (:error resp)
-                        (swap! state-atom assoc :loading? false :error (:error resp))
-                        (let [raw (get-in resp [:search_feed_posts :items] [])
-                              new-items (into [] (keep feed-ui/feed-post-api->ui) raw)
-                              next? (get-in resp [:search_feed_posts :has_next_page] false)]
-                          (swap! state-atom assoc
-                                 :loading? false
-                                 :items (if is-refresh?
-                                          new-items
-                                          (vec (concat items new-items)))
-                                 :offset (+ current-offset limit)
-                                 :has-more? next?))))
+              on-ok (fn [resp] (apply-search-page-to-state! state-atom limit current-offset is-refresh? items resp))
               on-err (fn [e]
                        (swap! state-atom assoc :loading? false :error e))]
+          (.catchError (.then fut on-ok) on-err))))))
+
+(defn fetch-preview!
+  "First-page search for debounced inline preview; writes to `preview-atom`
+   as {:items ... :loading? ... :error ...}."
+  [preview-atom query limit]
+  (let [q (str/trim (or query ""))]
+    (if (empty? q)
+      (swap! preview-atom assoc :items [] :loading? false :error nil)
+      (do
+        (swap! preview-atom assoc :loading? true :error nil)
+        (let [fut (gql/query search-feed-posts-query {:query q :limit limit :offset 0})
+              on-ok (fn [resp]
+                      (if (:error resp)
+                        (swap! preview-atom assoc :loading? false :error (:error resp))
+                        (let [raw (get-in resp [:search_feed_posts :items] [])
+                              new-items (into [] (keep feed-ui/feed-post-api->ui) raw)]
+                          (swap! preview-atom assoc :loading? false :error nil :items new-items))))
+              on-err (fn [e] (swap! preview-atom assoc :loading? false :error e))]
           (.catchError (.then fut on-ok) on-err))))))
