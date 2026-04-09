@@ -15,45 +15,45 @@
 ;; =============================================================================
 ;; 1. Chapter card component (adaptive size, no hard-coded constraints)
 ;; =============================================================================
-(defn- chapter-card-tile 
+(defn- chapter-card-tile
   [book chapter ctx]
   (f/widget
    :get {{{:flds [primary onSurfaceVariant]} .-colorScheme} m/Theme}
-   
+
    (m/Align
     .alignment m/Alignment.topCenter
     .child (m/Container
-     .margin (m/EdgeInsets.only .right 12.0)
-     .decoration (m/BoxDecoration
-                  .border (m/Border.all .color (.withOpacity primary 0.25) .width 1.0)
-                  .borderRadius (m/BorderRadius.circular 12.0))
-     .child
-     (m/InkWell
-      .onTap (fn []
-               (let [chapters (:chapters book)
-                     idx (first (keep-indexed #(when (= (:id %2) (:id chapter)) %1) chapters))]
-                 (player/load-chapter! book chapter (:audio_url chapter)
-                                       :playlist (or chapters [])
-                                       :index (or idx 0))
-                 (m/Navigator.push
-                  ctx
-                  (m/MaterialPageRoute
-                   .builder (fn [_] (pf/player-page book (or (:segments chapter) []))))))
-               nil)
-      .borderRadius (m/BorderRadius.circular 12.0)
-      .child (m/Padding
-              .padding (m/EdgeInsets.symmetric .horizontal 16.0 .vertical 20.0)
-              .child (m/Column
-                      .mainAxisSize m/MainAxisSize.min
-                      .crossAxisAlignment m/CrossAxisAlignment.center
-                      .children
-                      [(m/Icon m/Icons.play_circle_outline .color primary .size 28.0)
-                       (m/SizedBox .height 12.0)
-                       (mgl/MongolText (:title chapter)
-                                       .style (m/TextStyle .fontSize 16.0 .fontWeight m/FontWeight.w500))
-                       (m/SizedBox .height 8.0)
-                       (mgl/MongolText (str (quot (:duration_seconds chapter 0) 60) "′")
-                                       .style (m/TextStyle .color onSurfaceVariant .fontSize 13.0))])))))))
+            .margin (m/EdgeInsets.only .right 12.0)
+            .decoration (m/BoxDecoration
+                         .border (m/Border.all .color (.withOpacity primary 0.25) .width 1.0)
+                         .borderRadius (m/BorderRadius.circular 12.0))
+            .child
+            (m/InkWell
+             .onTap (fn []
+                      (let [chapters (:chapters book)
+                            idx (first (keep-indexed #(when (= (:id %2) (:id chapter)) %1) chapters))]
+                        (player/load-chapter! book chapter (:audio_url chapter)
+                                              :playlist (or chapters [])
+                                              :index (or idx 0))
+                        (m/Navigator.push
+                         ctx
+                         (m/MaterialPageRoute
+                          .builder (fn [_] (pf/player-page book (or (:segments chapter) []))))))
+                      nil)
+             .borderRadius (m/BorderRadius.circular 12.0)
+             .child (m/Padding
+                     .padding (m/EdgeInsets.symmetric .horizontal 16.0 .vertical 26.0)
+                     .child (m/Column
+                             .mainAxisSize m/MainAxisSize.min
+                             .crossAxisAlignment m/CrossAxisAlignment.center
+                             .children
+                             [(m/Icon m/Icons.play_circle_outline .color primary .size 28.0)
+                              (m/SizedBox .height 14.0)
+                              (mgl/MongolText (:title chapter)
+                                              .style (m/TextStyle .fontSize 16.0 .fontWeight m/FontWeight.w500))
+                              (m/SizedBox .height 10.0)
+                              (mgl/MongolText (str (quot (:duration_seconds chapter 0) 60) "′")
+                                              .style (m/TextStyle .color onSurfaceVariant .fontSize 13.0))])))))))
 
 ;; =============================================================================
 ;; Favorites (toggle button)

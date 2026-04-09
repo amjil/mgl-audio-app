@@ -2,8 +2,8 @@
   (:require ["package:http/http.dart" :as http]
             ["dart:convert" :as json]
             ["dart:core" :as dart]
-            ["dart:io" :as io]
             [clojure.string :as str]
+            ["package:flutter/foundation.dart" :as foundation]
             ["package:flutter_secure_storage/flutter_secure_storage.dart" :as storage]
             ;; Global navigation for forcing login on 401
             [audio-app.nav :as nav]))
@@ -16,10 +16,19 @@
 ;; - Android emulator: use 10.0.2.2 instead of localhost (host machine port 4000)
 ;; - iOS simulator: localhost usually works
 ;; - Real device: use your LAN IP, e.g. "http://192.168.1.100:4000/api"
+;; - Web (Chrome): use 127.0.0.1 to avoid some browsers resolving "localhost" to IPv6 only.
+;; - Web (Chrome): Phoenix must send CORS headers (see backend :cors_plug).
 (def ^:private endpoint
-  (if (.-isAndroid io/Platform)
+  ;; Web cannot use dart:io Platform (throws Unsupported operation: Platform._operatingSystem).
+  (cond
+    foundation/kIsWeb
+    "http://100.64.0.6:4000/api"
+
+    (== foundation/defaultTargetPlatform foundation/TargetPlatform.android)
     "http://10.0.2.2:4000/api"
-    "http://localhost:4000/api"))
+
+    :else
+    "http://127.0.0.1:4000/api"))
 
 (def ^:private base-url
   ;; Strip trailing "/api" so it can be used for static uploads.
@@ -144,7 +153,11 @@
 
 (defn- ^:async execute-request [{:keys [query variables]}]
   (try
-    (let [token (await (get-token))
+    (let [token (try (await (get-token))
+                     (catch dynamic e
+                       (dart/print (str "⚠️ secure storage read failed, continuing without token: "
+                                        (.toString e)))
+                       nil))
           ;; Build Dart-native maps explicitly so jsonEncode never sees CLJD maps.
           headers (dart/Map.fromEntries
                    (dart/List.from
