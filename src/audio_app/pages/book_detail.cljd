@@ -110,6 +110,7 @@
     (let [header-fn
           (fn [summary detail-data detail-error]
             (f/widget
+             :get {{{:flds [onSurface]} .-colorScheme} m/Theme}
              :watch [{:keys [loading? error data]} progress-state]
              (let [chapters (:chapters detail-data)
                    saved-chapter-id (:chapter_id data)
@@ -158,33 +159,46 @@
                            " · "
                            (get-in detail-data [:reciter :name]))
                       .style (m/TextStyle .fontSize 15.0 .color m/Colors.grey))
+                     (m/SizedBox.shrink))
+
+                   description-widget
+                   (if (and detail-data (not detail-error))
+                     (let [t (:description detail-data)]
+                       (if (and t (seq t))
+                         (m/Padding
+                          .padding (m/EdgeInsets.only .right 32.0)
+                          .child (mgl/MongolText t
+                                  .style (m/TextStyle .fontSize 16.0 .height 1.6 .color onSurface)))
+                         (m/SizedBox.shrink)))
                      (m/SizedBox.shrink))]
-               (m/Row
-                .crossAxisAlignment m/CrossAxisAlignment.start
+               (m/Column
+                .crossAxisAlignment m/CrossAxisAlignment.center
                 .children
                 [(media/hero-cover (:id summary) (:cover_url summary)
-                                   :width 96.0 :height 144.0 :border-radius 8.0)
-                 (m/SizedBox .width 20.0)
-                 (m/SizedBox
-                  .height 144.0
-                  .child (mgl/MongolText (:title summary)
-                                         .style (m/TextStyle .fontSize 26.0 .height 1.25 .fontWeight m/FontWeight.w600)))
-                 (m/SizedBox .width 16.0)
-                 (m/Column
+                                    :width 96.0 :height 144.0 :border-radius 8.0)
+                 (m/SizedBox .height 8.0)
+                 (favorite-toggle-widget (:id summary)
+                                         favorite-state
+                                         state/library-state)
+                 (m/SizedBox .height 16.0)
+                 (m/Row
                   .crossAxisAlignment m/CrossAxisAlignment.start
+                  .mainAxisAlignment m/MainAxisAlignment.center
+                  .mainAxisSize m/MainAxisSize.min
                   .children
-                  [continue-widget
-                   (m/SizedBox .height 4.0)
-                   (favorite-toggle-widget (:id summary)
-                                           favorite-state
-                                           state/library-state)
-                   (m/SizedBox .height 8.0)
-                   author-widget])]))))]
+                  [(mgl/MongolText (:title summary)
+                                   .style (m/TextStyle .fontSize 26.0 .height 1.25 .fontWeight m/FontWeight.w600))
+                   (m/SizedBox .width 16.0)
+                   author-widget
+                   (m/SizedBox .width 16.0)
+                   description-widget])
+                 (m/SizedBox .height 12.0)
+                 (m/Center .child continue-widget)]))))]
       (detail-page/horizontal-detail-page
        summary
        srv/load-detail!
        header-fn
-       (fn [data] (:description data))
+       (fn [_] nil)
        "Chapters"
        (fn [data] (:chapters data))
        (fn [chapter data ctx] (chapter-card-tile data chapter ctx))))))
