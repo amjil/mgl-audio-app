@@ -34,7 +34,7 @@
                                             .style (m/TextStyle .fontSize 16.0 .fontWeight m/FontWeight.w400)))]))))
 
 (defn- book-card 
-  "Hot book card (rounded Hero cover + vertical title)"
+  "Hot book card (slightly tall cover + vertical title)"
   [book ctx]
   (m/GestureDetector
    .onTap (fn [] 
@@ -42,8 +42,9 @@
             nil) 
    .child (cards/book-card book
                            :width 80.0
-                           :margin-right 8.0
-                           :cover-variant :avatar
+                           :margin-right 14.0
+                           :cover-variant :rect
+                           :cover-height 96.0
                            :height dart:core/double.infinity
                            :border-radius 8.0
                            :title-font-size 16.0)))
