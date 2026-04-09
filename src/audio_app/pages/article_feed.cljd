@@ -56,95 +56,96 @@
    (m/Scaffold
     .backgroundColor surface
     .body
-    (m/Stack
-     .fit m/StackFit.expand
-     .children
-     [(cond
-        ;; 1. Initial loading state
-        (and loading? (empty? posts))
-        (status/loading-center)
+    (m/SafeArea
+     .child
+     (m/Stack
+      .fit m/StackFit.expand
+      .children
+      [(cond
+         ;; 1. Initial loading state
+         (and loading? (empty? posts))
+         (status/loading-center)
 
-        ;; 2. Load failed and no cached data
-        (and error (empty? posts))
-        (status/error-with-retry
-         {:on-retry #(srv/load-data! state/article-feed-state)
-          :message (error-message error)})
+         ;; 2. Load failed and no cached data
+         (and error (empty? posts))
+         (status/error-with-retry
+          {:on-retry #(srv/load-data! state/article-feed-state)
+           :message (error-message error)})
 
-        ;; 3. Render the horizontal reading canvas
-        :else
-        (layout/canvas-scroll-ctrl scroll-ctrl
-                                 ;; Canvas intro: oversized headline
-                                 (m/SliverToBoxAdapter
-                                  .child (m/Padding
-                                          ;; Keep distance from top/bottom safe areas and bottom nav pill
-                                          .padding (m/EdgeInsets.only .left 32.0 .right 24.0 .top 86.0 .bottom 120.0)
-                                          .child (mgl/MongolText "Articles"
-                                                                 .style (m/TextStyle .fontSize 36.0
-                                                                                     .fontWeight m/FontWeight.w700
-                                                                                     .letterSpacing 2.0))))
+         ;; 3. Render the horizontal reading canvas
+         :else
+         (layout/canvas-scroll-ctrl scroll-ctrl
+                                    ;; Canvas intro: oversized headline
+                                    (m/SliverToBoxAdapter
+                                     .child (m/Padding
+                                             ;; Keep distance from top/bottom safe areas and bottom nav pill
+                                             .padding (m/EdgeInsets.only .left 32.0 .right 24.0)
+                                             .child (mgl/MongolText "Articles"
+                                                                    .style (m/TextStyle .fontSize 36.0
+                                                                                        .fontWeight m/FontWeight.w700
+                                                                                        .letterSpacing 2.0))))
 
-                                 ;; Main list area: render by data availability
-                                 (if (empty? posts)
-                                   (m/SliverToBoxAdapter
-                                    .child (m/Container
-                                            .padding (m/EdgeInsets.only .top 120.0 .left 64.0)
-                                            .child (status/empty-center "No articles")))
+                                    ;; Main list area: render by data availability
+                                    (if (empty? posts)
+                                      (m/SliverToBoxAdapter
+                                       .child (m/Container
+                                               .padding (m/EdgeInsets.only .top 120.0 .left 64.0)
+                                               .child (status/empty-center "No articles")))
 
-                                   (m/SliverList
-                                    .delegate (m/SliverChildBuilderDelegate
-                                               (f/build [i]
-                                                        (if (< i (count posts))
-                                                          (m/Padding
-                                                           ;; Extra vertical spacing to avoid bottom floating nav pill
-                                                           .padding (m/EdgeInsets.only .top 48.0 .bottom 120.0)
-                                                           .child (feed-post-card (nth posts i) ctx))
-                                                          (m/Container
-                                                           .width 80.0
-                                                           .padding (m/EdgeInsets.only .top 48.0 .bottom 120.0)
-                                                           .child
-                                                           (m/Center
-                                                            .child
-                                                            (cond
-                                                              error
-                                                              (status/error-with-retry
-                                                               {:on-retry #(srv/load-page! state/article-feed-state 20 false)
-                                                                :message (error-message error)})
+                                      (m/SliverList
+                                       .delegate (m/SliverChildBuilderDelegate
+                                                  (f/build [i]
+                                                           (if (< i (count posts))
+                                                             (m/Padding
+                                                              ;; Extra vertical spacing to avoid bottom floating nav pill
+                                                              .padding (m/EdgeInsets.only .top 48.0 .bottom 120.0)
+                                                              .child (feed-post-card (nth posts i) ctx))
+                                                             (m/Container
+                                                              .width 80.0
+                                                              .padding (m/EdgeInsets.only .top 48.0 .bottom 120.0)
+                                                              .child
+                                                              (m/Center
+                                                               .child
+                                                               (cond
+                                                                 error
+                                                                 (status/error-with-retry
+                                                                  {:on-retry #(srv/load-page! state/article-feed-state 20 false)
+                                                                   :message (error-message error)})
 
-                                                              loading?
-                                                              (m/CircularProgressIndicator .strokeWidth 2.0)
+                                                                 loading?
+                                                                 (m/CircularProgressIndicator .strokeWidth 2.0)
 
-                                                              has-more?
-                                                              (mgl/MongolText
-                                                               "Load more"
-                                                               .style (m/TextStyle .color outlineVariant))
+                                                                 has-more?
+                                                                 (mgl/MongolText
+                                                                  "Load more"
+                                                                  .style (m/TextStyle .color outlineVariant))
 
-                                                              :else
-                                                              (mgl/MongolText
-                                                               "No more"
-                                                               .style (m/TextStyle .color outlineVariant)))))))
-                                               .childCount (inc (count posts)))))
+                                                                 :else
+                                                                 (mgl/MongolText
+                                                                  "No more"
+                                                                  .style (m/TextStyle .color outlineVariant)))))))
+                                                  .childCount (inc (count posts)))))
 
-                                 ;; End padding for the canvas tail
-                                 (m/SliverToBoxAdapter .child (m/SizedBox .width 80.0))))
+                                    ;; End padding for the canvas tail
+                                    (m/SliverToBoxAdapter .child (m/SizedBox .width 80.0))))
 
-      (m/SafeArea
-       .child (m/Align
-               .alignment m/Alignment.topRight
-               .child (m/Padding
-                       .padding (m/EdgeInsets.only .top 4.0 .right 8.0)
-                       .child (m/IconButton
-                               .icon (m/Icon m/Icons.search .size 26.0)
-                               .color onSurface
-                               .tooltip "Search articles"
-                               .onPressed (fn []
-                                            (swap! state/article-search-list-state
-                                                   merge {:items []
-                                                          :offset 0
-                                                          :has-more? true
-                                                          :loading? false
-                                                          :error nil})
-                                            (m/Navigator.push
-                                             ctx
-                                            (m/MaterialPageRoute
-                                             .builder (fn [_] (article-search/page))))
-                                            nil)))))]))))
+       (m/Align
+        .alignment m/Alignment.topRight
+        .child (m/Padding
+                .padding (m/EdgeInsets.only .top 4.0 .right 8.0)
+                .child (m/IconButton
+                        .icon (m/Icon m/Icons.search .size 26.0)
+                        .color onSurface
+                        .tooltip "Search articles"
+                        .onPressed (fn []
+                                     (swap! state/article-search-list-state
+                                            merge {:items []
+                                                   :offset 0
+                                                   :has-more? true
+                                                   :loading? false
+                                                   :error nil})
+                                     (m/Navigator.push
+                                      ctx
+                                      (m/MaterialPageRoute
+                                       .builder (fn [_] (article-search/page))))
+                                     nil))))])))))
