@@ -48,7 +48,7 @@
   [fav-state-atom book-id library-state-atom]
   (let [is-fav (boolean (:data @fav-state-atom))]
     (swap! fav-state-atom assoc :loading? true :error nil)
-    (let [mutation (if is-fav add-favorite-mutation remove-favorite-mutation)]
+    (let [mutation (if is-fav remove-favorite-mutation add-favorite-mutation)]
       (-> (gql/mutate mutation {:bookId book-id})
           (.then (fn [_resp]
                    (load-is-favorite! fav-state-atom book-id)
