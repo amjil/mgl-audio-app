@@ -49,17 +49,27 @@
     (detail-page/horizontal-detail-page
      summary
      srv/load-detail!
-     (fn [summary _data _error]
-       (m/Row
+     (fn [summary data _error]
+       (m/Column
         .crossAxisAlignment m/CrossAxisAlignment.start
         .children
         [(media/hero-avatar (:id summary) (:avatar_url summary) :radius 56.0)
-         (m/SizedBox .width 20.0)
-         (m/SizedBox
-          .height 280.0
-          .child (mgl/MongolText (:name summary)
-                                  .style (m/TextStyle .fontSize 26.0 .height 1.2 .fontWeight m/FontWeight.w600)))]))
-     (fn [data] (:bio data))
+         (m/SizedBox .height 12.0)
+         (m/Row
+          .mainAxisSize m/MainAxisSize.min
+          .crossAxisAlignment m/CrossAxisAlignment.start
+          .children
+          [(mgl/MongolText (:name summary)
+                           .style (m/TextStyle .fontSize 26.0 .height 1.2 .fontWeight m/FontWeight.w600))
+           (m/SizedBox .width 16.0)
+           (m/Flexible
+            .fit m/FlexFit.loose
+            .child
+            (m/ClipRect
+             .child
+             (mgl/MongolText (or (:bio data) "")
+                              .style (m/TextStyle .fontSize 16.0 .height 1.5 .fontWeight m/FontWeight.w400))))])]))
+     (fn [_data] nil)
      "Books"
      (fn [data] (:books data))
      (fn [book _detail ctx] (author-book-card book ctx)))))

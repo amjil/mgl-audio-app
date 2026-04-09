@@ -16,7 +16,7 @@
 ;; 1. Pure render components: author card, book card and horizontal list builder
 ;; =============================================================================
 (defn- author-card 
-  "Hot author card (circular avatar + vertical name)"
+  "Hot author card (square avatar + vertical name)"
   [author ctx]
   (m/GestureDetector
    .onTap (fn []
@@ -27,7 +27,7 @@
            .margin (m/EdgeInsets.only .right 14.0)
            .child (m/Column
                    .children 
-                   [(media/hero-avatar (:id author) (:avatar_url author) :radius 36.0)
+                   [(media/hero-avatar (:id author) (:avatar_url author) :radius 36.0 :square? true :border-radius 8.0)
                     (m/SizedBox .height 8.0)
                     (m/Expanded 
                      .child (mgl/MongolText (:name author) 

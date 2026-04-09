@@ -143,40 +143,48 @@
          avatar-child)))))
 
 ;; =============================================================================
-;; 2. Avatar component (perfect circle)
+;; 2. Avatar component (circle by default; optional rounded square)
 ;; =============================================================================
 (defn hero-avatar
-  "Circular avatar widget with local cache and Hero animation, for author or user profile.
-   - id: unique identifier for the Hero animation (e.g. author-id or \"user-self\")
-   - url: network image URL
-   - optional: radius"
-  [id url & {:keys [radius] :or {radius 40.0}}]
+  "Avatar with local cache and Hero animation, for author or user profile.
+   - optional: radius, square? (rounded rect), border-radius (when square?)"
+  [id url & {:keys [radius square? border-radius]
+             :or {radius 40.0 square? false border-radius 8.0}}]
   (let [url (gql/resolve-url url)
         diameter (* radius 2.0)]
     (f/widget
      :get {{{:flds [onSurfaceVariant]} .-colorScheme} m/Theme}
      (let [placeholder-color (.withOpacity onSurfaceVariant 0.12)
-           error-color (.withOpacity onSurfaceVariant 0.65)]
+           error-color (.withOpacity onSurfaceVariant 0.65)
+           clip-child (fn [child]
+                        (if square?
+                          (m/ClipRRect
+                           .borderRadius (m/BorderRadius.circular border-radius)
+                           .child child)
+                          (m/ClipOval .child child)))
+           placeholder-decoration (if square?
+                                    (m/BoxDecoration
+                                     .color placeholder-color
+                                     .borderRadius (m/BorderRadius.circular border-radius))
+                                    (m/BoxDecoration
+                                     .color placeholder-color
+                                     .shape m/BoxShape.circle))
+           img-shape (if square? nil m/BoxShape.circle)]
        (m/Hero
         .tag (str "avatar-" id)
         .child
         (if (and url (not (empty? url)))
-          (m/ClipOval
-           .child
+          (clip-child
            (network-image {:url url
-                            :width diameter
-                            :height diameter
-                            :fit m/BoxFit.cover
-                            :shape m/BoxShape.circle
-                            :icon m/Icons.person
-                            :placeholder-color placeholder-color
-                            :error-color error-color}))
-          
-          ;; Default avatar placeholder when there is no URL
+                           :width diameter
+                           :height diameter
+                           :fit m/BoxFit.cover
+                           :shape img-shape
+                           :icon m/Icons.person
+                           :placeholder-color placeholder-color
+                           :error-color error-color}))
           (m/Container
            .width diameter
            .height diameter
-           .decoration (m/BoxDecoration
-                        .color placeholder-color
-                        .shape m/BoxShape.circle)
+           .decoration placeholder-decoration
            .child (m/Icon m/Icons.person .color error-color))))))))
