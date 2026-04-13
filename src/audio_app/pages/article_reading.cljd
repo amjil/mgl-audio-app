@@ -1,8 +1,10 @@
 (ns audio-app.pages.article-reading
   (:require ["package:flutter/material.dart" :as m]
             ["package:mongol/mongol.dart" :as mgl]
+            [clojure.string :as str]
             [cljd.flutter :as f]
             [audio-app.components.player-ui :as player-ui]
+            [audio-app.components.transcript :as transcript]
             [audio-app.services.player :as player]))
 
 ;; =============================================================================
@@ -15,14 +17,70 @@
   [post]
   {:id (:id post)
    :title (:title post)
-   :duration_seconds (or (:duration_seconds post) 0)})
+   :duration_seconds (or (:duration_seconds post) 0)
+   :segments (or (:segments post) [])})
+
+(defn- sorted-segments [segs]
+  (vec (sort-by (fn [s] [(or (:index s) 0) (or (:start_ms s) 0)]) segs)))
+
+(defn- segments-usable-for-body? [segs]
+  (and (seq segs)
+       (every? #(not (empty? (str (:text %)))) segs)))
+
+(defn- sentences-from-text
+  "Split into sentence-like chunks (Latin / CJK / Mongolian full stop ᠃)."
+  [s]
+  (let [s (str/trim (or s ""))]
+    (if (str/blank? s)
+      []
+      (let [parts (str/split s #"(?<=[。！？.!?᠃])\s*")]
+        (vec (keep #(let [t (str/trim %)] (when-not (str/blank? t) t)) parts))))))
+
+(defn- article-body-mongol
+  "Renders post text with MongolRichText / TextSpan list.
+  Sentences are split for span boundaries; with timed segments, styles follow the active segment."
+  [post {:keys [primary onSurfaceVariant]} this-article? position-sec]
+  (let [segs (sorted-segments (or (:segments post) []))
+        base-style (m/TextStyle
+                    .fontSize 18.0
+                    .color onSurfaceVariant
+                    .letterSpacing 1.0
+                    .height 1.8)
+        active-style (.copyWith base-style
+                                .fontSize 20.0
+                                .fontWeight m/FontWeight.w700
+                                .color primary)
+        active-idx (when this-article?
+                     (transcript/active-index-for-position segs position-sec))
+        span-for (fn [text active?]
+                   (m/TextSpan
+                    .text text
+                    .style (if active? active-style base-style)))
+        children
+        (if (segments-usable-for-body? segs)
+          (vec (mapcat
+                (fn [i]
+                  (let [active? (and this-article? (= i active-idx))
+                        raw (str (:text (nth segs i)))
+                        sents (sentences-from-text raw)]
+                    (if (seq sents)
+                      (map #(span-for % active?) sents)
+                      [(span-for raw active?)])))
+                (range (count segs))))
+          (let [body (or (:text post) "")
+                sents (sentences-from-text body)]
+            (if (seq sents)
+              (mapv #(span-for % false) sents)
+              [(span-for body false)])))]
+    (mgl/MongolRichText
+     .text (m/TextSpan .style base-style .children children))))
 
 (defn page
   [post]
   (f/widget
    :context ctx
    :get {{{:flds [surface primary outlineVariant onSurfaceVariant]} .-colorScheme} m/Theme}
-   :watch [{:keys [status speed current-chapter]} player/player-state]
+   :watch [{:keys [status speed current-chapter position]} player/player-state]
    (let [cur-id (when (and current-chapter (map? current-chapter)) (:id current-chapter))
          post-id (:id post)
          this-article? (and post-id (= cur-id post-id))]
@@ -119,11 +177,8 @@
                          .color onSurfaceVariant)))
 
                ;; Article body (extends endlessly to the right)
-               (mgl/MongolText
-                (:text post)
-                .style (m/TextStyle
-                        .fontSize 18.0
-                        .color onSurfaceVariant
-                        .letterSpacing 1.0
-                        .height 1.8))])))]))))))
+               (article-body-mongol post
+                                    {:primary primary :onSurfaceVariant onSurfaceVariant}
+                                    this-article?
+                                    position)])))]))))))
 

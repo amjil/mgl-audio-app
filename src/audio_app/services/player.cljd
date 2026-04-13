@@ -153,7 +153,7 @@
   ;; Listen for current playback position (fires every few hundred milliseconds)
   (-> audio-player .-onPositionChanged
       (.listen (fn [^dart:core/Duration d]
-                 (let [pos (.-inSeconds d)]
+                 (let [pos (/ (.-inMilliseconds d) 1000.0)]
                    (swap! player-state assoc :position pos)
                    ;; Sync frequently but throttle writes inside sync-progress-to-server!.
                    (when (= :playing (:status @player-state))

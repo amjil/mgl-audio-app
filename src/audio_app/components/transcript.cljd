@@ -3,27 +3,40 @@
             ["package:mongol/mongol.dart" :as mgl]
             [cljd.flutter :as f]))
 
-(defn- get-active-index 
-  "Given the current playback position (seconds), find the active transcript index."
-  [segments position]
-  (let [idx (->> segments
-                 (keep-indexed (fn [i seg] 
-                                 (let [start-ms (:start_ms seg)
-                                       ;; Frontend may also receive `start_time` (seconds) from older payloads.
-                                       start-s (cond
-                                                  (number? start-ms) (/ start-ms 1000.0)
-                                                  (number? (:start_time seg)) (:start_time seg)
-                                                  :else 0.0)]
-                                   (when (<= start-s position) i))))
-                 last)]
-    (or idx -1)))
+(defn active-index-for-position
+  "Index of the segment active at `position-sec` (fractional seconds).
+  Uses [start_ms, end_ms) when end_ms > start_ms; otherwise falls back to
+  last segment whose start is still not after playback time."
+  [segments position-sec]
+  (let [pos-ms (* (double (or position-sec 0)) 1000.0)
+        by-interval
+        (first
+         (keep-indexed
+          (fn [i seg]
+            (let [s (or (:start_ms seg) 0)
+                  e (or (:end_ms seg) 0)]
+              (when (and (pos? (- e s)) (<= s pos-ms) (< pos-ms e))
+                i)))
+          segments))]
+    (or by-interval
+        (let [idx (->> segments
+                       (keep-indexed
+                        (fn [i seg]
+                          (let [start-ms (:start_ms seg)
+                                start-s (cond
+                                          (number? start-ms) (/ start-ms 1000.0)
+                                          (number? (:start_time seg)) (:start_time seg)
+                                          :else 0.0)]
+                            (when (<= start-s (double (or position-sec 0))) i))))
+                       last)]
+          (or idx -1)))))
 
 (defn sync-view 
   "Horizontally scrolling synchronized transcript view."
   [segments current-position]
   (f/widget
    :get {{{:flds [primary onSurface onSurfaceVariant]} .-colorScheme} m/Theme}
-   :let [active-idx (get-active-index segments current-position)]
+   :let [active-idx (active-index-for-position segments current-position)]
    
    (if (empty? segments)
      (m/Center 
