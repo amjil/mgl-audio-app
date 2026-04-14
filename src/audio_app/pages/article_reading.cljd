@@ -202,12 +202,12 @@
                         scroll-ctrl)))
 
 (defn page
-  [post]
+  [post & [resume-sec]]
   (f/widget
    :context ctx
    :get {{{:flds [surface primary outlineVariant onSurfaceVariant]} .-colorScheme} m/Theme}
   :managed [scroll-ctrl (m/ScrollController.)]
-  :watch [{:keys [status speed current-chapter]} player/player-state]
+  :watch [{:keys [status speed position duration current-chapter]} player/player-state]
    (let [cur-id (when (and current-chapter (map? current-chapter)) (:id current-chapter))
          post-id (:id post)
          this-article? (and post-id (= cur-id post-id))
@@ -261,13 +261,13 @@
                  (fn []
                    (if this-article?
                      (player/toggle-play!)
-                     (player/load-chapter!
-                      nil
-                      (chapter-for-post post)
-                      (:audio_url post)
-                      :playlist []
-                      :index 0
-                      :start-position-sec 0))
+                    (player/load-chapter!
+                     nil
+                     (chapter-for-post post)
+                     (:audio_url post)
+                     :playlist []
+                     :index 0
+                     :start-position-sec (or resume-sec 0.0)))
                    nil)
                  .child (m/Container
                          .padding (m/EdgeInsets.all 6.0)
@@ -287,7 +287,28 @@
                                .fontWeight m/FontWeight.w700)))]))
 
            ;; ==========================================
-           ;; 2. Content area (horizontal reading canvas + right highlight strip)
+           ;; 2. Progress bar (above article text)
+           ;; ==========================================
+           (m/Padding
+            .padding (m/EdgeInsets.only .left 20.0 .right 20.0 .top 12.0)
+            .child
+            (m/Column
+             .children
+             [(player-ui/progress-slider position
+                                         duration
+                                         #(player/seek! %)
+                                         :active-color primary
+                                         :inactive-color (.withOpacity outlineVariant 0.35))
+              (m/Padding
+               .padding (m/EdgeInsets.symmetric .horizontal 4.0)
+               .child
+               (m/Row
+                .mainAxisAlignment m/MainAxisAlignment.spaceBetween
+                .children [(player-ui/time-text position outlineVariant)
+                           (player-ui/time-text duration outlineVariant)]))]))
+
+           ;; ==========================================
+           ;; 3. Content area (horizontal reading canvas + right highlight strip)
            ;; ==========================================
            (m/Expanded
             .child

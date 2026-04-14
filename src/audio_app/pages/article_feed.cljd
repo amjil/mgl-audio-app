@@ -4,11 +4,23 @@
             [cljd.flutter :as f]
             [audio-app.state :as state]
             [audio-app.services.article-feed :as srv]
+            [audio-app.services.local-storage :as local-store]
             [audio-app.components.status :as status]
             [audio-app.components.layout :as layout]
             [audio-app.components.cards :as cards]
             [audio-app.pages.article-reading :as article-reading]
             [audio-app.pages.article-search :as article-search]))
+
+(defn- calculate-resume-position
+  "95% completion rule: restart from beginning when almost finished."
+  [saved-sec total-duration]
+  (let [duration (or total-duration 0)]
+    (if (pos? duration)
+      (let [progress-ratio (/ saved-sec (double duration))]
+        (if (> progress-ratio 0.95)
+          0.0
+          saved-sec))
+      saved-sec)))
 
 (defn- feed-post-card
   "Narrow card: a single-post block tailored for horizontal-scroll reading."
@@ -23,10 +35,15 @@
                    :border-radius 8.0
                    :title-font-size 16.0
                    :on-tap (fn []
-                             (m/Navigator.push
-                              ctx
-                              (m/MaterialPageRoute
-                               .builder (fn [_] (article-reading/page post))))
+                             (-> (local-store/get-progress! (:id post))
+                                 (.then (fn [saved-sec]
+                                          (let [resume-sec (calculate-resume-position
+                                                            saved-sec
+                                                            (:duration_seconds post 0))]
+                                            (m/Navigator.push
+                                             ctx
+                                             (m/MaterialPageRoute
+                                              .builder (fn [_] (article-reading/page post resume-sec))))))))
                              nil)))
 
 (defn- error-message [err]

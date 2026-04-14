@@ -2,7 +2,7 @@
   (:require ["package:audioplayers/audioplayers.dart" :as ap]
             ["dart:async" :as da]
             ["dart:core" :as dart]
-            [audio-app.services.gql :as gql])) ;; If we ever need to sync playback progress to the backend, we can import it here.
+            [audio-app.services.local-storage :as local-store]))
 
 ;; =============================================================================
 ;; 1. Global player state (single source of truth)
@@ -22,20 +22,7 @@
          :repeat-mode :off}))          ;; :off | :one | :all
 
 ;; Forward declarations for listener closures.
-(declare sync-progress-to-server! next! seek! set-speed! cancel-sleep-timer! handle-completed! load-chapter!)
-
-;; Sync policy: reduce backend write rate.
-(def ^:private min-sync-interval-seconds 15)
-
-;; Backend mutation: upsert playback progress.
-(def ^:private sync-progress-mutation
-  "mutation SyncProgress($bookId: ID!, $chapterId: ID!, $positionMs: Int!) {
-     sync_playback_progress(book_id: $bookId, chapter_id: $chapterId, position_ms: $positionMs) {
-       id
-       position_ms
-       updated_at
-     }
-   }")
+(declare sync-progress-to-local! next! seek! set-speed! cancel-sleep-timer! handle-completed! load-chapter!)
 
 ;; =============================================================================
 ;; 2. Underlying player instance (singleton)
@@ -47,6 +34,9 @@
 
 ;; Some platforms / sources rarely emit `onPositionChanged`; poll while playing.
 (def ^:private position-poll-timer (atom nil))
+
+;; In-memory resume cache keyed by chapter/post id.
+(def ^:private chapter-resume-sec (atom {}))
 
 ;; Playback speed presets (cycle in UI).
 (def ^:private speed-presets [0.8 1.0 1.25 1.5 2.0])
@@ -149,7 +139,7 @@
                                 (let [pos (/ (.-inMilliseconds d) 1000.0)]
                                   (swap! player-state assoc :position pos)
                                   (when (#{:playing :loading} (:status @player-state))
-                                    (sync-progress-to-server!))))))
+                                    (sync-progress-to-local!))))))
                      (.catchError (fn [_e] nil)))))))))
 
 (defn- init-listeners! 
@@ -169,11 +159,11 @@
                      (cancel-position-poll!))
                    (cond
                      (= status :paused)
-                     (sync-progress-to-server!)
+                     (sync-progress-to-local!)
 
                      (= status :completed)
                      (do
-                       (sync-progress-to-server!)
+                       (sync-progress-to-local!)
                        (dart:core/print "🎵 Current chapter finished playback")
                        ;; Only cancel sleep-timer if we are actually stopping.
                        (when (not (handle-completed!))
@@ -188,7 +178,7 @@
                  (let [pos (/ (.-inMilliseconds d) 1000.0)]
                    (swap! player-state assoc :position pos)
                    (when (#{:playing :loading} (:status @player-state))
-                     (sync-progress-to-server!))))))
+                     (sync-progress-to-local!))))))
 
   ;; Listen for total duration (usually fires once when audio is loaded)
   (-> audio-player .-onDurationChanged
@@ -235,6 +225,12 @@
   (when (and start-position-sec (pos? start-sec))
     (seek! start-sec))))
 
+(defn resume-position-sec
+  "Return last known local resume position (seconds) for chapter/post id."
+  [chapter-id]
+  (let [v (get @chapter-resume-sec chapter-id 0)]
+    (if (number? v) (max 0 v) 0)))
+
 (defn toggle-play! 
   "Toggle between play and pause"
   []
@@ -246,7 +242,11 @@
 (defn dismiss-player!
   "Stop playback and clear current media so mini player is hidden."
   []
-  (sync-progress-to-server!)
+  (let [{:keys [current-chapter position]} @player-state
+        chapter-id (:id current-chapter)]
+    (when (and chapter-id (number? position) (> position 0))
+      (swap! chapter-resume-sec assoc chapter-id position)))
+  (sync-progress-to-local!)
   (cancel-sleep-timer!)
   (cancel-position-poll!)
   (.stop audio-player)
@@ -347,23 +347,17 @@
       (seek! 0))))
 
 ;; =============================================================================
-;; 6. Progress sync to backend (upsert)
+;; 6. Progress sync to local storage
 ;; =============================================================================
-(defn sync-progress-to-server! 
-  "Sync current playback progress to the backend.
-   Throttled to avoid excessive writes."
+(defn sync-progress-to-local!
+  "Persist current playback position to local storage.
+   Throttled by distance in seconds."
   []
-  (let [{:keys [current-book current-chapter position last-synced-position-sec]} @player-state]
-    (when (and current-book current-chapter (>= position 10))
+  (let [{:keys [current-chapter position last-synced-position-sec]} @player-state]
+    (when (and current-chapter (>= position 3.0))
       (let [should-sync?
             (or (nil? last-synced-position-sec)
-                (>= (- position last-synced-position-sec) min-sync-interval-seconds))]
+                (>= (- position last-synced-position-sec) 5.0))]
         (when should-sync?
           (swap! player-state assoc :last-synced-position-sec position)
-          (-> (gql/mutate sync-progress-mutation
-                           {:bookId (:id current-book)
-                            :chapterId (:id current-chapter)
-                            :positionMs (int (* position 1000))})
-              (.catchError (fn [e]
-                             (dart:core/print
-                              (str "⚠️ SyncProgress failed (ignored): " e))))))))))
+          (local-store/save-progress! (:id current-chapter) position))))))
