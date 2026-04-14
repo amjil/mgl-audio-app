@@ -1,6 +1,7 @@
 (ns audio-app.pages.article-reading
   (:require ["package:flutter/material.dart" :as m]
             ["package:mongol/mongol.dart" :as mgl]
+            ["package:cljd_m_audio_app/article_reading_selectable_text.dart" :as ar-st]
             [clojure.string :as str]
             [cljd.flutter :as f]
             [audio-app.components.player-ui :as player-ui]
@@ -103,13 +104,46 @@
                 i
                 (recur (inc i) next-acc)))))))))
 
-(defn- article-body-mongol
-  "Renders post text with MongolRichText / TextSpan list.
-  Sentence boundaries come from punctuation split; highlight follows playback time
-  (timed segments when present, else duration spread across plain sentences)."
+(defn- sentence-items
+  "Flatten article body into ordered sentence-like units for selection mapping."
+  [post this-article? position-sec]
+  (let [struct (body-structure (:id post) (:text post) (:segments post))]
+    (if (:use-segs? struct)
+      (let [segs (:segs struct)
+            active-seg (when this-article?
+                         (transcript/active-index-for-position segs position-sec))]
+        (vec (mapcat
+              (fn [i]
+                (let [seg (nth segs i)
+                      raw (str (:text seg))
+                      sents (nth (:seg-sentences struct) i)
+                      sent-i (when (and this-article? (= i active-seg))
+                               (active-sentence-index-in-segment position-sec seg sents))]
+                  (if (seq sents)
+                    (map-indexed
+                     (fn [j st]
+                       {:text st
+                        :active? (and (some? sent-i) (= j sent-i))})
+                     sents)
+                    [{:text raw :active? (and this-article? (= i active-seg))}])))
+              (range (count segs)))))
+      (let [sents (:plain-sentences struct)
+            body (or (:text post) "")
+            plain-sent-idx (when this-article?
+                             (active-sentence-index-plain
+                              position-sec
+                              sents
+                              (:duration_seconds post)))]
+        (if (seq sents)
+          (vec (map-indexed (fn [j st]
+                              {:text st
+                               :active? (and (some? plain-sent-idx) (= j plain-sent-idx))})
+                            sents))
+          [{:text body :active? false}])))))
+
+(defn- body-selection-presentation
   [post {:keys [primary onSurfaceVariant]} this-article? position-sec]
-  (let [struct (body-structure (:id post) (:text post) (:segments post))
-        base-style (m/TextStyle
+  (let [base-style (m/TextStyle
                     .fontSize 18.0
                     .color onSurfaceVariant
                     .letterSpacing 1.0
@@ -118,59 +152,62 @@
                                 .fontSize 20.0
                                 .fontWeight m/FontWeight.w700
                                 .color primary)
-        segs (:segs struct)
-        active-seg (when (and this-article? (:use-segs? struct))
-                     (transcript/active-index-for-position segs position-sec))
-        plain-sent-idx (when (and this-article? (not (:use-segs? struct)))
-                         (active-sentence-index-plain
-                          position-sec
-                          (:plain-sentences struct)
-                          (:duration_seconds post)))
-        span-for (fn [text active?]
-                   (m/TextSpan
-                    .text text
-                    .style (if active? active-style base-style)))
-        children
-        (if (:use-segs? struct)
-          (vec (mapcat
-                (fn [i]
-                  (let [seg (nth segs i)
-                        raw (str (:text seg))
-                        sents (nth (:seg-sentences struct) i)
-                        sent-i (when (and this-article? (= i active-seg))
-                                 (active-sentence-index-in-segment position-sec seg sents))]
-                    (if (seq sents)
-                      (map-indexed (fn [j st]
-                                     (span-for st (and (some? sent-i) (= j sent-i))))
-                                   sents)
-                      [(span-for raw (and this-article? (= i active-seg)))])))
-                (range (count segs))))
-          (let [sents (:plain-sentences struct)
-                body (or (:text post) "")]
-            (if (seq sents)
-              (map-indexed (fn [j st]
-                             (span-for st (and (some? plain-sent-idx) (= j plain-sent-idx))))
-                           sents)
-              [(span-for body false)])))]
-    (mgl/MongolRichText
-     .text (m/TextSpan .style base-style .children children))))
+        items (sentence-items post this-article? position-sec)]
+    (loop [idx 0
+           offset 0
+           children []
+           sel-start nil
+           sel-end nil]
+      (if (>= idx (count items))
+        {:text-span (m/TextSpan .style base-style .children children)
+         :sel-start (or sel-start 0)
+         :sel-end (or sel-end 0)}
+        (let [{:keys [text active?]} (nth items idx)
+              t (str (or text ""))
+              len (count t)
+              span (m/TextSpan
+                    .text t
+                    .style (if active? active-style base-style))
+              next-start (if (and active? (nil? sel-start)) offset sel-start)
+              next-end (if active? (+ offset len) sel-end)]
+          (recur (inc idx)
+                 (+ offset len)
+                 (conj children span)
+                 next-start
+                 next-end))))))
+
+(defn- article-body-mongol
+  [post {:keys [primary onSurfaceVariant]} this-article? position-sec scroll-ctrl]
+  (let [{:keys [text-span sel-start sel-end]}
+        (body-selection-presentation post
+                                     {:primary primary :onSurfaceVariant onSurfaceVariant}
+                                     this-article?
+                                     position-sec)]
+    (ar-st/ArticleReadingSelectableText.
+     .textSpan text-span
+     .selectionStart (int sel-start)
+     .selectionEnd (int sel-end)
+     .autoScroll this-article?
+     .scrollController scroll-ctrl)))
 
 (defn- article-body-mongol-widget
   "Isolated :watch on `position` so toolbar/title do not rebuild every tick."
-  [post primary onSurfaceVariant this-article?]
+  [post primary onSurfaceVariant this-article? scroll-ctrl]
   (f/widget
    :watch [{:keys [position]} player/player-state]
    (article-body-mongol post
                         {:primary primary :onSurfaceVariant onSurfaceVariant}
                         this-article?
-                        position)))
+                        position
+                        scroll-ctrl)))
 
 (defn page
   [post]
   (f/widget
    :context ctx
    :get {{{:flds [surface primary outlineVariant onSurfaceVariant]} .-colorScheme} m/Theme}
-   :watch [{:keys [status speed current-chapter]} player/player-state]
+  :managed [scroll-ctrl (m/ScrollController.)]
+  :watch [{:keys [status speed current-chapter]} player/player-state]
    (let [cur-id (when (and current-chapter (map? current-chapter)) (:id current-chapter))
          post-id (:id post)
          this-article? (and post-id (= cur-id post-id))
@@ -255,6 +292,7 @@
            (m/Expanded
             .child
             (m/SingleChildScrollView
+             .controller scroll-ctrl
              .scrollDirection m/Axis.horizontal
              .physics (m/BouncingScrollPhysics.)
              .padding (m/EdgeInsets.only
@@ -279,5 +317,5 @@
                          .color onSurfaceVariant)))
 
                ;; Article body (extends endlessly to the right)
-               (article-body-mongol-widget post primary onSurfaceVariant this-article?)])))])))))))
+               (article-body-mongol-widget post primary onSurfaceVariant this-article? scroll-ctrl)])))])))))))
 
