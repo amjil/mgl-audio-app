@@ -353,11 +353,16 @@
   "Persist current playback position to local storage.
    Throttled by distance in seconds."
   []
-  (let [{:keys [current-chapter position last-synced-position-sec]} @player-state]
+  (let [{:keys [current-book current-chapter position last-synced-position-sec]} @player-state]
     (when (and current-chapter (>= position 3.0))
       (let [should-sync?
             (or (nil? last-synced-position-sec)
-                (>= (- position last-synced-position-sec) 5.0))]
+                (>= (- position last-synced-position-sec) 5.0))
+            book-id (or (:id current-book)
+                        (:book_id current-chapter)
+                        (:book-id current-chapter))]
         (when should-sync?
           (swap! player-state assoc :last-synced-position-sec position)
-          (local-store/save-progress! (:id current-chapter) position))))))
+          (local-store/save-progress! (:id current-chapter) position)
+          (when book-id
+            (local-store/save-book-progress! book-id position)))))))

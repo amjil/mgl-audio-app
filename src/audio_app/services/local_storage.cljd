@@ -2,8 +2,9 @@
   (:require ["package:shared_preferences/shared_preferences.dart" :as prefs]
             ["dart:core" :as dart]))
 
-;; Unified key prefix to avoid collision with other local caches.
+;; Unified key prefixes to avoid collision with other local caches.
 (def ^:private progress-key-prefix "audio_pos_")
+(def ^:private book-progress-key-prefix "audio_book_pos_")
 
 (defn save-progress!
   "Persist playback progress for a post locally (async, fire-and-forget)."
@@ -21,6 +22,27 @@
   (-> (prefs/SharedPreferences.getInstance)
       (.then (fn [^prefs/SharedPreferences p]
                (let [key (str progress-key-prefix post-id)]
+                 (if (.containsKey p key)
+                   (.getDouble p key)
+                   0.0))))
+      (.catchError (fn [_] 0.0))))
+
+(defn save-book-progress!
+  "Persist playback progress for a book locally (async, fire-and-forget)."
+  [book-id position-sec]
+  (when (and book-id position-sec (pos? position-sec))
+    (-> (prefs/SharedPreferences.getInstance)
+        (.then (fn [^prefs/SharedPreferences p]
+                 (.setDouble p (str book-progress-key-prefix book-id) (double position-sec))))
+        (.catchError (fn [e]
+                       (dart:core/print (str "⚠️ Failed to save local book progress: " e)))))))
+
+(defn get-book-progress!
+  "Get local playback progress for a book (Future<double>)."
+  [book-id]
+  (-> (prefs/SharedPreferences.getInstance)
+      (.then (fn [^prefs/SharedPreferences p]
+               (let [key (str book-progress-key-prefix book-id)]
                  (if (.containsKey p key)
                    (.getDouble p key)
                    0.0))))
