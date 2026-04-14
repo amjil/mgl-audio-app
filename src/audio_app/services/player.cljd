@@ -45,6 +45,9 @@
 ;; Sleep timer implementation: keep the Timer handle outside of reactive state.
 (def ^:private sleep-timer (atom nil))
 
+;; Some platforms / sources rarely emit `onPositionChanged`; poll while playing.
+(def ^:private position-poll-timer (atom nil))
+
 ;; Playback speed presets (cycle in UI).
 (def ^:private speed-presets [0.8 1.0 1.25 1.5 2.0])
 
@@ -122,6 +125,33 @@
 ;; =============================================================================
 ;; 3. Core listeners: convert Dart streams into reactive atoms
 ;; =============================================================================
+(defn- cancel-position-poll!
+  []
+  (when-let [t @position-poll-timer]
+    (try (.cancel ^da/Timer t)
+         (catch dynamic _e nil)))
+  (reset! position-poll-timer nil))
+
+(defn- start-position-poll!
+  "250ms poll of native position while :playing or :loading (backup if onPositionChanged is quiet).
+ `load-chapter!` leaves the atom on :loading until native events arrive; audio can play while
+  the atom is still :loading, so the poll must not require :playing only."
+  []
+  (when (nil? @position-poll-timer)
+    (reset! position-poll-timer
+            (da/Timer.periodic
+             (dart:core/Duration. .milliseconds 250)
+             (fn [^da/Timer _t]
+               (when (#{:playing :loading} (:status @player-state))
+                 (-> (.getCurrentPosition audio-player)
+                     (.then (fn [d]
+                              (when d
+                                (let [pos (/ (.-inMilliseconds d) 1000.0)]
+                                  (swap! player-state assoc :position pos)
+                                  (when (#{:playing :loading} (:status @player-state))
+                                    (sync-progress-to-server!))))))
+                     (.catchError (fn [_e] nil)))))))))
+
 (defn- init-listeners! 
   "Initialize player event listeners, executed once when the service loads"
   []
@@ -134,7 +164,9 @@
                                 (= state ap/PlayerState.completed) :completed
                                 :else :stopped)]
                    (swap! player-state assoc :status status)
-                   
+                   (if (= status :playing)
+                     (start-position-poll!)
+                     (cancel-position-poll!))
                    (cond
                      (= status :paused)
                      (sync-progress-to-server!)
@@ -155,8 +187,7 @@
       (.listen (fn [^dart:core/Duration d]
                  (let [pos (/ (.-inMilliseconds d) 1000.0)]
                    (swap! player-state assoc :position pos)
-                   ;; Sync frequently but throttle writes inside sync-progress-to-server!.
-                   (when (= :playing (:status @player-state))
+                   (when (#{:playing :loading} (:status @player-state))
                      (sync-progress-to-server!))))))
 
   ;; Listen for total duration (usually fires once when audio is loaded)
@@ -177,6 +208,7 @@
   [book chapter audio-url & {:keys [playlist index start-position-sec] :or {playlist [] index 0}}]
   ;; 1. Put UI into loading state and reset progress
   (let [start-sec (or start-position-sec 0)]
+  (cancel-position-poll!)
   (swap! player-state assoc
          :current-book book
          :current-chapter chapter
@@ -189,7 +221,12 @@
   
   ;; 2. Command the underlying player to load and play the URL
   ;; (UrlSource automatically handles buffering network audio)
-  (.play audio-player (ap/UrlSource. audio-url))
+  ;; Start position poll after `play` Future completes so we don't depend solely on
+  ;; onPlayerStateChanged (some builds leave :loading in the atom while audio plays).
+  (-> (.play audio-player (ap/UrlSource. audio-url))
+      (.then (fn [_] (start-position-poll!)))
+      (.catchError (fn [e]
+                     (dart:core/print (str "audio play failed: " e)))))
 
   ;; 2.5 Apply last-selected playback speed.
   (set-speed! (:speed @player-state))
@@ -202,7 +239,7 @@
   "Toggle between play and pause"
   []
   (let [status (:status @player-state)]
-    (if (= status :playing)
+    (if (#{:playing :loading} status)
       (.pause audio-player)
       (.resume audio-player))))
 
@@ -211,6 +248,7 @@
   []
   (sync-progress-to-server!)
   (cancel-sleep-timer!)
+  (cancel-position-poll!)
   (.stop audio-player)
   (swap! player-state assoc
          :status :stopped

@@ -27,20 +27,88 @@
   (and (seq segs)
        (every? #(not (empty? (str (:text %)))) segs)))
 
-(defn- sentences-from-text
-  "Split into sentence-like chunks (Latin / CJK / Mongolian full stop ᠃)."
+(defn- sentences-from-text-raw
+  "Split on CJK/Latin/Mongolian (U+1803) sentence enders."
   [s]
   (let [s (str/trim (or s ""))]
     (if (str/blank? s)
       []
-      (let [parts (str/split s #"(?<=[。！？.!?᠃])\s*")]
+      (let [parts (str/split s #"(?<=[。！？.!?\u1803])\s*")]
         (vec (keep #(let [t (str/trim %)] (when-not (str/blank? t) t)) parts))))))
+
+(def ^:private sentences-from-text
+  "Memoized: same string avoids repeated regex split."
+  (memoize sentences-from-text-raw))
+
+(defn- body-structure*
+  "Expensive prep: sort segments once, split each chunk into sentences once.
+  `post-id` is part of the memo key only (distinct posts with same text/segments)."
+  [_post-id text raw-segs]
+  (let [segs (sorted-segments (or raw-segs []))
+        use-segs? (segments-usable-for-body? segs)]
+    (if use-segs?
+      {:use-segs? true
+       :segs segs
+       :seg-sentences (mapv #(sentences-from-text (str (:text %))) segs)}
+      {:use-segs? false
+       :plain-sentences (sentences-from-text (or text ""))})))
+
+(def ^:private body-structure
+  (memoize body-structure*))
+
+(defn- active-sentence-index-in-segment
+  "Within one timed segment, map playback time to a sentence index (0-based).
+  Uses proportional weights by character count so multi-sentence segments advance visually."
+  [position-sec seg sents]
+  (let [sents (vec sents)
+        n (count sents)]
+    (if (<= n 1)
+      0
+      (let [start-s (/ (double (or (:start_ms seg) 0)) 1000.0)
+            end-s (/ (double (or (:end_ms seg) 0)) 1000.0)
+            dur (- end-s start-s)
+            pos (double (or position-sec 0))]
+        (if (<= dur 0.0)
+          0
+          (let [local (-> (/ (- pos start-s) dur) (max 0.0) (min 1.0))
+                weights (mapv #(max 1 (count (str %))) sents)
+                total (double (reduce + 0 weights))]
+            (loop [i 0 acc 0.0]
+              (if (>= i n)
+                (dec n)
+                (let [w (double (nth weights i))
+                      next-acc (+ acc (/ w total))]
+                  (if (or (== i (dec n)) (< local next-acc))
+                    i
+                    (recur (inc i) next-acc)))))))))))
+
+(defn- active-sentence-index-plain
+  "When there are no timed segments, spread `duration-sec` across sentences by length."
+  [position-sec sents duration-sec]
+  (let [sents (vec sents)
+        n (count sents)
+        dur (double (or duration-sec 0))]
+    (if (or (<= n 1) (<= dur 0.0))
+      0
+      (let [pos (-> (double (or position-sec 0)) (max 0.0) (min dur))
+            local (/ pos dur)
+            weights (mapv #(max 1 (count (str %))) sents)
+            total (double (reduce + 0 weights))]
+        (loop [i 0 acc 0.0]
+          (if (>= i n)
+            (dec n)
+            (let [w (double (nth weights i))
+                  next-acc (+ acc (/ w total))]
+              (if (or (== i (dec n)) (< local next-acc))
+                i
+                (recur (inc i) next-acc)))))))))
 
 (defn- article-body-mongol
   "Renders post text with MongolRichText / TextSpan list.
-  Sentences are split for span boundaries; with timed segments, styles follow the active segment."
+  Sentence boundaries come from punctuation split; highlight follows playback time
+  (timed segments when present, else duration spread across plain sentences)."
   [post {:keys [primary onSurfaceVariant]} this-article? position-sec]
-  (let [segs (sorted-segments (or (:segments post) []))
+  (let [struct (body-structure (:id post) (:text post) (:segments post))
         base-style (m/TextStyle
                     .fontSize 18.0
                     .color onSurfaceVariant
@@ -50,41 +118,75 @@
                                 .fontSize 20.0
                                 .fontWeight m/FontWeight.w700
                                 .color primary)
-        active-idx (when this-article?
+        segs (:segs struct)
+        active-seg (when (and this-article? (:use-segs? struct))
                      (transcript/active-index-for-position segs position-sec))
+        plain-sent-idx (when (and this-article? (not (:use-segs? struct)))
+                         (active-sentence-index-plain
+                          position-sec
+                          (:plain-sentences struct)
+                          (:duration_seconds post)))
         span-for (fn [text active?]
                    (m/TextSpan
                     .text text
                     .style (if active? active-style base-style)))
         children
-        (if (segments-usable-for-body? segs)
+        (if (:use-segs? struct)
           (vec (mapcat
                 (fn [i]
-                  (let [active? (and this-article? (= i active-idx))
-                        raw (str (:text (nth segs i)))
-                        sents (sentences-from-text raw)]
+                  (let [seg (nth segs i)
+                        raw (str (:text seg))
+                        sents (nth (:seg-sentences struct) i)
+                        sent-i (when (and this-article? (= i active-seg))
+                                 (active-sentence-index-in-segment position-sec seg sents))]
                     (if (seq sents)
-                      (map #(span-for % active?) sents)
-                      [(span-for raw active?)])))
+                      (map-indexed (fn [j st]
+                                     (span-for st (and (some? sent-i) (= j sent-i))))
+                                   sents)
+                      [(span-for raw (and this-article? (= i active-seg)))])))
                 (range (count segs))))
-          (let [body (or (:text post) "")
-                sents (sentences-from-text body)]
+          (let [sents (:plain-sentences struct)
+                body (or (:text post) "")]
             (if (seq sents)
-              (mapv #(span-for % false) sents)
+              (map-indexed (fn [j st]
+                             (span-for st (and (some? plain-sent-idx) (= j plain-sent-idx))))
+                           sents)
               [(span-for body false)])))]
     (mgl/MongolRichText
      .text (m/TextSpan .style base-style .children children))))
+
+(defn- article-body-mongol-widget
+  "Isolated :watch on `position` so toolbar/title do not rebuild every tick."
+  [post primary onSurfaceVariant this-article?]
+  (f/widget
+   :watch [{:keys [position]} player/player-state]
+   (article-body-mongol post
+                        {:primary primary :onSurfaceVariant onSurfaceVariant}
+                        this-article?
+                        position)))
 
 (defn page
   [post]
   (f/widget
    :context ctx
    :get {{{:flds [surface primary outlineVariant onSurfaceVariant]} .-colorScheme} m/Theme}
-   :watch [{:keys [status speed current-chapter position]} player/player-state]
+   :watch [{:keys [status speed current-chapter]} player/player-state]
    (let [cur-id (when (and current-chapter (map? current-chapter)) (:id current-chapter))
          post-id (:id post)
-         this-article? (and post-id (= cur-id post-id))]
-       (m/Scaffold
+         this-article? (and post-id (= cur-id post-id))
+         ;; Toolbar icon reflects *this* post only; avoid showing pause while another item plays.
+         toolbar-play-status (if this-article?
+                               (if (#{:playing :loading} status) :playing status)
+                               :stopped)]
+       (m/PopScope
+        .canPop true
+        .onPopInvokedWithResult
+        (fn [did-pop _result]
+          (when did-pop
+            (player/dismiss-player!))
+          nil)
+        .child
+        (m/Scaffold
         .backgroundColor surface
         .body
         (m/SafeArea
@@ -135,7 +237,7 @@
                          .decoration (m/BoxDecoration
                                       .color (.withOpacity primary 0.1)
                                       .shape m/BoxShape.circle)
-                         .child (player-ui/play-pause-icon status :color primary :size 28.0)))])
+                         .child (player-ui/play-pause-icon toolbar-play-status :color primary :size 28.0)))])
 
               ;; Right group: Speed
               (m/TextButton
@@ -177,8 +279,5 @@
                          .color onSurfaceVariant)))
 
                ;; Article body (extends endlessly to the right)
-               (article-body-mongol post
-                                    {:primary primary :onSurfaceVariant onSurfaceVariant}
-                                    this-article?
-                                    position)])))]))))))
+               (article-body-mongol-widget post primary onSurfaceVariant this-article?)])))])))))))
 
