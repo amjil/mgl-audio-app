@@ -1,5 +1,6 @@
 (ns audio-app.services.player
-  (:require ["package:audioplayers/audioplayers.dart" :as ap]
+  (:require ["package:just_audio/just_audio.dart" :as ja]
+            ["package:just_audio_background/just_audio_background.dart" :as jab]
             ["dart:async" :as da]
             ["dart:core" :as dart]
             [audio-app.services.local-storage :as local-store]))
@@ -27,12 +28,12 @@
 ;; =============================================================================
 ;; 2. Underlying player instance (singleton)
 ;; =============================================================================
-(def ^:private audio-player (ap/AudioPlayer.))
+(def ^:private audio-player (ja/AudioPlayer.))
 
 ;; Sleep timer implementation: keep the Timer handle outside of reactive state.
 (def ^:private sleep-timer (atom nil))
 
-;; Some platforms / sources rarely emit `onPositionChanged`; poll while playing.
+;; Some platforms / sources rarely emit position updates; poll while playing.
 (def ^:private position-poll-timer (atom nil))
 
 ;; In-memory resume cache keyed by chapter/post id.
@@ -80,7 +81,7 @@
       (= repeat-mode :one)
       (do
         (seek! 0)
-        (.resume audio-player)
+        (.play audio-player)
         true)
 
       ;; No playlist: nothing to do.
@@ -123,7 +124,7 @@
   (reset! position-poll-timer nil))
 
 (defn- start-position-poll!
-  "250ms poll of native position while :playing or :loading (backup if onPositionChanged is quiet).
+  "250ms poll of native position while :playing or :loading (backup if stream updates are quiet).
  `load-chapter!` leaves the atom on :loading until native events arrive; audio can play while
   the atom is still :loading, so the poll must not require :playing only."
   []
@@ -133,28 +134,30 @@
              (dart:core/Duration. .milliseconds 250)
              (fn [^da/Timer _t]
                (when (#{:playing :loading} (:status @player-state))
-                 (-> (.getCurrentPosition audio-player)
-                     (.then (fn [d]
-                              (when d
-                                (let [pos (/ (.-inMilliseconds d) 1000.0)]
-                                  (swap! player-state assoc :position pos)
-                                  (when (#{:playing :loading} (:status @player-state))
-                                    (sync-progress-to-local!))))))
-                     (.catchError (fn [_e] nil)))))))))
+                 (let [d (.-position audio-player)]
+                   (when d
+                     (let [pos (/ (.-inMilliseconds d) 1000.0)]
+                       (swap! player-state assoc :position pos)
+                       (when (#{:playing :loading} (:status @player-state))
+                         (sync-progress-to-local!)))))))))))
 
 (defn- init-listeners! 
   "Initialize player event listeners, executed once when the service loads"
   []
-  ;; Listen for player state changes (Playing, Paused, Completed, etc.)
-  (-> audio-player .-onPlayerStateChanged
-      (.listen (fn [^ap/PlayerState state]
-                 (let [status (cond
-                                (= state ap/PlayerState.playing)   :playing
-                                (= state ap/PlayerState.paused)    :paused
-                                (= state ap/PlayerState.completed) :completed
-                                :else :stopped)]
+  ;; Listen for player state changes (playing/buffering/completed/etc.)
+  (-> audio-player .-playerStateStream
+      (.listen (fn [state]
+                 (let [playing? (.-playing state)
+                       processing (.-processingState state)
+                       status (cond
+                                (and (not playing?) (= processing ja/ProcessingState.completed)) :completed
+                                playing? :playing
+                                (or (= processing ja/ProcessingState.loading)
+                                    (= processing ja/ProcessingState.buffering)) :loading
+                                (= processing ja/ProcessingState.idle) :stopped
+                                :else :paused)]
                    (swap! player-state assoc :status status)
-                   (if (= status :playing)
+                   (if (#{:playing :loading} status)
                      (start-position-poll!)
                      (cancel-position-poll!))
                    (cond
@@ -169,20 +172,19 @@
                        (when (not (handle-completed!))
                          (cancel-sleep-timer!)))
 
-                     :else
-                     nil)))))
+                     :else nil)))))
 
   ;; Listen for current playback position (fires every few hundred milliseconds)
-  (-> audio-player .-onPositionChanged
-      (.listen (fn [^dart:core/Duration d]
+  (-> audio-player .-positionStream
+      (.listen (fn [d]
                  (let [pos (/ (.-inMilliseconds d) 1000.0)]
                    (swap! player-state assoc :position pos)
                    (when (#{:playing :loading} (:status @player-state))
                      (sync-progress-to-local!))))))
 
   ;; Listen for total duration (usually fires once when audio is loaded)
-  (-> audio-player .-onDurationChanged
-      (.listen (fn [^dart:core/Duration d]
+  (-> audio-player .-durationStream
+      (.listen (fn [d]
                  (when d
                    (swap! player-state assoc :duration (.-inSeconds d)))))))
 
@@ -209,21 +211,29 @@
          :duration (:duration_seconds chapter 0)
          :last-synced-position-sec nil)
   
-  ;; 2. Command the underlying player to load and play the URL
-  ;; (UrlSource automatically handles buffering network audio)
-  ;; Start position poll after `play` Future completes so we don't depend solely on
-  ;; onPlayerStateChanged (some builds leave :loading in the atom while audio plays).
-  (-> (.play audio-player (ap/UrlSource. audio-url))
-      (.then (fn [_] (start-position-poll!)))
+  ;; 2. Command the underlying player to load/play URL with lockscreen metadata
+  (-> (.setAudioSource audio-player
+                      (ja/AudioSource.uri
+                       (dart:core/Uri.parse audio-url)
+                       .tag
+                       (jab/MediaItem.
+                        .id (str (:id chapter))
+                        .title (or (:title chapter) "Untitled chapter")
+                        .album (or (:title book) "Nom-un Dalai")
+                        .duration (when-let [sec (:duration_seconds chapter)]
+                                    (dart:core/Duration. .seconds (int sec))))))
+      (.then (fn [_]
+               (if (and start-position-sec (pos? start-sec))
+                 (-> (.seek audio-player (dart:core/Duration. .seconds (int start-sec)))
+                     (.then (fn [_] (.play audio-player))))
+                 (.play audio-player))
+               (start-position-poll!)))
       (.catchError (fn [e]
-                     (dart:core/print (str "audio play failed: " e)))))
+                     (dart:core/print (str "audio load/play failed: " e)))))
 
   ;; 2.5 Apply last-selected playback speed.
   (set-speed! (:speed @player-state))
-  
-  ;; 3. Apply resume seek after issuing play command.
-  (when (and start-position-sec (pos? start-sec))
-    (seek! start-sec))))
+  ))
 
 (defn resume-position-sec
   "Return last known local resume position (seconds) for chapter/post id."
@@ -237,7 +247,7 @@
   (let [status (:status @player-state)]
     (if (#{:playing :loading} status)
       (.pause audio-player)
-      (.resume audio-player))))
+      (.play audio-player))))
 
 (defn dismiss-player!
   "Stop playback and clear current media so mini player is hidden."
@@ -272,14 +282,9 @@
   (let [r (double (or rate 1.0))]
     (swap! player-state assoc :speed r)
     (try
-      ;; audioplayers v5: setPlaybackRate(rate: double)
-      ;; Some versions accept a single positional arg; keep it defensive.
-      (try
-        (.setPlaybackRate audio-player .playbackRate r)
-        (catch dynamic _e
-          (.setPlaybackRate audio-player r)))
+      (.setSpeed audio-player r)
       (catch dynamic e
-        (dart:core/print (str "⚠️ setPlaybackRate failed: " e))))))
+        (dart:core/print (str "⚠️ setSpeed failed: " e))))))
 
 (defn cycle-speed!
   "Cycle through speed presets."

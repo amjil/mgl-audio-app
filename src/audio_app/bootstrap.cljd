@@ -1,5 +1,6 @@
 (ns audio-app.bootstrap
   (:require ["package:just_audio_background/just_audio_background.dart" :as jab]
+            ["package:audio_session/audio_session.dart" :as as]
             [audio-app.services.hive :as hive]
             [virtual-keyboard.zip-utils :as zip-utils]
             [virtual-keyboard.fst-reader :as fst-reader]
@@ -17,4 +18,6 @@
           .androidNotificationChannelId "com.nomundalai.app.audio"
           .androidNotificationChannelName "Nom-un Dalai playback"
           .androidNotificationOngoing true))
+  (let [session (await (as/AudioSession.instance))]
+    (await (.configure session (as/AudioSessionConfiguration.speech))))
   (await (hive/init!)))
