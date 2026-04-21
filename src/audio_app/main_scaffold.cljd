@@ -8,7 +8,6 @@
             [audio-app.services.library :as library-srv]
             [audio-app.services.profile :as profile-srv]
             [audio-app.components.bottom-nav :as bottom-nav]
-            [audio-app.components.mini-player :as mini-player]
             [audio-app.pages.auth :as auth]
             [audio-app.pages.article-feed :as article-feed]
             [audio-app.pages.discovery :as discovery]
@@ -50,15 +49,12 @@
      
      (m/Scaffold
       .body
-      (m/Stack
-       .children [(m/IndexedStack
-                    .index tab-idx
-                    .children [(article-feed/page)
-                               (discovery/page)
-                               (library/page)
-                               (profile/page)])
-                   ;; Floating mini player for quick resume.
-                   (mini-player/widget)])
+      (m/IndexedStack
+       .index tab-idx
+       .children [(article-feed/page)
+                  (discovery/page)
+                  (library/page)
+                  (profile/page)])
 
       .bottomNavigationBar
       (bottom-nav/widget
