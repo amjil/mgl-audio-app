@@ -1,8 +1,10 @@
 (ns audio-app.services.hive
-  (:require ["package:hive/hive.dart" :as hive]
-           ["package:path_provider/path_provider.dart" :as path]
-           ["dart:convert" :as convert]
-           ["dart:core" :as dart]))
+  (:require ["package:flutter/foundation.dart" :as foundation]
+            ["package:hive/hive.dart" :as hive]
+            ["package:path_provider/path_provider.dart" :as path]
+            ["dart:async" :as da]
+            ["dart:convert" :as convert]
+            ["dart:core" :as dart]))
 
 ;; =============================================================================
 ;; 0. Database configuration
@@ -68,23 +70,26 @@
 ;; =============================================================================
 ;; 2. Database lifecycle management
 ;; =============================================================================
-(defn init! 
+(defn init!
   "Initialize Hive engine and open required boxes.
-   Must be called before runApp or during app splash/loading."
+   Must be called before runApp or during app splash/loading.
+   On Web, Hive is skipped entirely (IndexedDB/path quirks); app stays online‑only there."
   []
-  ;; Manually specify local storage directory instead of Hive.initFlutter
-  ;; to avoid version‑specific extension issues.
-  (-> (path/getApplicationDocumentsDirectory)
-      (.then (fn [dir]
-               (let [dir-path (.-path dir)]
-                 (dart:core/print (str "📁 Hive storage path: " dir-path))
-                 (hive/Hive.init dir-path)
-                 (dart:core/print "🐝 Hive initialized successfully")
-                 (hive/Hive.openBox books-box-name))))
-      (.then (fn [_]
-               (dart:core/print (str "📦 Box [" books-box-name "] opened"))))
-      (.catchError (fn [e]
-                     (dart:core/print (str "❌ Hive initialization failed: " e))))))
+  (if foundation/kIsWeb
+    (do
+      (dart:core/print "🌐 Web: Hive disabled (no offline book cache)")
+      (da/Future.value nil))
+    (-> (path/getApplicationDocumentsDirectory)
+        (.then (fn [dir]
+                 (let [dir-path (.-path dir)]
+                   (dart:core/print (str "📁 Hive storage path: " dir-path))
+                   (hive/Hive.init dir-path)
+                   (dart:core/print "🐝 Hive initialized successfully")
+                   (hive/Hive.openBox books-box-name))))
+        (.then (fn [_]
+                 (dart:core/print (str "📦 Box [" books-box-name "] opened"))))
+        (.catchError (fn [e]
+                       (dart:core/print (str "❌ Hive initialization failed: " e)))))))
 
 ;; =============================================================================
 ;; 3. Business API: synchronous methods for UI and services
@@ -94,39 +99,46 @@
   "Cache full book information (chapters, transcript, etc.).
    Hive .put writes synchronously and very quickly."
   [book-map]
-  (when-let [book-id (:id book-map)]
-    (let [box (hive/Hive.box books-box-name)
-          json-data (clj->json-str book-map)]
-      (.put box book-id json-data)
-      (dart:core/print (str "💾 Cached book: " (:title book-map))))))
+  (when-not foundation/kIsWeb
+    (when-let [book-id (:id book-map)]
+      (let [box (hive/Hive.box books-box-name)
+            json-data (clj->json-str book-map)]
+        (.put box book-id json-data)
+        (dart:core/print (str "💾 Cached book: " (:title book-map)))))))
 
 (defn get-cached-book 
   "Get cached book details by ID.
    Returns a Clojure map or nil if not cached."
   [book-id]
-  (let [box (hive/Hive.box books-box-name)]
-    (when-let [json-str (.get box book-id)]
-      (json-str->clj json-str))))
+  (when-not foundation/kIsWeb
+    (let [box (hive/Hive.box books-box-name)]
+      (when-let [json-str (.get box book-id)]
+        (json-str->clj json-str)))))
 
 (defn get-all-cached-books 
   "Get all locally cached books (for 'downloaded' or 'offline available' sections)."
   []
-  (let [box (hive/Hive.box books-box-name)
-        json-strings (.-values box)]
-    (->> json-strings
-         (map json-str->clj)
-         (filter some?)
-         (into []))))
+  (if foundation/kIsWeb
+    []
+    (let [box (hive/Hive.box books-box-name)
+          json-strings (.-values box)]
+      (->> json-strings
+           (map json-str->clj)
+           (filter some?)
+           (into [])))))
 
 (defn remove-cached-book! 
   "Remove a book from local storage (free space)."
   [book-id]
-  (let [box (hive/Hive.box books-box-name)]
-    (.delete box book-id)
-    (dart:core/print (str "🗑️ Cleared cached book: " book-id))))
+  (when-not foundation/kIsWeb
+    (let [box (hive/Hive.box books-box-name)]
+      (.delete box book-id)
+      (dart:core/print (str "🗑️ Cleared cached book: " book-id)))))
 
 (defn is-cached? 
   "Check whether a book is already cached locally."
   [book-id]
-  (let [box (hive/Hive.box books-box-name)]
-    (.containsKey box book-id)))
+  (if foundation/kIsWeb
+    false
+    (let [box (hive/Hive.box books-box-name)]
+      (.containsKey box book-id))))

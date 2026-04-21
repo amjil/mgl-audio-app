@@ -5,5 +5,5 @@
 
 (defn main []
   (m/WidgetsFlutterBinding.ensureInitialized)
-  (bootstrap/init-app!)
+  (await (bootstrap/init-app!))
   (m/runApp (app-root/main-app)))

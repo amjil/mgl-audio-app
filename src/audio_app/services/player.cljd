@@ -3,7 +3,8 @@
             ["package:just_audio_background/just_audio_background.dart" :as jab]
             ["dart:async" :as da]
             ["dart:core" :as dart]
-            [audio-app.services.local-storage :as local-store]))
+            [audio-app.services.local-storage :as local-store]
+            [audio-app.services.playback :as playback-srv]))
 
 ;; =============================================================================
 ;; 1. Global player state (single source of truth)
@@ -370,4 +371,5 @@
           (swap! player-state assoc :last-synced-position-sec position)
           (local-store/save-progress! (:id current-chapter) position)
           (when book-id
-            (local-store/save-book-progress! book-id position)))))))
+            (local-store/save-book-progress! book-id position))
+          (playback-srv/sync-progress-remote! book-id (:id current-chapter) position))))))

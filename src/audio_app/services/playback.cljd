@@ -13,6 +13,16 @@
      }
    }")
 
+(def ^:private sync-playback-progress-mutation
+  "mutation SyncPlaybackProgress($bookId: ID!, $chapterId: ID!, $positionMs: Int!) {
+     sync_playback_progress(book_id: $bookId, chapter_id: $chapterId, position_ms: $positionMs) {
+       id
+       book_id
+       chapter_id
+       position_ms
+     }
+   }")
+
 (def ^:private resume-book-query
   "query ResumeBook($bookId: ID!) {
      book(id: $bookId) {
@@ -95,4 +105,19 @@
                            :index saved-idx}))))))
         on-err (fn [_e] nil)]
     (.catchError (.then fut on-ok) on-err)))
+
+(defn sync-progress-remote!
+  "Upsert progress on the server (drives My Library > Recently played). Fire-and-forget; failures are logged only."
+  [book-id chapter-id position-sec]
+  (when (and book-id chapter-id (number? position-sec) (>= position-sec 0))
+    (let [bid (str book-id)
+          cid (str chapter-id)
+          position-ms (max 0 (int (* position-sec 1000)))]
+      (-> (gql/mutate sync-playback-progress-mutation
+                      {:bookId bid :chapterId cid :positionMs position-ms})
+          (.then (fn [resp]
+                   (when (:error resp)
+                     (dart:core/print (str "⚠️ sync_playback_progress: " (:error resp))))))
+          (.catchError (fn [e]
+                         (dart:core/print (str "⚠️ sync_playback_progress failed: " e))))))))
 

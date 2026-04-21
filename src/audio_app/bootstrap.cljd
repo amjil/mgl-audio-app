@@ -7,7 +7,7 @@
             [virtual-keyboard.keyboard-candidates :as kc]
             [virtual-keyboard.input-control :as control]))
 
-(defn init-app!
+(defn ^:async init-app!
   "One-shot startup: input control, dictionaries, background audio, Hive.
   Call after `WidgetsFlutterBinding.ensureInitialized`."
   []

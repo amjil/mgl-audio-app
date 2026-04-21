@@ -29,9 +29,8 @@
     ;; Discovery tab
     1 (when (not (:initialized? @state/discovery-state))
         (discovery-srv/load-data! state/discovery-state))
-    ;; Library tab
-    2 (when (not (:initialized? @state/library-state))
-        (library-srv/load-data! state/library-state))
+    ;; Library tab (always refetch: recently played updates after listening)
+    2 (library-srv/load-data! state/library-state)
     ;; Profile tab
     3 (when (not (:initialized? @state/profile-state))
         (profile-srv/load-data! state/profile-state))
