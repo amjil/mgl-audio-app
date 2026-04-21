@@ -27,9 +27,27 @@
 (declare sync-progress-to-local! next! seek! set-speed! cancel-sleep-timer! handle-completed! load-chapter!)
 
 ;; =============================================================================
-;; 2. Underlying player instance (singleton)
+;; 2. Underlying player instance (singleton, lazy)
 ;; =============================================================================
-(def ^:private audio-player (ja/AudioPlayer.))
+;; Eager `(AudioPlayer.)` at namespace load runs before `main` → `JustAudioBackground.init`
+;; (see app bootstrap), which triggers "only a single player instance".
+(def ^:private audio-player* (atom nil))
+(def ^:private listeners-attached? (atom false))
+
+(defn ensure-audio-player!
+  "Create the single AudioPlayer and attach stream listeners once.
+  Call only after `JustAudioBackground.init` (bootstrap does this)."
+  []
+  (when (nil? @audio-player*)
+    (reset! audio-player* (ja/AudioPlayer.)))
+  (when-not @listeners-attached?
+    (init-listeners!)
+    (reset! listeners-attached? true)))
+
+(defn- ap
+  "The native player; callers must invoke `ensure-audio-player!` first."
+  []
+  @audio-player*)
 
 ;; Sleep timer implementation: keep the Timer handle outside of reactive state.
 (def ^:private sleep-timer (atom nil))
@@ -82,7 +100,7 @@
       (= repeat-mode :one)
       (do
         (seek! 0)
-        (.play audio-player)
+        (.play (ap))
         true)
 
       ;; No playlist: nothing to do.
@@ -125,72 +143,65 @@
   (reset! position-poll-timer nil))
 
 (defn- start-position-poll!
-  "250ms poll of native position while :playing or :loading (backup if stream updates are quiet).
- `load-chapter!` leaves the atom on :loading until native events arrive; audio can play while
-  the atom is still :loading, so the poll must not require :playing only."
+  "250ms poll of native position while the engine is actually playing (backup if position stream is quiet)."
   []
   (when (nil? @position-poll-timer)
     (reset! position-poll-timer
             (da/Timer.periodic
              (dart:core/Duration. .milliseconds 250)
              (fn [^da/Timer _t]
-               (when (#{:playing :loading} (:status @player-state))
-                 (let [d (.-position audio-player)]
+               (when (.-playing (ap))
+                 (let [d (.-position (ap))]
                    (when d
                      (let [pos (/ (.-inMilliseconds d) 1000.0)]
                        (swap! player-state assoc :position pos)
-                       (when (#{:playing :loading} (:status @player-state))
+                       (when (.-playing (ap))
                          (sync-progress-to-local!)))))))))))
 
 (defn- init-listeners! 
   "Initialize player event listeners, executed once when the service loads"
   []
-  ;; Listen for player state changes (playing/buffering/completed/etc.)
-  (-> audio-player .-playerStateStream
+  ;; Native bool drives :playing / :paused. `playerStateStream` can report loading while playing,
+  ;; which previously forced :status :loading and stuck the UI on the pause icon.
+  (-> (ap) .-playingStream
+      (.listen (fn [playing?]
+                 (swap! player-state
+                        (fn [s]
+                          (if (or (not (:current-chapter s))
+                                  (#{:completed :stopped} (:status s)))
+                            s
+                            (assoc s :status (if playing? :playing :paused)))))
+                 (if playing?
+                   (start-position-poll!)
+                   (do (cancel-position-poll!)
+                       (sync-progress-to-local!))))))
+
+  ;; Terminal / completion only — do not derive play/pause from aggregate playerState here.
+  (-> (ap) .-playerStateStream
       (.listen (fn [state]
                  (let [playing? (.-playing state)
-                       processing (.-processingState state)
-                       status (cond
-                                (and (not playing?) (= processing ja/ProcessingState.completed)) :completed
-                                playing? :playing
-                                (or (= processing ja/ProcessingState.loading)
-                                    (= processing ja/ProcessingState.buffering)) :loading
-                                (= processing ja/ProcessingState.idle) :stopped
-                                :else :paused)]
-                   (swap! player-state assoc :status status)
-                   (if (#{:playing :loading} status)
-                     (start-position-poll!)
-                     (cancel-position-poll!))
-                   (cond
-                     (= status :paused)
+                       processing (.-processingState state)]
+                   (when (and (not playing?) (= processing ja/ProcessingState.completed))
+                     (swap! player-state assoc :status :completed)
+                     (cancel-position-poll!)
                      (sync-progress-to-local!)
-
-                     (= status :completed)
-                     (do
-                       (sync-progress-to-local!)
-                       (dart:core/print "🎵 Current chapter finished playback")
-                       ;; Only cancel sleep-timer if we are actually stopping.
-                       (when (not (handle-completed!))
-                         (cancel-sleep-timer!)))
-
-                     :else nil)))))
+                     (dart:core/print "🎵 Current chapter finished playback")
+                     (when (not (handle-completed!))
+                       (cancel-sleep-timer!)))))))
 
   ;; Listen for current playback position (fires every few hundred milliseconds)
-  (-> audio-player .-positionStream
+  (-> (ap) .-positionStream
       (.listen (fn [d]
                  (let [pos (/ (.-inMilliseconds d) 1000.0)]
                    (swap! player-state assoc :position pos)
-                   (when (#{:playing :loading} (:status @player-state))
+                   (when (.-playing (ap))
                      (sync-progress-to-local!))))))
 
   ;; Listen for total duration (usually fires once when audio is loaded)
-  (-> audio-player .-durationStream
+  (-> (ap) .-durationStream
       (.listen (fn [d]
                  (when d
                    (swap! player-state assoc :duration (.-inSeconds d)))))))
-
-;; Initialize listeners immediately when the namespace is loaded
-(init-listeners!)
 
 ;; =============================================================================
 ;; 4. Public control APIs (UI layer only calls these)
@@ -199,6 +210,7 @@
 (defn load-chapter! 
   "Load and play a specific chapter"
   [book chapter audio-url & {:keys [playlist index start-position-sec] :or {playlist [] index 0}}]
+  (ensure-audio-player!)
   ;; 1. Put UI into loading state and reset progress
   (let [start-sec (or start-position-sec 0)]
   (cancel-position-poll!)
@@ -213,7 +225,7 @@
          :last-synced-position-sec nil)
   
   ;; 2. Command the underlying player to load/play URL with lockscreen metadata
-  (-> (.setAudioSource audio-player
+  (-> (.setAudioSource (ap)
                       (ja/AudioSource.uri
                        (dart:core/Uri.parse audio-url)
                        .tag
@@ -225,9 +237,9 @@
                                     (dart:core/Duration. .seconds (int sec))))))
       (.then (fn [_]
                (if (and start-position-sec (pos? start-sec))
-                 (-> (.seek audio-player (dart:core/Duration. .seconds (int start-sec)))
-                     (.then (fn [_] (.play audio-player))))
-                 (.play audio-player))
+                 (-> (.seek (ap) (dart:core/Duration. .seconds (int start-sec)))
+                     (.then (fn [_] (.play (ap)))))
+                 (.play (ap)))
                (start-position-poll!)))
       (.catchError (fn [e]
                      (dart:core/print (str "audio load/play failed: " e)))))
@@ -245,10 +257,15 @@
 (defn toggle-play! 
   "Toggle between play and pause"
   []
-  (let [status (:status @player-state)]
-    (if (#{:playing :loading} status)
-      (.pause audio-player)
-      (.play audio-player))))
+  (ensure-audio-player!)
+  (if (.-playing (ap))
+    (do (.pause (ap))
+        (swap! player-state assoc :status :paused)
+        (cancel-position-poll!)
+        (sync-progress-to-local!))
+    (do (.play (ap))
+        (swap! player-state assoc :status :playing)
+        (start-position-poll!))))
 
 (defn dismiss-player!
   "Stop playback and clear current media so mini player is hidden."
@@ -260,7 +277,8 @@
   (sync-progress-to-local!)
   (cancel-sleep-timer!)
   (cancel-position-poll!)
-  (.stop audio-player)
+  (when @audio-player*
+    (.stop (ap)))
   (swap! player-state assoc
          :status :stopped
          :position 0
@@ -274,16 +292,18 @@
 (defn seek! 
   "Seek to the specified second (used by the slider)"
   [seconds]
+  (ensure-audio-player!)
   (let [target-duration (dart:core/Duration. .seconds (int seconds))]
-    (.seek audio-player target-duration)))
+    (.seek (ap) target-duration)))
 
 (defn set-speed!
   "Set playback speed (rate)."
   [rate]
+  (ensure-audio-player!)
   (let [r (double (or rate 1.0))]
     (swap! player-state assoc :speed r)
     (try
-      (.setSpeed audio-player r)
+      (.setSpeed (ap) r)
       (catch dynamic e
         (dart:core/print (str "⚠️ setSpeed failed: " e))))))
 
@@ -307,6 +327,7 @@
 (defn start-sleep-timer!
   "Start a sleep timer for N minutes; pauses playback when countdown reaches 0."
   [minutes]
+  (ensure-audio-player!)
   (cancel-sleep-timer!)
   (let [total-sec (* (int minutes) 60)]
     (swap! player-state assoc :sleep-remaining-sec total-sec)
@@ -323,7 +344,7 @@
                    (<= next 0)
                    (do
                      (swap! player-state assoc :sleep-remaining-sec 0)
-                     (.pause audio-player)
+                     (.pause (ap))
                      (cancel-sleep-timer!))
 
                    :else

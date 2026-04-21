@@ -213,7 +213,7 @@
          this-article? (and post-id (= cur-id post-id))
          ;; Toolbar icon reflects *this* post only; avoid showing pause while another item plays.
          toolbar-play-status (if this-article?
-                               (if (#{:playing :loading} status) :playing status)
+                               (if (= status :playing) :playing status)
                                :stopped)]
        (m/PopScope
         .canPop true
