@@ -1,0 +1,112 @@
+(ns audio-app.services.drift
+  (:require ["package:flutter/foundation.dart" :as foundation]
+            ["package:cljd_m_audio_app/audio_cache_database.dart" :as app-db]
+            ["dart:async" :as da]
+            ["dart:convert" :as convert]
+            ["dart:core" :as dart]))
+
+(def ^:private db* (atom nil))
+(def ^:private books-cache* (atom {}))
+
+(defn- clj->json-str [clj-data]
+  (letfn [(clj->encodable [x]
+            (cond
+              (nil? x) nil
+              (dart/is? x dart/Map)
+              (dart/Map.fromEntries
+               (dart/List.from
+                (into []
+                      (for [[k v] x]
+                        (dart/MapEntry. (if (keyword? k) (name k) (str k))
+                                        (clj->encodable v))))))
+              (dart/is? x dart/List)
+              (dart/List.from (into [] (map clj->encodable x)))
+              (associative? x)
+              (dart/Map.fromEntries
+               (dart/List.from
+                (into []
+                      (for [[k v] x]
+                        (dart/MapEntry. (if (keyword? k) (name k) (str k))
+                                        (clj->encodable v))))))
+              (sequential? x)
+              (dart/List.from (into [] (map clj->encodable x)))
+              :else x))]
+    (convert/jsonEncode (clj->encodable clj-data))))
+
+(defn- json-str->clj [json-str]
+  (letfn [(json->clj [x]
+            (cond
+              (dart/is? x dart/Map)
+              (into {} (for [[k v] x] [(keyword (str k)) (json->clj v)]))
+              (dart/is? x dart/List)
+              (mapv json->clj x)
+              :else x))]
+    (when json-str
+      (json->clj (convert/jsonDecode json-str)))))
+
+(defn- sql-escape [s]
+  (-> (str (or s ""))
+      (.replaceAll "'" "''")))
+
+(defn- load-cache-from-db! []
+  (if-let [db @db*]
+    (-> (.get (.customSelect db "SELECT book_id, payload FROM offline_books"))
+        (.then (fn [rows]
+                 (let [items (into {}
+                                   (keep (fn [row]
+                                           (let [row-data (.-data row)
+                                                 book-id (get row-data "book_id")
+                                                 payload (get row-data "payload")
+                                                 data (json-str->clj payload)]
+                                             (when (and book-id data)
+                                               [book-id data]))))
+                                   rows)]
+                   (reset! books-cache* items)
+                   (dart:core/print (str "💾 Drift cache loaded: " (count items) " books"))))))
+    (da/Future.value nil)))
+
+(defn init! []
+  (if foundation/kIsWeb
+    (do
+      (dart:core/print "🌐 Web: Drift disabled (no offline book cache)")
+      (da/Future.value nil))
+    (-> (app-db/initDriftDatabase)
+        (.then (fn [db]
+                 (reset! db* db)
+                 (load-cache-from-db!)))
+        (.catchError (fn [e]
+                       (dart:core/print (str "❌ Drift initialization failed: " e)))))))
+
+(defn cache-book! [book-map]
+  (when-not foundation/kIsWeb
+    (when-let [book-id (:id book-map)]
+      (let [json-data (clj->json-str book-map)]
+        (swap! books-cache* assoc book-id book-map)
+        (when-let [db @db*]
+          (.customStatement
+           db
+           (str "INSERT OR REPLACE INTO offline_books(book_id, payload, updated_at) VALUES ('"
+                (sql-escape book-id) "', '"
+                (sql-escape json-data) "', strftime('%s','now'))")))
+        (dart:core/print (str "💾 Cached book by Drift: " (:title book-map)))))))
+
+(defn get-cached-book [book-id]
+  (when-not foundation/kIsWeb
+    (get @books-cache* book-id)))
+
+(defn get-all-cached-books []
+  (if foundation/kIsWeb
+    []
+    (-> @books-cache* vals vec)))
+
+(defn remove-cached-book! [book-id]
+  (when-not foundation/kIsWeb
+    (swap! books-cache* dissoc book-id)
+    (when-let [db @db*]
+      (.customStatement db (str "DELETE FROM offline_books WHERE book_id='" (sql-escape book-id) "'")))
+    (dart:core/print (str "🗑️ Cleared cached book: " book-id))))
+
+(defn is-cached? [book-id]
+  (if foundation/kIsWeb
+    false
+    (contains? @books-cache* book-id)))

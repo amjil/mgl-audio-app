@@ -42,8 +42,11 @@ dependencies:
   just_audio: ^0.9.40
   just_audio_background: ^0.0.1-beta.14
   audio_session: ^0.1.21
+  drift: ^2.29.0
+  sqlite3_flutter_libs: ^0.5.39
   hive: ^2.2.3
-  hive_flutter: ^1.1.0
+  path: ^1.9.1
+  path_provider: ^2.1.5
   flutter_styled_toast: ^2.3.0
   flutter_secure_storage: ^10.0.0
   mongol: ^9.2.1

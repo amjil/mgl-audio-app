@@ -1,6 +1,6 @@
 (ns audio-app.services.book
   (:require [audio-app.services.gql :as gql]
-            [audio-app.services.hive :as hive]
+            [audio-app.services.drift :as drift]
             [audio-app.models.book :as book-ui]))
 
 (def get-book-details-query
@@ -33,12 +33,12 @@
   [state-atom book-id]
   
   ;; ==========================================
-  ;; 1. Instant response: try to get cached data from local Hive
+  ;; 1. Instant response: try to get cached data from local Drift
   ;; ==========================================
-  (let [cached-book (hive/get-cached-book book-id)
+  (let [cached-book (drift/get-cached-book book-id)
         cached-ui (when cached-book (book-ui/book-detail-api->ui cached-book))]
     (if cached-book
-      ;; Cache hit: show UI model immediately (Hive still stores raw API shape).
+      ;; Cache hit: show UI model immediately (Drift still stores raw API shape).
       (swap! state-atom assoc :loading? false :error nil :data cached-ui)
       
       ;; Cache miss: enter loading state and wait for the network
@@ -62,7 +62,7 @@
                    (let [fresh-book (:book resp)
                          ui-book (book-ui/book-detail-api->ui fresh-book)]
                      (swap! state-atom assoc :loading? false :error nil :data ui-book)
-                     (hive/cache-book! fresh-book)))))
+                     (drift/cache-book! fresh-book)))))
         (.catchError (fn [e]
                        (if-not cached-book
                          (swap! state-atom assoc :loading? false :error e)

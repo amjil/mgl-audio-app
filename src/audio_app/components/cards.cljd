@@ -21,9 +21,9 @@
    - :title-font-size
    - :on-tap
    If :author :name is present and non-empty, title and author render in a Row (two vertical strips)."
-  [book & {:keys [width height border-radius cover-variant cover-width cover-height cover-radius margin-right title-font-size on-tap]
+  [book & {:keys [width height border-radius cover-variant cover-width cover-height cover-radius margin-right title-font-size on-tap hero?]
            ;; Use width 140.0 as the default fixed width
-           :or {width 140.0 height double/infinity border-radius 12.0 title-font-size 18.0 cover-variant :rect margin-right 24.0}}]
+           :or {width 140.0 height double/infinity border-radius 12.0 title-font-size 18.0 cover-variant :rect margin-right 24.0 hero? false}}]
   (let [cw (or cover-width width)
         ;; Avatar covers should feel "full-bleed" inside the fixed card width.
         ;; If a smaller radius is explicitly provided, we still expand it up to cw/2
@@ -60,13 +60,15 @@
                      .height (* cr 2.0)
                      .child (m/Center
                              .child (media/hero-cover-avatar (:id book) (:cover_url book)
-                                                             :radius cr)))
+                                                             :radius cr
+                                                             :hero? hero?)))
                     ;; Pass width to hero-cover; BoxFit.cover crops irregular images cleanly
                     (m/Center
                      .child (media/hero-cover (:id book) (:cover_url book) 
                                               :width cw
                                               :height ch
-                                              :border-radius border-radius)))
+                                              :border-radius border-radius
+                                              :hero? hero?)))
                   
                   (m/SizedBox .height 8.0)
                   

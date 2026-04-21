@@ -2,14 +2,14 @@
   (:require ["package:just_audio_background/just_audio_background.dart" :as jab]
             ["package:audio_session/audio_session.dart" :as as]
             [audio-app.services.player :as player]
-            [audio-app.services.hive :as hive]
+            [audio-app.services.drift :as drift]
             [virtual-keyboard.zip-utils :as zip-utils]
             [virtual-keyboard.fst-reader :as fst-reader]
             [virtual-keyboard.keyboard-candidates :as kc]
             [virtual-keyboard.input-control :as control]))
 
 (defn ^:async init-app!
-  "One-shot startup: input control, dictionaries, background audio, Hive.
+  "One-shot startup: input control, dictionaries, background audio, Drift.
   Call after `WidgetsFlutterBinding.ensureInitialized`."
   []
   (control/set-control)
@@ -23,4 +23,4 @@
   (player/ensure-audio-player!)
   (let [session (await (as/AudioSession.instance))]
     (await (.configure session (as/AudioSessionConfiguration.speech))))
-  (await (hive/init!)))
+  (await (drift/init!)))
