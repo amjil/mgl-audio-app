@@ -46,7 +46,8 @@
   (let [draft-atom (atom "")
         active-query-atom (atom "")
         preview-atom (atom {:items [] :loading? false :error nil})
-        debounce-timer-atom (atom nil)]
+        debounce-timer-atom (atom nil)
+        kb-state (atom {})]
     (f/widget
      :context ctx
      :get {{{:flds [surface onSurface outlineVariant]} .-colorScheme} m/Theme}
@@ -110,6 +111,7 @@
                               .border (m/Border.all .color outlineVariant)
                               .borderRadius (m/BorderRadius.circular 10.0))
                  .child (text-field/text-field
+                         kb-state
                          {:controller controller
                           :hint "ᠪᠢᠴᠢᠬᠦ ᠁"
                           :autofocus true
@@ -197,4 +199,8 @@
 
          (m/SizedBox .height 8.0)
 
-         (keyboard/keyboard {})]))))))
+         (keyboard/keyboard
+          {:custom-fns {:on-return #(when-let [cb (:on-return (:external-keyboard-delegate @kb-state))]
+                                      (cb))
+                        :on-backspace #(when-let [cb (:on-backspace (:external-keyboard-delegate @kb-state))]
+                                         (cb))}})]))))))
