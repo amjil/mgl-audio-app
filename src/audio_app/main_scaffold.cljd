@@ -4,12 +4,10 @@
             [audio-app.state :as state]
             [audio-app.services.gql :as gql]
             [audio-app.services.discovery :as discovery-srv]
-            [audio-app.services.article-feed :as article-feed-srv]
             [audio-app.services.library :as library-srv]
             [audio-app.services.profile :as profile-srv]
             [audio-app.components.bottom-nav :as bottom-nav]
             [audio-app.pages.auth :as auth]
-            [audio-app.pages.article-feed :as article-feed]
             [audio-app.pages.discovery :as discovery]
             [audio-app.pages.library :as library]
             [audio-app.pages.profile :as profile]))
@@ -22,16 +20,10 @@
    This avoids repeated requests in business scenarios where an empty list is allowed."
   [index]
   (case index
-    ;; Article feed tab
-    0 (when (not (:initialized? @state/article-feed-state))
-        (article-feed-srv/load-data! state/article-feed-state))
-    ;; Discovery tab
-    1 (when (not (:initialized? @state/discovery-state))
+    0 (when (not (:initialized? @state/discovery-state))
         (discovery-srv/load-data! state/discovery-state))
-    ;; Library tab (always refetch: recently played updates after listening)
-    2 (library-srv/load-data! state/library-state)
-    ;; Profile tab
-    3 (when (not (:initialized? @state/profile-state))
+    1 (library-srv/load-data! state/library-state)
+    2 (when (not (:initialized? @state/profile-state))
         (profile-srv/load-data! state/profile-state))
     nil))
 
@@ -40,22 +32,16 @@
 ;; =============================================================================
 (defn- main-layout []
   (let [current-tab (atom 0)]
-    
-    ;; Preload first tab (article feed) when entering the main layout
     (trigger-tab-load! 0)
-    
     (f/widget
      :watch [tab-idx current-tab]
-     
      (m/Scaffold
       .body
       (m/IndexedStack
        .index tab-idx
-       .children [(article-feed/page)
-                  (discovery/page)
+       .children [(discovery/page)
                   (library/page)
                   (profile/page)])
-
       .bottomNavigationBar
       (bottom-nav/widget
        tab-idx
@@ -78,8 +64,8 @@
           (m/Scaffold .body (m/Center .child (m/CircularProgressIndicator)))
           
           (and (.-hasData snapshot) 
-               (not (empty? (.-data snapshot))))
+               (not (nil? (.-data snapshot))))
           (main-layout)
           
           :else
-          (auth/page)))))
+          (auth/page))))))
